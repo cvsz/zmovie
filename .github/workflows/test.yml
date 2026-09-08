@@ -30,7 +30,7 @@ jobs:
         run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
 
       - name: Validate installers
-        run: bash -n install.sh install-docker.sh
+        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh
 
       - name: Test
         run: python -m unittest discover -s tests -v
