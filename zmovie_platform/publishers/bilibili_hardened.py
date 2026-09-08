@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import threading
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,20 @@ def _set_video(page: Any, path: str) -> None:
     if locator is None:
         raise RuntimeError("could not locate Creator Center video file input")
     locator.set_input_files(path)
+
+
+def _require_interactive_display() -> None:
+    """Fail before Playwright launch when interactive login has no visible display."""
+    if os.name != "posix":
+        return
+    if os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY"):
+        return
+    raise RuntimeError(
+        "interactive Bilibili/Google login requires a visible GUI display; this host is headless. "
+        "Run the login command on a GUI checkout, save storage_state.json there, then securely copy it "
+        "to the server path configured by ZMOVIE_BILIBILI_STATE_PATH. xvfb-run alone is not sufficient "
+        "because the operator must see and complete Google sign-in/2FA."
+    )
 
 
 def session_status(state_path: Path = legacy.STATE_PATH, *, probe: bool = True) -> dict[str, Any]:
@@ -157,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "login":
+            _require_interactive_display()
             path = interactive_google_login(Path(args.state))
             _print({"status": "authenticated", "state_path": str(path)})
         elif args.command == "session":
