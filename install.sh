@@ -12,6 +12,7 @@ BACKUP_DIR="${ZMOVIE_BACKUP_DIR:-/var/backups/zmovie}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
 PORT="${ZMOVIE_PORT:-8080}"
 ACTION="${1:-install}"
+PLAYWRIGHT_DIR="${DATA_DIR}/playwright"
 
 log(){ printf '[zMovie] %s\n' "$*"; }
 fail(){ printf '[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -33,7 +34,12 @@ backup_data(){
 status(){
   systemctl --no-pager --full status zmovie || true
   if command -v curl >/dev/null 2>&1; then
-    curl -fsS "http://127.0.0.1:${PORT}/api/v2/health" || true
+    local health_port="$PORT"
+    if [[ -f "$ENV_FILE" ]]; then
+      health_port="$(sed -n 's/^ZMOVIE_PORT=//p' "$ENV_FILE" | tail -n1)"
+      health_port="${health_port:-$PORT}"
+    fi
+    curl -fsS "http://127.0.0.1:${health_port}/api/v2/health" || true
     printf '\n'
   fi
 }
@@ -63,7 +69,8 @@ install_or_upgrade(){
   if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
   fi
-  install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$BACKUP_DIR"
+  install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 \
+    "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$DATA_DIR/publish" "$DATA_DIR/bilibili" "$PLAYWRIGHT_DIR" "$BACKUP_DIR"
   install -d -o root -g "$SERVICE_USER" -m 0750 "$CONFIG_DIR"
 
   if [[ -d "$INSTALL_DIR" ]]; then
@@ -82,6 +89,9 @@ install_or_upgrade(){
   "$INSTALL_DIR/.venv/bin/python" -m pip install --upgrade pip wheel
   "$INSTALL_DIR/.venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
+  log "installing Playwright Chromium and required system libraries"
+  PLAYWRIGHT_BROWSERS_PATH="$PLAYWRIGHT_DIR" "$INSTALL_DIR/.venv/bin/python" -m playwright install --with-deps chromium
+
   local generated_password=""
   if [[ ! -f "$ENV_FILE" ]]; then
     generated_password="${ZMOVIE_ADMIN_PASSWORD:-$(random_hex 16)}"
@@ -93,6 +103,7 @@ ZMOVIE_PORT=${PORT}
 ZMOVIE_DB_PATH=${DATA_DIR}/zmovie.db
 ZMOVIE_MEDIA_ROOT=${DATA_DIR}/media
 ZMOVIE_EXPORT_ROOT=${DATA_DIR}/exports
+ZMOVIE_PUBLISH_ROOT=${DATA_DIR}/publish
 ZMOVIE_OBJECT_ROOT=${DATA_DIR}/objects
 ZMOVIE_AUDIT_PATH=${DATA_DIR}/audit.jsonl
 ZMOVIE_AUTH_ENABLED=${ZMOVIE_AUTH_ENABLED:-true}
@@ -103,14 +114,32 @@ ZMOVIE_TOKEN_TTL=${ZMOVIE_TOKEN_TTL:-86400}
 ZMOVIE_CORS_ORIGINS=${ZMOVIE_CORS_ORIGINS:-}
 ZMOVIE_PROVIDER_WEBHOOK=${ZMOVIE_PROVIDER_WEBHOOK:-}
 ZMOVIE_PROVIDER_TOKEN=${ZMOVIE_PROVIDER_TOKEN:-}
+ZMOVIE_COMFYUI_URL=${ZMOVIE_COMFYUI_URL:-http://127.0.0.1:8188}
+ZMOVIE_COMFYUI_WORKFLOW=${ZMOVIE_COMFYUI_WORKFLOW:-}
+ZMOVIE_COMFYUI_TOKEN=${ZMOVIE_COMFYUI_TOKEN:-}
+ZMOVIE_COMFYUI_TIMEOUT=${ZMOVIE_COMFYUI_TIMEOUT:-3600}
+ZMOVIE_BILIBILI_STUDIO_URL=https://studio.bilibili.tv/
+ZMOVIE_BILIBILI_STATE_PATH=${DATA_DIR}/bilibili/storage_state.json
+ZMOVIE_BILIBILI_HEADLESS=true
+ZMOVIE_BILIBILI_AUTO_PUBLISH=false
+ZMOVIE_BILIBILI_TIMEOUT_MS=120000
+PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_DIR}
 EOF
     chmod 0640 "$ENV_FILE"
     chown root:"$SERVICE_USER" "$ENV_FILE"
   else
-    # Keep generated credentials/secrets stable across upgrades; update only the listening port if explicitly supplied.
     if [[ -n "${ZMOVIE_PORT:-}" ]]; then
       sed -i -E "s/^ZMOVIE_PORT=.*/ZMOVIE_PORT=${PORT}/" "$ENV_FILE"
+    else
+      local existing_port
+      existing_port="$(sed -n 's/^ZMOVIE_PORT=//p' "$ENV_FILE" | tail -n1)"
+      PORT="${existing_port:-$PORT}"
     fi
+    grep -q '^ZMOVIE_PUBLISH_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_PUBLISH_ROOT=%s\n' "$DATA_DIR/publish" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BILIBILI_STATE_PATH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_STATE_PATH=%s\n' "$DATA_DIR/bilibili/storage_state.json" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BILIBILI_HEADLESS=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_HEADLESS=true\n' >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BILIBILI_AUTO_PUBLISH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_AUTO_PUBLISH=false\n' >>"$ENV_FILE"
+    grep -q '^PLAYWRIGHT_BROWSERS_PATH=' "$ENV_FILE" || printf 'PLAYWRIGHT_BROWSERS_PATH=%s\n' "$PLAYWRIGHT_DIR" >>"$ENV_FILE"
   fi
 
   cat >"$SERVICE_FILE" <<EOF
@@ -125,7 +154,7 @@ User=${SERVICE_USER}
 Group=${SERVICE_USER}
 WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${ENV_FILE}
-ExecStart=${INSTALL_DIR}/.venv/bin/uvicorn main:app --host 0.0.0.0 --port \${ZMOVIE_PORT} --workers 1 --proxy-headers
+ExecStart=/bin/sh -c 'exec ${INSTALL_DIR}/.venv/bin/uvicorn main:app --host 0.0.0.0 --port "\$ZMOVIE_PORT" --workers 1 --proxy-headers'
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=30
@@ -141,7 +170,6 @@ ProtectKernelLogs=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
 RestrictRealtime=true
 CapabilityBoundingSet=
 AmbientCapabilities=
@@ -159,7 +187,7 @@ EOF
 
   log "waiting for health check"
   local ok=0
-  for _ in $(seq 1 30); do
+  for _ in $(seq 1 45); do
     if curl -fsS "http://127.0.0.1:${PORT}/api/v2/health" >/dev/null 2>&1; then ok=1; break; fi
     sleep 1
   done
@@ -171,8 +199,10 @@ EOF
 
   log "installation healthy"
   log "Studio: http://SERVER-IP:${PORT}/studio"
-  log "Legacy generator: http://SERVER-IP:${PORT}/"
   log "API docs: http://SERVER-IP:${PORT}/docs"
+  log "Bilibili Google login requires a one-time interactive browser session."
+  log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
+  log "For a server, securely copy the resulting storage_state.json to ${DATA_DIR}/bilibili/storage_state.json and chown ${SERVICE_USER}:${SERVICE_USER}."
   if [[ -n "$generated_password" ]]; then
     log "Initial admin user: ${ZMOVIE_ADMIN_USER:-admin}"
     log "Initial admin password: ${generated_password}"
