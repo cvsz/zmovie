@@ -11,6 +11,7 @@ SERVICE_FILE="/etc/systemd/system/zmovie.service"
 BACKUP_DIR="${ZMOVIE_BACKUP_DIR:-/var/backups/zmovie}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
 PORT="${ZMOVIE_PORT:-8080}"
+PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-http://zmovie.zeaz.dev}"
 ACTION="${1:-install}"
 PLAYWRIGHT_DIR="${DATA_DIR}/playwright"
 
@@ -103,9 +104,6 @@ install_or_upgrade(){
 
   local tmp
   tmp="$(mktemp -d)"
-  # Expand the path while the local variable is still in scope. With `set -u`,
-  # deferring `$tmp` expansion until shell EXIT would otherwise fail because
-  # the local variable no longer exists after this function returns.
   trap "rm -rf -- '$tmp'" EXIT
   log "fetching ${REPO_URL} (${REPO_REF})"
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
@@ -224,9 +222,10 @@ EOF
     fail "service failed health validation"
   fi
 
+  PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
   log "installation healthy"
-  log "Studio: http://SERVER-IP:${PORT}/studio"
-  log "API docs: http://SERVER-IP:${PORT}/docs"
+  log "Studio: ${PUBLIC_BASE_URL}/studio"
+  log "API docs: ${PUBLIC_BASE_URL}/docs"
   log "Bilibili Google login requires a one-time interactive browser session."
   log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
   log "For a server, securely copy the resulting storage_state.json to ${DATA_DIR}/bilibili/storage_state.json and chown ${SERVICE_USER}:${SERVICE_USER}."
