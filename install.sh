@@ -22,10 +22,34 @@ random_hex(){ openssl rand -hex "${1:-24}"; }
 backup_data(){
   mkdir -p "$BACKUP_DIR"
   if [[ -f "$DATA_DIR/zmovie.db" ]]; then
-    local stamp
+    local stamp target
     stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-    cp -a "$DATA_DIR/zmovie.db" "$BACKUP_DIR/zmovie-${stamp}.db"
-    log "database backup: $BACKUP_DIR/zmovie-${stamp}.db"
+    target="$BACKUP_DIR/zmovie-${stamp}.db"
+    python3 - "$DATA_DIR/zmovie.db" "$target" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+temp = target.with_suffix(".tmp")
+temp.unlink(missing_ok=True)
+try:
+    with sqlite3.connect(source) as src, sqlite3.connect(temp) as dst:
+        src.backup(dst)
+    with sqlite3.connect(temp) as check:
+        result = check.execute("PRAGMA quick_check").fetchone()
+        if result is None or str(result[0]).lower() != "ok":
+            raise SystemExit(f"SQLite integrity check failed: {result}")
+        violations = check.execute("PRAGMA foreign_key_check").fetchall()
+        if violations:
+            raise SystemExit(f"SQLite foreign-key check failed: {violations[:10]}")
+    temp.replace(target)
+finally:
+    temp.unlink(missing_ok=True)
+PY
+    chmod 0640 "$target"
+    log "database backup: $target"
   else
     log "no database exists yet; backup skipped"
   fi
