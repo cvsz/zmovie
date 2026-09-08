@@ -1,0 +1,24 @@
+{
+  "1": {
+    "inputs": {
+      "image": "zmovie-smoke.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "zMovie Smoke Input"
+    }
+  },
+  "2": {
+    "inputs": {
+      "filename_prefix": "{{PREFIX}}_smoke",
+      "images": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "zMovie Smoke Output"
+    }
+  }
+}
