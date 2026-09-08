@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import threading
 from pathlib import Path
 from typing import Any
@@ -57,6 +58,117 @@ def _require_interactive_display() -> None:
         "to the server path configured by ZMOVIE_BILIBILI_STATE_PATH. xvfb-run alone is not sufficient "
         "because the operator must see and complete Google sign-in/2FA."
     )
+
+
+def _default_chrome_user_data_dir() -> Path:
+    """Return the platform default Chrome user-data directory used for live attach discovery."""
+    if os.name == "nt":
+        local_app_data = os.getenv("LOCALAPPDATA", "").strip()
+        if not local_app_data:
+            raise RuntimeError("LOCALAPPDATA is not set; pass --user-data-dir explicitly")
+        return Path(local_app_data) / "Google" / "Chrome" / "User Data"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
+    return Path.home() / ".config" / "google-chrome"
+
+
+def _devtools_ws_endpoint(user_data_dir: Path) -> str:
+    """Read Chrome's live DevTools websocket endpoint from DevToolsActivePort."""
+    port_file = user_data_dir.expanduser().resolve() / "DevToolsActivePort"
+    if not port_file.is_file():
+        raise RuntimeError(
+            f"Chrome DevToolsActivePort was not found at {port_file}. Keep the Chrome session open, "
+            "open chrome://inspect/#remote-debugging in that same Chrome, enable remote debugging, "
+            "approve the connection prompt, then rerun this command. Do not expose a debugging port "
+            "to the LAN."
+        )
+    lines = [line.strip() for line in port_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+    if len(lines) < 2:
+        raise RuntimeError(f"invalid Chrome DevToolsActivePort file: {port_file}")
+    try:
+        port = int(lines[0])
+    except ValueError as exc:
+        raise RuntimeError(f"invalid Chrome DevTools port in {port_file}: {lines[0]!r}") from exc
+    if not (1 <= port <= 65535):
+        raise RuntimeError(f"invalid Chrome DevTools port in {port_file}: {port}")
+    websocket_path = lines[1]
+    if not websocket_path.startswith("/"):
+        raise RuntimeError(f"invalid Chrome DevTools websocket path in {port_file}")
+    return f"ws://127.0.0.1:{port}{websocket_path}"
+
+
+def capture_existing_chrome_session(
+    state_path: Path,
+    *,
+    user_data_dir: Path | None = None,
+    cdp_endpoint: str = "",
+) -> Path:
+    """Capture Bilibili auth state from an already-open Chrome profile via CDP.
+
+    This does not launch a new browser and does not ask for Google credentials. The
+    operator explicitly enables Chrome remote debugging locally, approves Chrome's
+    connection prompt, and zMovie snapshots the existing context storage state.
+    """
+    state_path = state_path.expanduser().resolve()
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    endpoint = cdp_endpoint.strip()
+    if not endpoint:
+        endpoint = _devtools_ws_endpoint(user_data_dir or _default_chrome_user_data_dir())
+
+    sync_playwright = legacy._playwright_import()
+    browser = None
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.connect_over_cdp(endpoint, timeout=30000)
+            contexts = list(browser.contexts)
+            if not contexts:
+                raise RuntimeError("connected Chrome has no browser context")
+            context = contexts[0]
+
+            page = next((item for item in context.pages if "studio.bilibili.tv" in item.url.lower()), None)
+            created_page = False
+            if page is None:
+                page = context.new_page()
+                created_page = True
+                page.goto(legacy.STUDIO_URL, wait_until="domcontentloaded", timeout=legacy.TIMEOUT_MS)
+            else:
+                try:
+                    page.reload(wait_until="domcontentloaded", timeout=legacy.TIMEOUT_MS)
+                except Exception:
+                    pass
+
+            if not legacy._logged_in(page):
+                if created_page:
+                    try:
+                        page.close()
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    "the attached Chrome profile is not authenticated in Bilibili Creator Center. "
+                    "Sign in to https://studio.bilibili.tv/ in that same Chrome window, then rerun capture-chrome."
+                )
+
+            context.storage_state(path=state_path, indexed_db=True)
+            try:
+                state_path.chmod(0o600)
+            except OSError:
+                pass
+            if created_page:
+                try:
+                    page.close()
+                except Exception:
+                    pass
+            browser.close()
+            browser = None
+    except Exception:
+        if browser is not None:
+            try:
+                browser.close()
+            except Exception:
+                pass
+        raise
+
+    return state_path
 
 
 def session_status(state_path: Path = legacy.STATE_PATH, *, probe: bool = True) -> dict[str, Any]:
@@ -145,6 +257,11 @@ def main(argv: list[str] | None = None) -> int:
     login = sub.add_parser("login", help="open interactive browser for one-time Google sign-in")
     login.add_argument("--state", default=str(legacy.STATE_PATH))
 
+    capture = sub.add_parser("capture-chrome", help="capture Bilibili auth from an already-open Chrome session")
+    capture.add_argument("--state", default=str(legacy.STATE_PATH))
+    capture.add_argument("--user-data-dir", default="")
+    capture.add_argument("--cdp-endpoint", default="")
+
     session = sub.add_parser("session", help="validate the saved Creator Center session")
     session.add_argument("--state", default=str(legacy.STATE_PATH))
     session.add_argument("--no-probe", action="store_true")
@@ -175,6 +292,14 @@ def main(argv: list[str] | None = None) -> int:
             _require_interactive_display()
             path = interactive_google_login(Path(args.state))
             _print({"status": "authenticated", "state_path": str(path)})
+        elif args.command == "capture-chrome":
+            data_dir = Path(args.user_data_dir) if args.user_data_dir else None
+            path = capture_existing_chrome_session(
+                Path(args.state),
+                user_data_dir=data_dir,
+                cdp_endpoint=args.cdp_endpoint,
+            )
+            _print({"status": "captured", "state_path": str(path), "source": "existing_chrome"})
         elif args.command == "session":
             _print(session_status(Path(args.state), probe=not args.no_probe))
         elif args.command == "prepare":
