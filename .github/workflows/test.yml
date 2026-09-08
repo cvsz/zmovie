@@ -1,0 +1,36 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile
+        run: python -m py_compile zmovie.py
+
+      - name: Test
+        run: python -m unittest discover -s tests -v
+
+      - name: Smoke test text output
+        run: python zmovie.py --seed 42 --count 2 > /tmp/zmovie-prompts.txt
+
+      - name: Smoke test JSON output
+        run: python zmovie.py --seed 42 --json | python -m json.tool > /dev/null
