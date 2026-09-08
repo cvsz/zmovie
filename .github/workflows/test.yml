@@ -33,7 +33,13 @@ jobs:
         run: node --check static/studio-preview.js
 
       - name: Validate installers and operations scripts
-        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/copy-github-environment.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
+        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/reset-production-projects.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/copy-github-environment.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
+
+      - name: Smoke project reset guard
+        run: |
+          python -m zmovie_platform.project_reset list | python -m json.tool >/dev/null
+          test "$(python -m zmovie_platform.project_reset delete --confirm WRONG >/tmp/reset.out 2>&1; echo $?)" -eq 2
+          grep -q 'confirmation must be DELETE-ALL-PRJ' /tmp/reset.out
 
       - name: Runtime smoke Bilibili candidate helper
         if: matrix.python-version == '3.14'
@@ -73,6 +79,7 @@ jobs:
           python -m zmovie_platform.publishers.bilibili_preflight --help | grep -q -- '--job'
           python -m zmovie_platform.publishers.bilibili_confirm --help | grep -q -- '--url'
           python -m zmovie_platform.publishers.bilibili_launch_candidate --help | grep -q -- '--duration'
+          python -m zmovie_platform.bilibili_media --help >/dev/null || true
           python -m zmovie_platform.publishers.bilibili_hardened session --no-probe | python -m json.tool > /dev/null
 
   docker:
