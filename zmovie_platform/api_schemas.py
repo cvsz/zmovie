@@ -36,3 +36,19 @@ class AssetRequest(BaseModel):
     kind: str = Field(min_length=1, max_length=80)
     name: str = Field(min_length=1, max_length=200)
     path: str = Field(min_length=1, max_length=2000)
+
+
+class BilibiliPrepareRequest(BaseModel):
+    title: str = Field(default="", max_length=100)
+    description: str = Field(default="", max_length=2000)
+    tags: list[str] = Field(default_factory=list, max_length=10)
+    playlist: str = Field(default="", max_length=200)
+    content_type: str = Field(default="Original", pattern="^(Original|Repost)$")
+    schedule_at: str = Field(default="", max_length=80)
+    video_path: str = Field(default="", max_length=2000)
+    cover_path: str = Field(default="", max_length=2000)
+    subtitle_path: str = Field(default="", max_length=2000)
+
+
+class BilibiliPublishRequest(BaseModel):
+    headless: bool = True
