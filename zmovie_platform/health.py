@@ -21,12 +21,15 @@ def _path_status(path: Path) -> dict[str, object]:
 def _comfyui_status() -> dict[str, object]:
     configured = COMFYUI.configured()
     workflow_path = os.getenv("ZMOVIE_COMFYUI_WORKFLOW", "").strip()
+    workflow_role = os.getenv("ZMOVIE_COMFYUI_WORKFLOW_ROLE", "generic").strip().lower() or "generic"
     result: dict[str, object] = {
         "configured": configured,
         "reachable": False,
         "workflow_valid": False,
         "nodes_available": False,
         "ready": False,
+        "accelerated": False,
+        "workflow_role": workflow_role,
         "url": os.getenv("ZMOVIE_COMFYUI_URL", "http://127.0.0.1:8188").strip(),
         "workflow": workflow_path,
     }
@@ -45,11 +48,16 @@ def _comfyui_status() -> dict[str, object]:
                 result["python_version"] = system.get("python_version")
                 result["pytorch_version"] = system.get("pytorch_version")
             if isinstance(devices, list):
-                result["devices"] = [
+                normalized_devices = [
                     {"name": item.get("name"), "type": item.get("type")}
                     for item in devices
                     if isinstance(item, dict)
                 ]
+                result["devices"] = normalized_devices
+                result["accelerated"] = any(
+                    str(item.get("type", "")).strip().lower() not in {"", "cpu"}
+                    for item in normalized_devices
+                )
     except Exception as exc:
         result["probe_error"] = str(exc)[:500]
 
@@ -103,6 +111,12 @@ def health_report() -> dict[str, object]:
     ffmpeg = bool(shutil.which("ffmpeg"))
     ffprobe = bool(shutil.which("ffprobe"))
     comfyui = _comfyui_status()
+    render_ready = bool(ffmpeg and ffprobe and comfyui.get("ready"))
+    production_video_ready = bool(
+        render_ready
+        and comfyui.get("accelerated")
+        and comfyui.get("workflow_role") == "video"
+    )
     return {
         "status": "ok",
         "database": str(DB_PATH),
@@ -116,5 +130,6 @@ def health_report() -> dict[str, object]:
             "publish": _path_status(publish_root),
         },
         "comfyui": comfyui,
-        "render_ready": bool(ffmpeg and ffprobe and comfyui.get("ready")),
+        "render_ready": render_ready,
+        "production_video_ready": production_video_ready,
     }
