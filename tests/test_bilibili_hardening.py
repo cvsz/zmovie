@@ -82,6 +82,11 @@ class BilibiliHardeningTests(unittest.TestCase):
         self.assertFalse(status["authenticated"])
         self.assertFalse(status["checked"])
 
+    def test_headless_login_fails_before_browser_launch(self):
+        with mock.patch.dict("os.environ", {"DISPLAY": "", "WAYLAND_DISPLAY": ""}, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "requires a visible GUI display"):
+                hardened._require_interactive_display()
+
     def test_successful_submit_without_public_url_stays_submitted(self):
         job = self._approved_job()
         fake = {
