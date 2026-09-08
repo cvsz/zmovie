@@ -30,7 +30,7 @@ jobs:
         run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
 
       - name: Validate installers and operations scripts
-        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
+        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
 
       - name: Validate ComfyUI smoke workflow
         run: python -m json.tool workflows/comfyui/smoke_api.json > /dev/null
@@ -44,8 +44,8 @@ jobs:
       - name: Smoke test JSON output
         run: python zmovie.py --seed 42 --json | python -m json.tool > /dev/null
 
-      - name: Smoke test publisher CLI without external login
-        run: python -m zmovie_platform.publishers.bilibili status | python -m json.tool > /dev/null
+      - name: Smoke test hardened publisher CLI without external login
+        run: python -m zmovie_platform.publishers.bilibili_hardened session --no-probe | python -m json.tool > /dev/null
 
   docker:
     runs-on: ubuntu-latest
