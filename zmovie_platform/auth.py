@@ -13,6 +13,7 @@ from .storage import connect
 
 PBKDF2_ROUNDS = 250_000
 TOKEN_TTL_SECONDS = int(os.getenv("ZMOVIE_TOKEN_TTL", "86400"))
+MEDIA_PREVIEW_TOKEN_TTL_SECONDS = max(60, min(int(os.getenv("ZMOVIE_MEDIA_PREVIEW_TOKEN_TTL", "3600")), 14400))
 
 
 def _secret() -> bytes:
@@ -21,6 +22,30 @@ def _secret() -> bytes:
         # Safe local default for zero-config development; production installer writes a random secret.
         value = "zmovie-local-development-secret-change-me"
     return value.encode("utf-8")
+
+
+def _encode_signed_payload(payload: dict[str, Any]) -> str:
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    body = base64.urlsafe_b64encode(raw).rstrip(b"=")
+    sig = hmac.new(_secret(), body, hashlib.sha256).digest()
+    return body.decode() + "." + base64.urlsafe_b64encode(sig).rstrip(b"=").decode()
+
+
+def _decode_signed_payload(token: str) -> dict[str, Any] | None:
+    try:
+        body_text, sig_text = token.split(".", 1)
+        body = body_text.encode()
+        expected = hmac.new(_secret(), body, hashlib.sha256).digest()
+        sig = base64.urlsafe_b64decode(sig_text + "=" * (-len(sig_text) % 4))
+        if not hmac.compare_digest(sig, expected):
+            return None
+        raw = base64.urlsafe_b64decode(body_text + "=" * (-len(body_text) % 4))
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict) or int(payload.get("exp", 0)) < int(time.time()):
+            return None
+        return payload
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
 
 
 def hash_password(password: str) -> str:
@@ -67,28 +92,51 @@ def user_count() -> int:
 
 
 def issue_token(user: dict[str, Any]) -> str:
-    payload = {"sub": user["username"], "role": user.get("role", "user"), "iat": int(time.time()), "exp": int(time.time()) + TOKEN_TTL_SECONDS}
-    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    body = base64.urlsafe_b64encode(raw).rstrip(b"=")
-    sig = hmac.new(_secret(), body, hashlib.sha256).digest()
-    return body.decode() + "." + base64.urlsafe_b64encode(sig).rstrip(b"=").decode()
+    now = int(time.time())
+    return _encode_signed_payload(
+        {
+            "aud": "api",
+            "sub": user["username"],
+            "role": user.get("role", "user"),
+            "iat": now,
+            "exp": now + TOKEN_TTL_SECONDS,
+        }
+    )
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
-    try:
-        body_text, sig_text = token.split(".", 1)
-        body = body_text.encode()
-        expected = hmac.new(_secret(), body, hashlib.sha256).digest()
-        sig = base64.urlsafe_b64decode(sig_text + "=" * (-len(sig_text) % 4))
-        if not hmac.compare_digest(sig, expected):
-            return None
-        raw = base64.urlsafe_b64decode(body_text + "=" * (-len(body_text) % 4))
-        payload = json.loads(raw.decode("utf-8"))
-        if int(payload.get("exp", 0)) < int(time.time()):
-            return None
-        return payload
-    except (ValueError, TypeError, json.JSONDecodeError):
+    payload = _decode_signed_payload(token)
+    if payload is None:
         return None
+    # Tokens issued before audience separation did not include `aud`; accept them
+    # until they naturally expire. Purpose-bound preview tokens are never valid
+    # API authentication credentials.
+    if payload.get("aud") not in (None, "api"):
+        return None
+    return payload
+
+
+def issue_media_preview_token(*, project_id: str, asset_id: str, subject: str) -> str:
+    now = int(time.time())
+    return _encode_signed_payload(
+        {
+            "aud": "media-preview",
+            "sub": subject,
+            "project_id": project_id,
+            "asset_id": asset_id,
+            "iat": now,
+            "exp": now + MEDIA_PREVIEW_TOKEN_TTL_SECONDS,
+        }
+    )
+
+
+def decode_media_preview_token(token: str) -> dict[str, Any] | None:
+    payload = _decode_signed_payload(token)
+    if payload is None or payload.get("aud") != "media-preview":
+        return None
+    if not str(payload.get("project_id") or "") or not str(payload.get("asset_id") or ""):
+        return None
+    return payload
 
 
 def bootstrap_admin_from_env() -> bool:
