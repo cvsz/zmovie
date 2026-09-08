@@ -19,10 +19,15 @@ from pydantic import BaseModel, Field
 import zmovie
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
-DATA_DIR = Path(os.getenv("ZMOVIE_DATA_DIR", str(BASE_DIR / "data"))).expanduser().resolve()
-DB_PATH = DATA_DIR / "zmovie.db"
-APP_VERSION = "0.2.0"
+# Keep the legacy prompt/history API on the exact same writable database path as
+# the production v2 platform. Native systemd deployments set ZMOVIE_DB_PATH to
+# /var/lib/zmovie/zmovie.db while ProtectSystem=strict makes /opt/zmovie read-only.
+# Deriving DATA_DIR from DB_PATH prevents startup from attempting to create
+# /opt/zmovie/data and also avoids maintaining two independent SQLite files.
+_default_data_dir = Path(os.getenv("ZMOVIE_DATA_DIR", str(BASE_DIR / "data"))).expanduser()
+DB_PATH = Path(os.getenv("ZMOVIE_DB_PATH", str(_default_data_dir / "zmovie.db"))).expanduser().resolve()
+DATA_DIR = DB_PATH.parent
+APP_VERSION = "0.2.1"
 
 app = FastAPI(
     title="zMovie Prompt Generator",
