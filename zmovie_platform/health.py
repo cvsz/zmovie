@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
@@ -19,24 +20,53 @@ def _path_status(path: Path) -> dict[str, object]:
 
 def _comfyui_status() -> dict[str, object]:
     configured = COMFYUI.configured()
+    workflow_path = os.getenv("ZMOVIE_COMFYUI_WORKFLOW", "").strip()
     result: dict[str, object] = {
         "configured": configured,
         "reachable": False,
+        "workflow_valid": False,
+        "nodes_available": False,
         "ready": False,
         "url": os.getenv("ZMOVIE_COMFYUI_URL", "http://127.0.0.1:8188").strip(),
-        "workflow": os.getenv("ZMOVIE_COMFYUI_WORKFLOW", "").strip(),
+        "workflow": workflow_path,
     }
     if not configured:
         result["error"] = "workflow_not_configured"
         return result
+
+    try:
+        workflow = json.loads(Path(workflow_path).expanduser().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        result["error"] = f"workflow_invalid: {exc}"
+        return result
+    if not isinstance(workflow, dict) or not workflow:
+        result["error"] = "workflow_invalid: API workflow must be a non-empty JSON object"
+        return result
+    result["workflow_valid"] = True
+
     try:
         COMFYUI._request_json("GET", "/system_stats", timeout=2.0)
+        result["reachable"] = True
+        required_node_types = sorted({
+            str(node.get("class_type"))
+            for node in workflow.values()
+            if isinstance(node, dict) and node.get("class_type")
+        })
+        if required_node_types:
+            object_info = COMFYUI._request_json("GET", "/object_info", timeout=5.0)
+            available = set(object_info) if isinstance(object_info, dict) else set()
+            missing = [name for name in required_node_types if name not in available]
+            result["required_node_types"] = required_node_types
+            result["missing_node_types"] = missing
+            if missing:
+                result["error"] = "missing_node_types"
+                return result
+        result["nodes_available"] = True
+        result["ready"] = True
+        return result
     except Exception as exc:
         result["error"] = str(exc)[:500]
         return result
-    result["reachable"] = True
-    result["ready"] = True
-    return result
 
 
 def health_report() -> dict[str, object]:
