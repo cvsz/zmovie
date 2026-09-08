@@ -32,6 +32,26 @@ jobs:
       - name: Validate installers and operations scripts
         run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
 
+      - name: Runtime smoke Bilibili candidate helper
+        if: matrix.python-version == '3.14'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p .venv/bin
+          ln -sf "$(command -v python)" .venv/bin/python
+          env_file="$(mktemp)"
+          db_file="$(mktemp -u)"
+          printf 'ZMOVIE_DB_PATH=%s\n' "$db_file" > "$env_file"
+          chmod 0644 "$env_file"
+          sudo env \
+            ZMOVIE_INSTALL_DIR="$GITHUB_WORKSPACE" \
+            ZMOVIE_ENV="$env_file" \
+            ZMOVIE_SERVICE_USER="$(id -un)" \
+            bash scripts/list-bilibili-publish-candidates.sh \
+            | tee /tmp/zmovie-bilibili-candidates.json
+          grep -q '"count": 0' /tmp/zmovie-bilibili-candidates.json
+          rm -f "$env_file" "$db_file"
+
       - name: Validate ComfyUI smoke workflow
         run: python -m json.tool workflows/comfyui/smoke_api.json > /dev/null
 
