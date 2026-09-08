@@ -1,99 +1,103 @@
 # zMovie
 
-`zMovie` is a reusable cinematic prompt generator for AI-video workflows, initially focused on Wan 3.0-style 20-second continuous action long takes.
+`zMovie` is a self-hosted AI movie production platform that turns a concept into continuity-aware storyboards, AI-video render jobs, assembled movies, and creator-platform publishing packages.
 
-It now ships as both a deterministic CLI generator and a self-hosted full-stack web application.
+The original deterministic Wan-style prompt generator remains available, but the primary application is now the full production Studio.
 
-## Features
+## End-to-end pipeline
 
-- Production-ready Wan 3.0 master action prompt specification.
-- Randomized setting, character styling, attacker archetype, choreography, camera, lighting, destruction, and ending.
-- Deterministic generation with a numeric seed.
-- Plain-text and JSON CLI output.
-- FastAPI REST API.
-- Responsive browser UI with copy-ready main and negative prompts.
-- Local SQLite generation history; no external database required.
-- One-command Ubuntu/Debian installer with a hardened systemd service.
-- Dockerfile and Docker Compose deployment.
-- Automated Python and container CI.
+```text
+Concept
+  ↓
+Project + Character Bible
+  ↓
+Scenes / Shots / Continuity Locks
+  ↓
+Director + QC
+  ↓
+Render Provider
+  ├─ ComfyUI
+  ├─ Generic HTTP gateway
+  └─ Local mock / dry run
+  ↓
+Persistent Render Jobs + Asset Library
+  ↓
+FFmpeg Assembly
+  ↓
+Final Movie
+  ↓
+Bilibili Publication Package
+  ↓
+Review / Approval
+  ↓
+Playwright Creator Center Upload
+  ↓
+Publish Now / Scheduled Release
+```
 
-## One-command automated install
+## Major features
 
-On Ubuntu/Debian, including Ubuntu systems running under WSL with systemd enabled:
+- deterministic cinematic prompt engine and Wan-oriented master prompt;
+- Project → Character Bible → Scene → Shot production model;
+- continuity-in / continuity-out locks;
+- storyboard and production-manifest generation;
+- QC scoring and render gate;
+- provider abstraction;
+- native ComfyUI queue/history/output integration;
+- generic HTTP render gateway;
+- zero-cost mock renderer for CI and dry runs;
+- persistent SQLite render jobs and asset library;
+- FFmpeg movie assembly;
+- production ZIP exports;
+- local account authentication and project ownership checks;
+- audit trail, metrics, health, backup and security headers;
+- Bilibili Creator Center publishing with one-time manual Google login and reusable browser session;
+- responsive `/studio` production UI;
+- native systemd and Docker deployments;
+- automated Python and Docker CI.
+
+## One-command native install
+
+Ubuntu/Debian, including Ubuntu under WSL with systemd enabled:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cvsz/zmovie/main/install.sh | sudo bash
 ```
 
-The installer is designed to be safe to run again. It:
+The installer provisions Python, FFmpeg, Playwright Chromium, the `zmovie` service user, persistent storage, generated admin credentials, a hardened systemd unit, and a health check.
 
-1. installs Python, venv, Git, curl, and CA certificates;
-2. creates the dedicated `zmovie` service account;
-3. clones or fast-forwards `cvsz/zmovie` into `/opt/zmovie`;
-4. creates `/opt/zmovie/.venv` and installs runtime dependencies;
-5. creates `/etc/zmovie/zmovie.env` on first install and preserves it on later runs;
-6. installs and enables `zmovie.service` when systemd is available;
-7. starts/restarts the application and verifies `/api/health` before reporting success.
-
-Default web URL:
+Open:
 
 ```text
-http://<server-ip>:8080/
+http://<server-ip>:8080/studio
 ```
 
-Service operations:
+Operations:
 
 ```bash
 sudo systemctl status zmovie
 sudo journalctl -u zmovie -f
-sudo systemctl restart zmovie
+sudo bash /opt/zmovie/install.sh upgrade
+sudo bash /opt/zmovie/install.sh backup
 ```
 
-### Installer overrides
+The installer preserves `/etc/zmovie/zmovie.env` and the database across upgrades and backs up an existing database before replacing application code.
 
-Environment variables can override deployment settings:
-
-```bash
-sudo ZMOVIE_PORT=8090 \
-  ZMOVIE_INSTALL_DIR=/opt/zmovie \
-  ZMOVIE_SERVICE_USER=zmovie \
-  bash install.sh
-```
-
-Supported installer variables:
-
-| Variable | Default |
-|---|---|
-| `ZMOVIE_REPO_URL` | `https://github.com/cvsz/zmovie.git` |
-| `ZMOVIE_BRANCH` | `main` |
-| `ZMOVIE_INSTALL_DIR` | `/opt/zmovie` |
-| `ZMOVIE_SERVICE_USER` | `zmovie` |
-| `ZMOVIE_ENV_DIR` | `/etc/zmovie` |
-| `ZMOVIE_PORT` | `8080` on first install |
-
-> Existing `/etc/zmovie/zmovie.env` is intentionally preserved during upgrades. Edit it directly when changing an already-installed service configuration, then restart `zmovie`.
-
-## Docker Compose
+## Docker
 
 ```bash
 git clone https://github.com/cvsz/zmovie.git
 cd zmovie
+./install-docker.sh
+```
+
+or:
+
+```bash
 docker compose up -d --build
 ```
 
-Then open:
-
-```text
-http://localhost:8080/
-```
-
-Use a different host port:
-
-```bash
-ZMOVIE_PORT=8090 docker compose up -d --build
-```
-
-Generation history persists in the `zmovie-data` Docker volume.
+The image includes FFmpeg and headless Playwright Chromium. Data, render assets and Bilibili browser state live under the persistent `zmovie-data` volume.
 
 ## Local development
 
@@ -103,87 +107,129 @@ cd zmovie
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+python -m playwright install chromium
 cp .env.example .env
-python app.py
+uvicorn main:app --reload --host 127.0.0.1 --port 8080
 ```
 
-The web app defaults to `http://127.0.0.1:8080/` when opened locally through the bound host interface.
-
-## REST API
-
-FastAPI exposes interactive API documentation at:
+Open:
 
 ```text
-/docs
+http://127.0.0.1:8080/studio
 ```
 
-Core endpoints:
+API documentation:
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/health` | GET | service health/version |
-| `/api/options` | GET | generator variable catalog |
-| `/api/generate` | POST | generate one or more prompts |
-| `/api/history` | GET | recent saved generations |
-| `/api/history/{id}` | GET | one saved generation |
+```text
+http://127.0.0.1:8080/docs
+```
 
-Example:
+## ComfyUI
+
+Export your ComfyUI video workflow in **API format** and configure:
 
 ```bash
-curl -s http://127.0.0.1:8080/api/generate \
-  -H 'content-type: application/json' \
-  -d '{"seed":42,"count":1,"save_history":true}'
+export ZMOVIE_COMFYUI_URL=http://127.0.0.1:8188
+export ZMOVIE_COMFYUI_WORKFLOW=/absolute/path/to/workflow_api.json
 ```
 
-## CLI
+The workflow can use placeholders such as:
 
-The original dependency-free core remains directly usable:
+```text
+{{PROMPT}}
+{{NEGATIVE_PROMPT}}
+{{SEED}}
+{{FRAMES}}
+{{WIDTH}}
+{{HEIGHT}}
+{{FPS}}
+{{FILENAME_PREFIX}}
+```
+
+Node-ID injection is also supported through the `ZMOVIE_COMFYUI_*_NODE_IDS` variables. Docker defaults to `http://host.docker.internal:8188` and includes the Linux host-gateway mapping.
+
+See [`workflows/comfyui/README.md`](workflows/comfyui/README.md).
+
+## Bilibili Creator Center automation
+
+The Bilibili publisher intentionally does not store a Google password or 2FA secret.
+
+Run the one-time interactive Google sign-in on a GUI machine:
+
+```bash
+python -m zmovie_platform.publishers.bilibili login
+```
+
+Complete Google authentication in the browser and press Enter in the terminal. zMovie stores only Playwright browser session state.
+
+Then a completed project can follow:
+
+```bash
+python -m zmovie_platform.publishers.bilibili prepare --project PROJECT_ID
+python -m zmovie_platform.publishers.bilibili approve --job PUB_JOB_ID
+python -m zmovie_platform.publishers.bilibili publish --job PUB_JOB_ID
+```
+
+The Studio exposes the same workflow with an explicit approval boundary. Current Creator Center constraints encoded by zMovie include 100-character titles, 2000-character introductions, at most 10 tags, a 1280×720 generated cover, and scheduled-release validation between +2 hours and +15 days.
+
+Full guide: [`docs/BILIBILI_PUBLISHING.md`](docs/BILIBILI_PUBLISHING.md).
+
+## Production API
+
+Core v2 endpoints:
+
+```text
+GET  /api/v2/health
+GET  /api/v2/capabilities
+POST /api/v2/auth/login
+GET  /api/v2/projects
+POST /api/v2/projects
+GET  /api/v2/projects/{id}/qc
+POST /api/v2/projects/{id}/render
+POST /api/v2/projects/{id}/assemble
+POST /api/v2/projects/{id}/export
+POST /api/v2/pipeline
+
+GET  /api/v2/publish/bilibili/session
+POST /api/v2/projects/{id}/publish/bilibili/prepare
+POST /api/v2/publish/jobs/{id}/approve
+POST /api/v2/publish/jobs/{id}/publish
+GET  /api/v2/publish/jobs/{id}
+```
+
+Legacy prompt-generation endpoints and `zmovie.py` remain available for compatibility.
+
+## CLI prompt generator
 
 ```bash
 python zmovie.py
 python zmovie.py --count 3
 python zmovie.py --seed 42
 python zmovie.py --seed 42 --json
-python zmovie.py --count 10 > prompts.txt
 ```
 
-## Prompt timing model
+## Persistence
 
-Each generated video prompt follows a 20-second uninterrupted long-take structure:
+SQLite stores:
 
-| Time | Beat |
-|---|---|
-| 0:00–0:03 | Character introduction + threat appears |
-| 0:03–0:06 | First exchange |
-| 0:06–0:09 | Reversal / escalation |
-| 0:09–0:12 | Environmental impact |
-| 0:12–0:16 | Peak continuous combat |
-| 0:16–0:18 | Decisive finishing move |
-| 0:18–0:20 | Composed cinematic ending |
+- users;
+- projects;
+- characters;
+- scenes and shots;
+- render jobs;
+- assets;
+- Bilibili publish jobs.
 
-## Architecture
+Media, exports, publication packages, browser state and other runtime data are kept under `data/` locally or `/var/lib/zmovie` with the native installer.
 
-```text
-Browser
-  |
-  v
-FastAPI (app.py)
-  |-- /static/*             responsive web frontend
-  |-- /api/generate         generation API
-  |-- /api/history          SQLite history API
-  |
-  +--> zmovie.py            deterministic prompt engine
-  |
-  +--> data/zmovie.db       local persistent history
-```
+## Security notes
 
-The master prompt specification lives at [`prompts/WAN3_MASTER_ACTION_GENERATOR.md`](prompts/WAN3_MASTER_ACTION_GENERATOR.md).
-
-## Production notes
-
-The built-in application has no user authentication. If it is exposed to the public internet, put it behind an authenticated reverse proxy, access gateway, VPN, or another trusted perimeter. The native installer uses a dedicated non-login service account and systemd hardening, but perimeter authentication remains a deployment responsibility.
-
-For Cloudflare Tunnel, route the chosen hostname to the local HTTP service, for example `http://localhost:8080`, while keeping direct inbound access to port 8080 blocked if the service is intended to be tunnel-only.
+- Authentication is enabled by default for the production API.
+- The installer generates initial admin credentials and a signing secret.
+- Bilibili browser state is a credential and must not be committed or shared.
+- Google passwords, 2FA codes and authenticator secrets are not accepted by zMovie.
+- `ZMOVIE_BILIBILI_AUTO_PUBLISH=false` is the default; real publication requires an approved publish job.
+- Use TLS/reverse proxy/Cloudflare Tunnel when exposing the service to the internet.
 
 ## Tests
 
@@ -192,7 +238,7 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-GitHub Actions tests Python 3.11, 3.12, and 3.13, CLI output, API behavior, and Docker image construction.
+CI validates supported Python versions, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, and the production container build without making external inference or publication calls.
 
 ## License
 
