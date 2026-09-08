@@ -8,11 +8,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     ZMOVIE_MEDIA_ROOT=/app/data/media \
     ZMOVIE_EXPORT_ROOT=/app/data/exports \
     ZMOVIE_PUBLISH_ROOT=/app/data/publish \
+    ZMOVIE_TTS_PROVIDER=edge \
+    ZMOVIE_TTS_VOICE=en-US-AriaNeural \
     ZMOVIE_BILIBILI_STATE_PATH=/app/data/bilibili/storage_state.json \
     ZMOVIE_AUTH_ENABLED=true
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
+    && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
