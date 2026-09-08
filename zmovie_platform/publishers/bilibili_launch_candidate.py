@@ -27,11 +27,12 @@ DEFAULT_CONCEPT = (
     "an official partnership, sponsorship, or endorsement by Bilibili."
 )
 DEFAULT_DURATION = 30
-DEFAULT_TTS_VOICE = "en-US-AriaNeural"
+DEFAULT_TTS_VOICE = "th-TH-PremwadeeNeural"
 DEFAULT_VOICEOVER = (
-    "Meet zMovie by ZeaZDev. From concept and storyboarding to rendering, quality control, and FFmpeg assembly, "
-    "zMovie keeps your creator production workflow self-hosted and under control. Review, approve, and publish "
-    "through Bilibili Creator Center. Create. Render. Publish. zMovie by ZeaZDev."
+    "พบกับ zMovie จาก ZeaZDev ระบบสร้างวิดีโอแบบ self-hosted "
+    "ตั้งแต่ไอเดีย สตอรี่บอร์ด เรนเดอร์ ตรวจคุณภาพ ตัดต่อ "
+    "และอนุมัติก่อนเผยแพร่ผ่าน Bilibili Creator Center. "
+    "Create. Render. Publish."
 )
 EDGE_TRANSLATOR_URL = "https://www.bing.com/translator"
 EDGE_TTS_URL = "https://www.bing.com/tfettts?isVertical=1&&IG=1&IID=translator.5023&SFX=1"
@@ -39,6 +40,13 @@ USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _font_path() -> str:
@@ -64,7 +72,7 @@ def _local_tts_engine() -> str:
 def _edge_token() -> tuple[str, str, str]:
     request = urllib.request.Request(
         EDGE_TRANSLATOR_URL,
-        headers={"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"},
+        headers={"User-Agent": USER_AGENT, "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7"},
     )
     with urllib.request.urlopen(request, timeout=20) as response:
         cookies = [value.split(";", 1)[0] for value in (response.headers.get_all("Set-Cookie") or [])]
@@ -82,12 +90,13 @@ def _edge_tts(output: Path, text: str, voice_id: str) -> bool:
         try:
             key, token, cookie = _edge_token()
             parts = voice_id.split("-")
-            xml_lang = "-".join(parts[:2]) if len(parts) >= 2 else "en-US"
+            xml_lang = "-".join(parts[:2]) if len(parts) >= 2 else "th-TH"
             escaped_text = html.escape(text, quote=True)
             ssml = (
                 f"<speak version='1.0' xml:lang='{xml_lang}'>"
                 f"<voice xml:lang='{xml_lang}' name='{html.escape(voice_id, quote=True)}'>"
-                f"<prosody rate='0.00%'>{escaped_text}</prosody></voice></speak>"
+                f"<prosody rate='-8.00%' pitch='+0Hz'>{escaped_text}</prosody>"
+                "</voice></speak>"
             )
             body = urllib.parse.urlencode({"ssml": ssml, "token": token, "key": key}).encode("utf-8")
             headers = {
@@ -119,7 +128,7 @@ def _local_tts(output: Path, text: str) -> tuple[bool, str]:
     if not engine:
         return False, ""
     proc = subprocess.run(
-        [engine, "-v", "en-us", "-s", "148", "-p", "46", "-a", "165", "-w", str(output), text],
+        [engine, "-v", "th", "-s", "128", "-p", "46", "-a", "180", "-w", str(output), text],
         capture_output=True,
         text=True,
         timeout=120,
@@ -130,21 +139,40 @@ def _local_tts(output: Path, text: str) -> tuple[bool, str]:
 def _render_voiceover(workdir: Path, text: str) -> dict[str, Any]:
     provider = os.getenv("ZMOVIE_TTS_PROVIDER", "edge").strip().lower()
     voice = os.getenv("ZMOVIE_TTS_VOICE", DEFAULT_TTS_VOICE).strip() or DEFAULT_TTS_VOICE
+    allow_local = _env_bool("ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK", False)
+
+    if provider not in {"edge", "auto", "local"}:
+        raise RuntimeError(f"unsupported ZMOVIE_TTS_PROVIDER: {provider}")
 
     if provider in {"edge", "auto"}:
         edge_path = workdir / "voiceover.mp3"
         if _edge_tts(edge_path, text, voice):
-            return {"generated": True, "provider": "edge-tts", "voice": voice, "path": str(edge_path)}
-        if provider == "edge":
-            provider = "local"
+            return {
+                "generated": True,
+                "provider": "edge-tts",
+                "voice": voice,
+                "language": "th-TH",
+                "path": str(edge_path),
+            }
+        if provider == "edge" and not allow_local:
+            raise RuntimeError(
+                "Edge neural TTS failed; production render stopped rather than using robotic local fallback. "
+                "Fix Edge TTS or explicitly set ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK=true."
+            )
 
-    if provider in {"local", "auto"}:
+    if provider == "local" or allow_local:
         local_path = workdir / "voiceover.wav"
         generated, engine = _local_tts(local_path, text)
         if generated:
-            return {"generated": True, "provider": engine, "voice": "en-us", "path": str(local_path)}
+            return {
+                "generated": True,
+                "provider": engine,
+                "voice": "th",
+                "language": "th-TH",
+                "path": str(local_path),
+            }
 
-    return {"generated": False, "provider": "none", "voice": "", "path": ""}
+    raise RuntimeError("No intelligible voice-over provider is available for production rendering")
 
 
 def _escape_drawtext(text: str) -> str:
@@ -271,27 +299,21 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
             "lavfi",
             "-i",
             soundtrack,
+            "-i",
+            voiceover["path"],
         ]
-        if voiceover["generated"]:
-            command.extend(["-i", voiceover["path"]])
 
         filters = [
             f"[0:v]{','.join(vf)}[vout]",
             "[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
-            f"volume=0.18,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]",
+            f"volume=0.055,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]",
+            "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+            "highpass=f=80,lowpass=f=12000,acompressor=threshold=0.12:ratio=3:attack=5:release=80,"
+            "adelay=850|850,volume=1.75,asplit=2[voice_sc][voice_mix]",
+            "[music][voice_sc]sidechaincompress=threshold=0.012:ratio=14:attack=8:release=420[ducked]",
+            "[ducked][voice_mix]amix=inputs=2:duration=first:dropout_transition=2,"
+            "loudnorm=I=-15:TP=-1.5:LRA=9[aout]",
         ]
-        if voiceover["generated"]:
-            filters.extend(
-                [
-                    "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
-                    "adelay=650|650,volume=1.15,asplit=2[voice_sc][voice_mix]",
-                    "[music][voice_sc]sidechaincompress=threshold=0.02:ratio=10:attack=15:release=300[ducked]",
-                    "[ducked][voice_mix]amix=inputs=2:duration=first:dropout_transition=2,"
-                    "loudnorm=I=-16:TP=-1.5:LRA=11[aout]",
-                ]
-            )
-        else:
-            filters.append("[music]loudnorm=I=-16:TP=-1.5:LRA=11[aout]")
 
         command.extend(
             [
@@ -312,7 +334,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "-c:a",
                 "aac",
                 "-b:a",
-                "160k",
+                "192k",
                 "-ar",
                 "48000",
                 "-shortest",
@@ -331,10 +353,15 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "font_rendered": bool(font),
                 "soundtrack_generated": True,
                 "soundtrack_source": "ffmpeg_synth",
-                "voiceover_generated": bool(voiceover["generated"]),
+                "voiceover_generated": True,
                 "voiceover_provider": str(voiceover["provider"]),
                 "voiceover_voice": str(voiceover["voice"]),
-                "audio_mastering": "loudnorm I=-16 TP=-1.5 LRA=11",
+                "voiceover_language": str(voiceover["language"]),
+                "voiceover_text": DEFAULT_VOICEOVER,
+                "voice_first_mix": True,
+                "music_gain": 0.055,
+                "voice_gain": 1.75,
+                "audio_mastering": "loudnorm I=-15 TP=-1.5 LRA=9",
             }
         )
         return probe
@@ -389,7 +416,7 @@ def create_launch_candidate(
         "final_asset": asset,
         "media": probe,
         "publication_note": (
-            "Real managed full-ad publication candidate with generated soundtrack and voice-over where available. "
+            "Real managed full-ad publication candidate with Thai neural voice-over and voice-first mastering. "
             "Visuals use local FFmpeg motion graphics, not an AI-model video render. Review campaign wording, preview, "
             "audio, and publication metadata before approval."
         ),
