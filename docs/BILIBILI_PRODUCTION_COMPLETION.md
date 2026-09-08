@@ -16,7 +16,8 @@ This document defines the evidence required before zMovie calls the Bilibili pub
 - conservative `submitted` vs `published` state semantics;
 - live session probing;
 - capture from an existing Chrome session through localhost CDP;
-- Bilibili-only browser-state scoping so unrelated Google/Gmail/GitHub/etc. credentials are not copied to the server.
+- Bilibili-only browser-state scoping so unrelated Google/Gmail/GitHub/etc. credentials are not copied to the server;
+- live authenticated Creator Center session on native host `core` as the `zmovie` runtime user. See [`evidence/2026-09-09-core-bilibili-live-session.md`](evidence/2026-09-09-core-bilibili-live-session.md).
 
 ## Production session installation
 
@@ -36,12 +37,15 @@ sudo bash /opt/zmovie/scripts/install-bilibili-session.sh /home/cvsz/storage_sta
 
 The installer:
 
-1. sanitizes the input again to Bilibili-only state;
-2. preserves the existing state for rollback;
-3. installs the new state as the `zmovie` user with mode `0600`;
-4. uses the production Playwright browser path;
-5. performs a live Creator Center probe;
-6. restores the previous state automatically if the live probe fails.
+1. verifies the installed Python publisher exposes the required `sanitize-state` capability before touching the current state;
+2. sanitizes the input again to Bilibili-only state;
+3. preserves the existing state for rollback;
+4. installs the new state as the `zmovie` user with mode `0600`;
+5. uses the production Playwright browser path;
+6. performs a live Creator Center probe;
+7. restores the previous state automatically if the live probe fails.
+
+A partial/version-skew deployment fails closed before modifying an existing authenticated session. Upgrade the native installation before retrying the transactional installer.
 
 PASS requires:
 
@@ -51,6 +55,12 @@ PASS requires:
   "checked": true,
   "authenticated": true
 }
+```
+
+After installation or after an already-working state is present, verify both state scope and live authentication without printing cookie values:
+
+```bash
+sudo bash /opt/zmovie/scripts/verify-bilibili-session.sh
 ```
 
 After a successful install, remove any temporary transfer copy and disable Chrome remote debugging on the GUI host.
@@ -120,8 +130,8 @@ A successful form interaction may end as `submitted`. That is **not** proof of p
 
 Bilibili is complete only when all of these are evidenced:
 
-- [ ] production browser state installed with Bilibili-only scope;
-- [ ] live Creator Center probe returns `authenticated=true`;
+- [ ] production browser state verified with Bilibili-only scope;
+- [x] live Creator Center probe returns `authenticated=true` on `core`;
 - [ ] real non-mock video package prepared;
 - [ ] exact publication package explicitly approved;
 - [ ] real upload submitted without automation error;
