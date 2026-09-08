@@ -18,6 +18,7 @@ This document defines the evidence required before zMovie calls the Bilibili pub
 - capture from an existing Chrome session through localhost CDP;
 - Bilibili-only browser-state scoping so unrelated Google/Gmail/GitHub/etc. credentials are not copied to the server;
 - live authenticated Creator Center session on native host `core` as the `zmovie` runtime user. See [`evidence/2026-09-09-core-bilibili-live-session.md`](evidence/2026-09-09-core-bilibili-live-session.md).
+- production browser-state scope + live-auth verification on `core`: 13 Bilibili cookies, 1 Bilibili origin, no unexpected cookie domains/origins, and `authenticated=true`. See [`evidence/2026-09-09-core-bilibili-scope-auth-verified.md`](evidence/2026-09-09-core-bilibili-scope-auth-verified.md).
 
 ## Production session installation
 
@@ -130,7 +131,7 @@ A successful form interaction may end as `submitted`. That is **not** proof of p
 
 Bilibili is complete only when all of these are evidenced:
 
-- [ ] production browser state verified with Bilibili-only scope;
+- [x] production browser state verified with Bilibili-only scope on `core`;
 - [x] live Creator Center probe returns `authenticated=true` on `core`;
 - [ ] real non-mock video package prepared;
 - [ ] exact publication package explicitly approved;
