@@ -1,16 +1,33 @@
 services:
   zmovie:
     build: .
-    container_name: zmovie
     restart: unless-stopped
-    environment:
-      ZMOVIE_HOST: 0.0.0.0
-      ZMOVIE_PORT: 8080
-      ZMOVIE_DATA_DIR: /app/data
     ports:
       - "${ZMOVIE_PORT:-8080}:8080"
+    environment:
+      ZMOVIE_DB_PATH: /app/data/zmovie.db
+      ZMOVIE_MEDIA_ROOT: /app/data/media
+      ZMOVIE_EXPORT_ROOT: /app/data/exports
+      ZMOVIE_AUTH_ENABLED: "${ZMOVIE_AUTH_ENABLED:-true}"
+      ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-zmovie-change-this-before-internet-exposure}"
+      ZMOVIE_ADMIN_USER: "${ZMOVIE_ADMIN_USER:-admin}"
+      ZMOVIE_ADMIN_PASSWORD: "${ZMOVIE_ADMIN_PASSWORD:-}"
+      ZMOVIE_PROVIDER_WEBHOOK: "${ZMOVIE_PROVIDER_WEBHOOK:-}"
+      ZMOVIE_PROVIDER_TOKEN: "${ZMOVIE_PROVIDER_TOKEN:-}"
     volumes:
       - zmovie-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/v2/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   zmovie-data:
