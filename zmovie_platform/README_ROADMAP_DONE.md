@@ -1,0 +1,1 @@
+v2 platform milestones implemented in code: provider engine, projects/scenes, character bible, storyboard, render jobs, media pipeline, asset metadata, director/QC rules, auth, security primitives, backups, observability, upgrade-ready persistence, CLI and end-to-end orchestration.
