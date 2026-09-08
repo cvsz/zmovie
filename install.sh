@@ -222,7 +222,8 @@ EOF
   done
   if [[ "$ok" -ne 1 ]]; then
     systemctl --no-pager --full status zmovie || true
-    fail "health check failed"
+    journalctl -u zmovie -n 100 --no-pager || true
+    fail "service failed health validation"
   fi
 
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
@@ -233,16 +234,17 @@ EOF
   log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
   log "For a server, securely copy the resulting storage_state.json to ${DATA_DIR}/bilibili/storage_state.json and chown ${SERVICE_USER}:${SERVICE_USER}."
   if [[ -n "$generated_password" ]]; then
-    log "admin username: ${ZMOVIE_ADMIN_USER:-admin}"
-    log "admin password: ${generated_password}"
-    log "save this password now; upgrades do not print it again"
+    log "Initial admin user: ${ZMOVIE_ADMIN_USER:-admin}"
+    log "Initial admin password: ${generated_password}"
+    log "Save this password now; upgrades preserve it and do not print it again."
   fi
 }
 
 need_root
 case "$ACTION" in
-  install|upgrade) install_or_upgrade ;;
-  status) status ;;
-  uninstall) uninstall_service "$@" ;;
-  *) fail "usage: install.sh [install|upgrade|status|uninstall [--purge]]" ;;
+  install|--install|upgrade|--upgrade) install_or_upgrade ;;
+  backup|--backup) backup_data ;;
+  status|--status) status ;;
+  uninstall|--uninstall) uninstall_service "$@" ;;
+  *) fail "unknown action '$ACTION' (use install, upgrade, backup, status, uninstall [--purge])" ;;
 esac
