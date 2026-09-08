@@ -15,6 +15,7 @@ log "probing zMovie: ${ZMOVIE_URL%/}/api/v2/health"
 ZHEALTH="$(curl -fsS --max-time 8 "${ZMOVIE_URL%/}/api/v2/health")" || fail "zMovie health endpoint is unavailable"
 printf '%s\n' "$ZHEALTH" | python3 -m json.tool
 
+COMFYUI_URL="$(printf '%s' "$ZHEALTH" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("comfyui",{}).get("url") or "http://127.0.0.1:8188")')"
 log "probing ComfyUI: ${COMFYUI_URL%/}/system_stats"
 CSTATS="$(curl -fsS --max-time 8 "${COMFYUI_URL%/}/system_stats")" || fail "ComfyUI API is unavailable"
 
@@ -32,32 +33,36 @@ def yes(v):
     return "YES" if bool(v) else "NO"
 
 print("\n=== zMovie Production Doctor ===")
-print(f"service_status        : {health.get('status', 'unknown')}")
-print(f"ffmpeg               : {yes(health.get('ffmpeg'))}")
-print(f"ffprobe              : {yes(health.get('ffprobe'))}")
-print(f"comfyui_reachable     : {yes(comfy.get('reachable'))}")
-print(f"workflow_configured   : {yes(comfy.get('configured'))}")
-print(f"workflow_valid        : {yes(comfy.get('workflow_valid'))}")
-print(f"nodes_available       : {yes(comfy.get('nodes_available'))}")
-print(f"render_ready          : {yes(health.get('render_ready'))}")
-print(f"comfyui_version       : {system.get('comfyui_version', comfy.get('version', 'unknown'))}")
-print(f"python_version        : {system.get('python_version', comfy.get('python_version', 'unknown'))}")
-print(f"pytorch_version       : {system.get('pytorch_version', comfy.get('pytorch_version', 'unknown'))}")
+print(f"service_status         : {health.get('status', 'unknown')}")
+print(f"ffmpeg                : {yes(health.get('ffmpeg'))}")
+print(f"ffprobe               : {yes(health.get('ffprobe'))}")
+print(f"comfyui_reachable      : {yes(comfy.get('reachable'))}")
+print(f"workflow_configured    : {yes(comfy.get('configured'))}")
+print(f"workflow_role          : {comfy.get('workflow_role', 'generic')}")
+print(f"workflow_valid         : {yes(comfy.get('workflow_valid'))}")
+print(f"nodes_available        : {yes(comfy.get('nodes_available'))}")
+print(f"accelerated            : {yes(comfy.get('accelerated'))}")
+print(f"render_ready           : {yes(health.get('render_ready'))}")
+print(f"production_video_ready : {yes(health.get('production_video_ready'))}")
+print(f"comfyui_version        : {system.get('comfyui_version', comfy.get('version', 'unknown'))}")
+print(f"python_version         : {system.get('python_version', comfy.get('python_version', 'unknown'))}")
+print(f"pytorch_version        : {system.get('pytorch_version', comfy.get('pytorch_version', 'unknown'))}")
 
 print("devices:")
 for device in devices:
     print(f"  - {device.get('name', 'unknown')} ({device.get('type', 'unknown')})")
 
-kinds = {str(d.get("type", "")).lower() for d in devices}
-accelerated = any(k not in {"", "cpu"} for k in kinds)
-if accelerated:
+if health.get("production_video_ready"):
+    print("\nPROFILE: PRODUCTION_VIDEO_RENDER_HOST")
+    print("Next: run a real short-shot video render and record the resulting evidence.")
+elif comfy.get("accelerated"):
     print("\nPROFILE: ACCELERATED_RENDER_HOST")
-    print("Next: configure a production video workflow and run a real short-shot render.")
+    print("Renderer acceleration is available, but a workflow explicitly classified as role=video is still required.")
 else:
     print("\nPROFILE: CPU_ONLY_RENDER_HOST")
     print("Local ComfyUI API integration is valid, but large diffusion-video models are not recommended on this host.")
     print("Recommended production path: keep zMovie here and point ZMOVIE_COMFYUI_URL at a private GPU ComfyUI host.")
-    print("Keep the workflow JSON on the zMovie host; zMovie will submit it to the remote ComfyUI API.")
+    print("Use scripts/configure-remote-comfyui.sh with a production video workflow when that host is available.")
 
 missing = comfy.get("missing_node_types") or []
 if missing:
