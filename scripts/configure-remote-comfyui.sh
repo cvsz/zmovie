@@ -10,8 +10,17 @@ fail(){ printf '[zMovie remote ComfyUI] ERROR: %s\n' "$*" >&2; exit 1; }
 log(){ printf '[zMovie remote ComfyUI] %s\n' "$*"; }
 
 [[ "$EUID" -eq 0 ]] || fail "run with sudo"
-[[ -n "$WORKFLOW_SOURCE" && -f "$WORKFLOW_SOURCE" ]] || fail "usage: sudo bash scripts/configure-remote-comfyui.sh /path/to/video_workflow_api.json http://PRIVATE-GPU-HOST:8188"
-[[ -n "$REMOTE_URL" ]] || fail "remote ComfyUI URL is required"
+[[ -n "$WORKFLOW_SOURCE" ]] || fail "workflow path is required: sudo bash scripts/configure-remote-comfyui.sh /real/path/to/video_workflow_api.json http://10.0.0.20:8188"
+[[ -n "$REMOTE_URL" ]] || fail "remote ComfyUI URL is required: use the real private GPU host/IP, not the documentation placeholder"
+
+case "$WORKFLOW_SOURCE" in
+  /path/to/*|*/path/to/*) fail "replace the example workflow path with the real API-format workflow JSON path on this zMovie host" ;;
+esac
+case "$REMOTE_URL" in
+  *PRIVATE-GPU*|*GPU-HOST*|*GPU-IP*) fail "replace the example GPU hostname/IP with the real private GPU ComfyUI address, for example http://10.0.0.20:8188" ;;
+esac
+
+[[ -f "$WORKFLOW_SOURCE" ]] || fail "workflow file not found: $WORKFLOW_SOURCE"
 [[ -f "$ENV_FILE" ]] || fail "zMovie env file not found: $ENV_FILE"
 
 python3 - "$REMOTE_URL" <<'PY'
