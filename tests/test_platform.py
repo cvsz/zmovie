@@ -55,9 +55,10 @@ class PlatformTestCase(unittest.TestCase):
         self.assertEqual(payload["sub"], "admin")
         self.assertIsNone(auth.authenticate("admin", "wrong-password"))
 
-    def test_provider_catalog_includes_local_and_gateway(self):
+    def test_provider_catalog_includes_local_comfyui_and_gateway(self):
         ids = {item["id"] for item in provider_specs()}
         self.assertIn("mock", ids)
+        self.assertIn("comfyui", ids)
         self.assertIn("webhook", ids)
 
     def test_end_to_end_pipeline_without_external_inference(self):
