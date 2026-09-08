@@ -79,7 +79,10 @@ install_or_upgrade(){
 
   local tmp
   tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
+  # Expand the path while the local variable is still in scope. With `set -u`,
+  # deferring `$tmp` expansion until shell EXIT would otherwise fail because
+  # the local variable no longer exists after this function returns.
+  trap "rm -rf -- '$tmp'" EXIT
   log "fetching ${REPO_URL} (${REPO_REF})"
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
   install -d -o root -g root -m 0755 "$INSTALL_DIR"
