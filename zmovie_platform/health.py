@@ -30,6 +30,29 @@ def _comfyui_status() -> dict[str, object]:
         "url": os.getenv("ZMOVIE_COMFYUI_URL", "http://127.0.0.1:8188").strip(),
         "workflow": workflow_path,
     }
+
+    # Probe the renderer independently from workflow configuration so operators
+    # can distinguish "ComfyUI is down" from "ComfyUI is up but no workflow is
+    # configured yet". Rendering readiness still requires both conditions.
+    try:
+        system_stats = COMFYUI._request_json("GET", "/system_stats", timeout=2.0)
+        result["reachable"] = True
+        if isinstance(system_stats, dict):
+            system = system_stats.get("system")
+            devices = system_stats.get("devices")
+            if isinstance(system, dict):
+                result["version"] = system.get("comfyui_version")
+                result["python_version"] = system.get("python_version")
+                result["pytorch_version"] = system.get("pytorch_version")
+            if isinstance(devices, list):
+                result["devices"] = [
+                    {"name": item.get("name"), "type": item.get("type")}
+                    for item in devices
+                    if isinstance(item, dict)
+                ]
+    except Exception as exc:
+        result["probe_error"] = str(exc)[:500]
+
     if not configured:
         result["error"] = "workflow_not_configured"
         return result
@@ -44,9 +67,11 @@ def _comfyui_status() -> dict[str, object]:
         return result
     result["workflow_valid"] = True
 
+    if not result["reachable"]:
+        result["error"] = result.get("probe_error", "comfyui_unreachable")
+        return result
+
     try:
-        COMFYUI._request_json("GET", "/system_stats", timeout=2.0)
-        result["reachable"] = True
         required_node_types = sorted({
             str(node.get("class_type"))
             for node in workflow.values()
@@ -63,6 +88,7 @@ def _comfyui_status() -> dict[str, object]:
                 return result
         result["nodes_available"] = True
         result["ready"] = True
+        result.pop("error", None)
         return result
     except Exception as exc:
         result["error"] = str(exc)[:500]
