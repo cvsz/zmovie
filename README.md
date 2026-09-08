@@ -79,9 +79,10 @@ sudo systemctl status zmovie
 sudo journalctl -u zmovie -f
 sudo bash /opt/zmovie/install.sh upgrade
 sudo bash /opt/zmovie/install.sh backup
+sudo bash /opt/zmovie/scripts/doctor.sh
 ```
 
-The installer preserves `/etc/zmovie/zmovie.env` and the database across upgrades and backs up an existing database before replacing application code.
+The installer preserves `/etc/zmovie/zmovie.env` and the database across upgrades and creates a transactionally consistent SQLite online backup before replacing application code.
 
 ## Docker
 
@@ -126,12 +127,35 @@ http://127.0.0.1:8080/docs
 
 ## ComfyUI
 
-Export your ComfyUI video workflow in **API format** and configure:
+A hardened local ComfyUI service can be installed with:
 
 ```bash
-export ZMOVIE_COMFYUI_URL=http://127.0.0.1:8188
-export ZMOVIE_COMFYUI_WORKFLOW=/absolute/path/to/workflow_api.json
+curl -fsSL https://raw.githubusercontent.com/cvsz/zmovie/main/scripts/install-comfyui.sh | sudo bash
 ```
+
+Verify the zMovie → ComfyUI queue/history/output contract without downloading a diffusion model:
+
+```bash
+sudo bash /opt/zmovie/scripts/smoke-zmovie-comfyui.sh
+```
+
+Then inspect the production profile:
+
+```bash
+sudo bash /opt/zmovie/scripts/doctor.sh
+```
+
+A verified deployment on host `core` completed this smoke path end to end using ComfyUI 0.34.0 and a CPU-only PyTorch runtime. That evidence proves the integration contract, not production Wan/video throughput. See [`docs/evidence/2026-09-08-core-comfyui-smoke.md`](docs/evidence/2026-09-08-core-comfyui-smoke.md).
+
+For a production video workflow, export ComfyUI in **API format** and configure:
+
+```bash
+sudo bash /opt/zmovie/scripts/configure-comfyui.sh \
+  /path/to/workflow_api.json \
+  http://127.0.0.1:8188
+```
+
+The same zMovie host can use a separate/private GPU ComfyUI renderer by replacing the URL with the GPU host URL; the workflow JSON remains on the zMovie host and is submitted to that ComfyUI API.
 
 The workflow can use placeholders such as:
 
@@ -238,7 +262,7 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-CI validates supported Python versions, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, and the production container build without making external inference or publication calls.
+CI validates supported Python versions, installer/operations shell syntax, the model-free ComfyUI workflow, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, and the production container build without making external inference or publication calls.
 
 ## License
 
