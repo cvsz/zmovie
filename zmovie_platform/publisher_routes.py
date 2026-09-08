@@ -56,6 +56,10 @@ def publish_job(job_id: str, actor: dict[str, str] = Depends(current_actor)) -> 
 def prepare_bilibili(project_id: str, payload: BilibiliPrepareRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
     try:
+        # The public API intentionally does not accept arbitrary filesystem paths.
+        # The final video is selected from managed project assets, the cover is
+        # generated into the publish root, and subtitles must be attached through
+        # managed application workflows rather than a request-provided server path.
         job = prepare_bilibili_publish(
             project_id,
             title=payload.title,
@@ -64,9 +68,6 @@ def prepare_bilibili(project_id: str, payload: BilibiliPrepareRequest, actor: di
             playlist=payload.playlist,
             content_type=payload.content_type,
             schedule_at=payload.schedule_at,
-            video_path=payload.video_path,
-            cover_path=payload.cover_path,
-            subtitle_path=payload.subtitle_path,
         )
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
