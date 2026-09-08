@@ -3,9 +3,12 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     ZMOVIE_DB_PATH=/app/data/zmovie.db \
     ZMOVIE_MEDIA_ROOT=/app/data/media \
     ZMOVIE_EXPORT_ROOT=/app/data/exports \
+    ZMOVIE_PUBLISH_ROOT=/app/data/publish \
+    ZMOVIE_BILIBILI_STATE_PATH=/app/data/bilibili/storage_state.json \
     ZMOVIE_AUTH_ENABLED=true
 
 RUN apt-get update \
@@ -14,11 +17,13 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m playwright install --with-deps chromium \
+    && chmod -R a+rX /ms-playwright
 
 COPY . .
 RUN useradd --system --uid 10001 --create-home --home-dir /home/zmovie zmovie \
-    && mkdir -p /app/data \
+    && mkdir -p /app/data /app/data/bilibili /app/data/publish \
     && chown -R zmovie:zmovie /app
 
 USER zmovie
