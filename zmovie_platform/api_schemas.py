@@ -45,9 +45,6 @@ class BilibiliPrepareRequest(BaseModel):
     playlist: str = Field(default="", max_length=200)
     content_type: str = Field(default="Original", pattern="^(Original|Repost)$")
     schedule_at: str = Field(default="", max_length=80)
-    video_path: str = Field(default="", max_length=2000)
-    cover_path: str = Field(default="", max_length=2000)
-    subtitle_path: str = Field(default="", max_length=2000)
 
 
 class BilibiliPublishRequest(BaseModel):
