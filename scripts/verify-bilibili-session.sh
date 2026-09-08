@@ -9,6 +9,7 @@ log(){ printf '[zMovie Bilibili verify] %s\n' "$*"; }
 fail(){ printf '[zMovie Bilibili verify] ERROR: %s\n' "$*" >&2; exit 1; }
 
 [[ ${EUID} -eq 0 ]] || fail "run as root, for example: sudo bash $0"
+[[ -d "$INSTALL_DIR/zmovie_platform" ]] || fail "zMovie package directory not found: $INSTALL_DIR/zmovie_platform"
 [[ -f "$ENV_FILE" ]] || fail "zMovie environment not found: $ENV_FILE"
 [[ -x "$INSTALL_DIR/.venv/bin/python" ]] || fail "zMovie Python not found: $INSTALL_DIR/.venv/bin/python"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
@@ -17,6 +18,12 @@ TARGET="$(sed -n 's/^ZMOVIE_BILIBILI_STATE_PATH=//p' "$ENV_FILE" | tail -n1)"
 TARGET="${TARGET:-/var/lib/zmovie/bilibili/storage_state.json}"
 PLAYWRIGHT_DIR="$(sed -n 's/^PLAYWRIGHT_BROWSERS_PATH=//p' "$ENV_FILE" | tail -n1)"
 [[ -f "$TARGET" ]] || fail "Bilibili state file not found: $TARGET"
+
+OWNER="$(stat -c '%U' "$TARGET")"
+MODE="$(stat -c '%a' "$TARGET")"
+[[ "$OWNER" == "$SERVICE_USER" ]] || fail "Bilibili state must be owned by $SERVICE_USER (current owner: $OWNER); run: chown $SERVICE_USER:$SERVICE_USER '$TARGET'"
+MODE_DEC=$((8#$MODE))
+(( (MODE_DEC & 077) == 0 )) || fail "Bilibili state permissions are too broad ($MODE); run: chmod 600 '$TARGET'"
 
 log "checking browser-state scope without printing cookie values"
 SCOPE="$(python3 - "$TARGET" <<'PY'
@@ -54,13 +61,19 @@ PY
 printf '%s\n' "$SCOPE"
 
 log "probing Creator Center as the production runtime user"
-probe_cmd=(env "ZMOVIE_BILIBILI_STATE_PATH=$TARGET")
+runtime_cmd=(env "ZMOVIE_BILIBILI_STATE_PATH=$TARGET")
 if [[ -n "$PLAYWRIGHT_DIR" ]]; then
-  probe_cmd+=("PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_DIR")
+  runtime_cmd+=("PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_DIR")
 fi
-probe_cmd+=("$INSTALL_DIR/.venv/bin/python" -m zmovie_platform.publishers.bilibili_hardened session --state "$TARGET")
+runtime_cmd+=(
+  bash -c 'cd "$1"; shift; exec "$@"'
+  bash
+  "$INSTALL_DIR"
+  "$INSTALL_DIR/.venv/bin/python"
+  -m zmovie_platform.publishers.bilibili_hardened session --state "$TARGET"
+)
 
-PROBE="$(runuser -u "$SERVICE_USER" -- "${probe_cmd[@]}")"
+PROBE="$(runuser -u "$SERVICE_USER" -- "${runtime_cmd[@]}")"
 printf '%s\n' "$PROBE"
 printf '%s' "$PROBE" | python3 -c '
 import json, sys
