@@ -8,6 +8,7 @@ services:
       ZMOVIE_DB_PATH: /app/data/zmovie.db
       ZMOVIE_MEDIA_ROOT: /app/data/media
       ZMOVIE_EXPORT_ROOT: /app/data/exports
+      ZMOVIE_PUBLISH_ROOT: /app/data/publish
       ZMOVIE_AUTH_ENABLED: "${ZMOVIE_AUTH_ENABLED:-true}"
       ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-zmovie-change-this-before-internet-exposure}"
       ZMOVIE_ADMIN_USER: "${ZMOVIE_ADMIN_USER:-admin}"
@@ -29,6 +30,13 @@ services:
       ZMOVIE_COMFYUI_SEED_NODE_IDS: "${ZMOVIE_COMFYUI_SEED_NODE_IDS:-}"
       ZMOVIE_COMFYUI_FRAMES_NODE_IDS: "${ZMOVIE_COMFYUI_FRAMES_NODE_IDS:-}"
       ZMOVIE_COMFYUI_SIZE_NODE_IDS: "${ZMOVIE_COMFYUI_SIZE_NODE_IDS:-}"
+      ZMOVIE_BILIBILI_STUDIO_URL: "${ZMOVIE_BILIBILI_STUDIO_URL:-https://studio.bilibili.tv/}"
+      ZMOVIE_BILIBILI_STATE_PATH: /app/data/bilibili/storage_state.json
+      ZMOVIE_BILIBILI_HEADLESS: "${ZMOVIE_BILIBILI_HEADLESS:-true}"
+      ZMOVIE_BILIBILI_AUTO_PUBLISH: "${ZMOVIE_BILIBILI_AUTO_PUBLISH:-false}"
+      ZMOVIE_BILIBILI_BROWSER_CHANNEL: "${ZMOVIE_BILIBILI_BROWSER_CHANNEL:-}"
+      ZMOVIE_BILIBILI_TIMEOUT_MS: "${ZMOVIE_BILIBILI_TIMEOUT_MS:-120000}"
+      ZMOVIE_BILIBILI_UPLOAD_URL: "${ZMOVIE_BILIBILI_UPLOAD_URL:-}"
     volumes:
       - zmovie-data:/app/data
       - ./workflows/comfyui:/app/workflows/comfyui:ro
@@ -40,12 +48,13 @@ services:
       - ALL
     tmpfs:
       - /tmp:size=256m,mode=1777
+    shm_size: "1gb"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/v2/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
 volumes:
   zmovie-data:
