@@ -19,12 +19,7 @@ interactive_google_login = legacy.interactive_google_login
 
 
 def _file_input(page: Any, selectors: list[str]) -> Any | None:
-    """Return the first matching file input even when it is hidden.
-
-    Playwright set_input_files() works on hidden file inputs, which is common in
-    upload UIs. Requiring visibility here makes otherwise valid upload controls
-    look missing.
-    """
+    """Return the first matching file input even when it is hidden."""
     for selector in selectors:
         try:
             locator = page.locator(selector)
@@ -108,14 +103,13 @@ def _automate_publish(job: dict[str, Any], *, headless: bool = legacy.HEADLESS, 
         metadata["remote_confirmation"] = True
         return {**result, "status": "published", "metadata": metadata}
 
-    # A successful form submission is not proof that the video is publicly
-    # visible or accepted by downstream moderation. Keep that distinction in
-    # the durable job state until a remote confirmation step exists.
+    # A successful form submit is not proof that Creator Center accepted the
+    # item through moderation or that it is publicly visible.
     return {**result, "status": "submitted", "published_url": "", "metadata": metadata}
 
 
 def publish_bilibili_job(job_id: str, *, headless: bool = legacy.HEADLESS) -> dict[str, Any]:
-    """Publish through the legacy automation with hardened upload/session semantics."""
+    """Publish through the existing automation with hardened upload semantics."""
     with _LOCK:
         old_automate = legacy._automate_publish
         legacy._automate_publish = _automate_publish
@@ -125,27 +119,71 @@ def publish_bilibili_job(job_id: str, *, headless: bool = legacy.HEADLESS) -> di
             legacy._automate_publish = old_automate
 
 
+def _print(value: Any) -> None:
+    print(json.dumps(value, ensure_ascii=False, indent=2))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Hardened zMovie Bilibili operations")
     sub = parser.add_subparsers(dest="command", required=True)
+
     login = sub.add_parser("login", help="open interactive browser for one-time Google sign-in")
     login.add_argument("--state", default=str(legacy.STATE_PATH))
-    status = sub.add_parser("session", help="validate the saved Creator Center session")
-    status.add_argument("--state", default=str(legacy.STATE_PATH))
-    status.add_argument("--no-probe", action="store_true")
+
+    session = sub.add_parser("session", help="validate the saved Creator Center session")
+    session.add_argument("--state", default=str(legacy.STATE_PATH))
+    session.add_argument("--no-probe", action="store_true")
+
+    prepare = sub.add_parser("prepare", help="prepare Bilibili metadata, cover and publication manifest")
+    prepare.add_argument("--project", required=True)
+    prepare.add_argument("--title", default="")
+    prepare.add_argument("--description", default="")
+    prepare.add_argument("--tags", default="")
+    prepare.add_argument("--playlist", default="")
+    prepare.add_argument("--type", dest="content_type", default="Original", choices=["Original", "Repost"])
+    prepare.add_argument("--schedule-at", default="")
+    prepare.add_argument("--subtitle", default="")
+
+    approve = sub.add_parser("approve", help="approve a prepared publication job")
+    approve.add_argument("--job", required=True)
+
     publish = sub.add_parser("publish", help="upload and submit an approved job")
     publish.add_argument("--job", required=True)
     publish.add_argument("--headed", action="store_true")
-    args = parser.parse_args(argv)
 
+    status = sub.add_parser("status", help="show one publish job")
+    status.add_argument("--job", required=True)
+
+    args = parser.parse_args(argv)
     try:
         if args.command == "login":
             path = interactive_google_login(Path(args.state))
-            print(json.dumps({"status": "authenticated", "state_path": str(path)}, ensure_ascii=False, indent=2))
+            _print({"status": "authenticated", "state_path": str(path)})
         elif args.command == "session":
-            print(json.dumps(session_status(Path(args.state), probe=not args.no_probe), ensure_ascii=False, indent=2))
+            _print(session_status(Path(args.state), probe=not args.no_probe))
+        elif args.command == "prepare":
+            tags = [item.strip() for item in args.tags.split(",") if item.strip()] if args.tags else None
+            _print(
+                prepare_bilibili_publish(
+                    args.project,
+                    title=args.title,
+                    description=args.description,
+                    tags=tags,
+                    playlist=args.playlist,
+                    content_type=args.content_type,
+                    schedule_at=args.schedule_at,
+                    subtitle_path=args.subtitle,
+                )
+            )
+        elif args.command == "approve":
+            _print(approve_publish_job(args.job))
         elif args.command == "publish":
-            print(json.dumps(publish_bilibili_job(args.job, headless=not args.headed), ensure_ascii=False, indent=2))
+            _print(publish_bilibili_job(args.job, headless=not args.headed))
+        elif args.command == "status":
+            job = get_publish_job(args.job)
+            if job is None:
+                raise ValueError("publish job not found")
+            _print(job)
         return 0
     except Exception as exc:
         print(f"Bilibili hardened publisher error: {exc}", flush=True)
