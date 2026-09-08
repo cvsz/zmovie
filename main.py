@@ -11,11 +11,13 @@ from zmovie_platform.api_routes import router as v2_router
 from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.migrations import migrate
+from zmovie_platform.publisher_routes import router as publisher_router
 from zmovie_platform.security import SECURITY_HEADERS
 
 configure_logging()
 migrate()
 app.include_router(v2_router)
+app.include_router(publisher_router)
 
 if settings.cors_origins:
     app.add_middleware(
