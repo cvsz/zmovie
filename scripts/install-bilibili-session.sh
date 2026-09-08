@@ -12,15 +12,18 @@ fail(){ printf '[zMovie Bilibili session] ERROR: %s\n' "$*" >&2; exit 1; }
 [[ ${EUID} -eq 0 ]] || fail "run as root, for example: sudo bash $0 /path/to/storage_state.json"
 [[ -n "$SOURCE" ]] || fail "usage: sudo bash $0 /path/to/storage_state.json"
 [[ -f "$SOURCE" ]] || fail "state file not found: $SOURCE"
+[[ -d "$INSTALL_DIR/zmovie_platform" ]] || fail "zMovie package directory not found: $INSTALL_DIR/zmovie_platform"
 [[ -f "$ENV_FILE" ]] || fail "zMovie environment not found: $ENV_FILE"
 [[ -x "$INSTALL_DIR/.venv/bin/python" ]] || fail "zMovie Python not found: $INSTALL_DIR/.venv/bin/python"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
 
 # Detect partial/version-skew deployments before touching the currently working
-# production session. The installer depends on the hardened publisher's
-# sanitize-state command, so a newer shell script paired with an older Python
-# module must fail closed with an actionable upgrade instruction.
-HARDENED_HELP="$($INSTALL_DIR/.venv/bin/python -m zmovie_platform.publishers.bilibili_hardened --help 2>&1 || true)"
+# production session. Run from INSTALL_DIR so the local application package is
+# importable even when the operator invokes this script from another directory.
+HARDENED_HELP="$(
+  cd "$INSTALL_DIR"
+  "$INSTALL_DIR/.venv/bin/python" -m zmovie_platform.publishers.bilibili_hardened --help 2>&1 || true
+)"
 if ! grep -q 'sanitize-state' <<<"$HARDENED_HELP"; then
   fail "installed zMovie code is revision-skewed: install-bilibili-session.sh requires the hardened sanitize-state command, but the Python module does not provide it. Do not overwrite the currently authenticated session. Run: curl -fsSL https://raw.githubusercontent.com/cvsz/zmovie/main/install.sh | sudo bash -s -- upgrade ; then rerun this command."
 fi
@@ -36,9 +39,12 @@ cleanup(){ rm -f -- "$TMP_SCOPED" "$TMP_OLD"; }
 trap cleanup EXIT
 
 log "sanitizing input to Bilibili-only cookies/origins"
-"$INSTALL_DIR/.venv/bin/python" -m zmovie_platform.publishers.bilibili_hardened sanitize-state \
-  --input "$SOURCE" \
-  --output "$TMP_SCOPED" >/dev/null
+(
+  cd "$INSTALL_DIR"
+  "$INSTALL_DIR/.venv/bin/python" -m zmovie_platform.publishers.bilibili_hardened sanitize-state \
+    --input "$SOURCE" \
+    --output "$TMP_SCOPED" >/dev/null
+)
 
 if [[ -f "$TARGET" ]]; then
   cp -p -- "$TARGET" "$TMP_OLD"
@@ -49,14 +55,20 @@ install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0700 "$(dirname "$TARGET")"
 install -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0600 "$TMP_SCOPED" "$TARGET"
 
 log "probing Creator Center with the installed session"
-probe_cmd=(env "ZMOVIE_BILIBILI_STATE_PATH=$TARGET")
+runtime_cmd=(env "ZMOVIE_BILIBILI_STATE_PATH=$TARGET")
 if [[ -n "$PLAYWRIGHT_DIR" ]]; then
-  probe_cmd+=("PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_DIR")
+  runtime_cmd+=("PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_DIR")
 fi
-probe_cmd+=("$INSTALL_DIR/.venv/bin/python" -m zmovie_platform.publishers.bilibili_hardened session --state "$TARGET")
+runtime_cmd+=(
+  bash -c 'cd "$1"; shift; exec "$@"'
+  bash
+  "$INSTALL_DIR"
+  "$INSTALL_DIR/.venv/bin/python"
+  -m zmovie_platform.publishers.bilibili_hardened session --state "$TARGET"
+)
 
 set +e
-PROBE="$(runuser -u "$SERVICE_USER" -- "${probe_cmd[@]}" 2>&1)"
+PROBE="$(runuser -u "$SERVICE_USER" -- "${runtime_cmd[@]}" 2>&1)"
 STATUS=$?
 set -e
 
