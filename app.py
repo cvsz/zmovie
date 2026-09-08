@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 import zmovie
 
 BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 # Keep the legacy prompt/history API on the exact same writable database path as
 # the production v2 platform. Native systemd deployments set ZMOVIE_DB_PATH to
 # /var/lib/zmovie/zmovie.db while ProtectSystem=strict makes /opt/zmovie read-only.
