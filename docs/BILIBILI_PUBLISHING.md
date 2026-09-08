@@ -32,9 +32,63 @@ Publication states are intentionally conservative:
 
 A successful button click is **not** treated as proof that a video is publicly visible.
 
-## One-time Google login
+## Reuse an already-open Chrome session
 
-The login command requires a **visible GUI display**. A headless server with an empty `DISPLAY`/`WAYLAND_DISPLAY` cannot perform this interactive authentication. `xvfb-run` alone is not sufficient because the operator must see and complete Google sign-in and any 2FA challenges.
+This is the preferred path when Chrome on a GUI workstation is already signed in to Google/Bilibili. zMovie can attach to that existing Chromium context over the Chrome DevTools Protocol (CDP) and snapshot the authenticated storage state without launching another browser.
+
+On Chrome 144 or newer, in the **same Chrome window/profile you want to reuse**:
+
+1. Open `chrome://inspect/#remote-debugging`.
+2. Enable remote debugging.
+3. Keep Chrome open.
+4. Approve Chrome's incoming debugging-connection prompt when the zMovie capture command runs.
+5. Make sure `https://studio.bilibili.tv/` is already signed in in that profile.
+
+On Windows, from a normal zMovie checkout in your user directory, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\capture-bilibili-session.ps1
+```
+
+The helper creates/uses the checkout `.venv`, installs Python dependencies, discovers Chrome's local `DevToolsActivePort`, attaches to the existing Chrome context, verifies Creator Center authentication, and writes:
+
+```text
+%USERPROFILE%\storage_state.json
+```
+
+Equivalent direct command:
+
+```powershell
+.\.venv\Scripts\python.exe `
+  -m zmovie_platform.publishers.bilibili_hardened capture-chrome `
+  --state "$HOME\storage_state.json"
+```
+
+The default Windows Chrome user-data directory is auto-detected from `%LOCALAPPDATA%\Google\Chrome\User Data`. You can override discovery with:
+
+```powershell
+.\.venv\Scripts\python.exe `
+  -m zmovie_platform.publishers.bilibili_hardened capture-chrome `
+  --state "$HOME\storage_state.json" `
+  --user-data-dir "D:\ChromeProfile\User Data"
+```
+
+Or attach to an explicitly known **local** CDP websocket endpoint:
+
+```powershell
+.\.venv\Scripts\python.exe `
+  -m zmovie_platform.publishers.bilibili_hardened capture-chrome `
+  --state "$HOME\storage_state.json" `
+  --cdp-endpoint "ws://127.0.0.1:9222/devtools/browser/..."
+```
+
+Do not expose Chrome's debugging endpoint to the LAN or Internet. Run the capture helper on the same Windows machine as Chrome and copy only the resulting `storage_state.json` to the zMovie server.
+
+The capture includes cookies, local storage and IndexedDB because authentication providers can store session material in more than one browser storage mechanism. zMovie does not capture real passkeys or ask for the Google password/2FA secret.
+
+## One-time Google login in a new Playwright browser
+
+Use this fallback only when you cannot reuse an existing Chrome profile. The login command requires a **visible GUI display**. A headless server with an empty `DISPLAY`/`WAYLAND_DISPLAY` cannot perform this interactive authentication. `xvfb-run` alone is not sufficient because the operator must see and complete Google sign-in and any 2FA challenges.
 
 On a GUI checkout, install dependencies and Chromium if needed:
 
@@ -149,7 +203,7 @@ The Studio UI exposes the same approval boundary. `Publish` is unavailable until
 
 ## Docker
 
-The zMovie image includes headless Chromium. The first Google login is best performed on a GUI checkout. Copy the resulting state file into the Docker data volume at:
+The zMovie image includes headless Chromium. The first Google login or existing-Chrome capture is best performed on a GUI workstation. Copy the resulting state file into the Docker data volume at:
 
 ```text
 /app/data/bilibili/storage_state.json
@@ -166,7 +220,8 @@ Default metadata includes a transparent statement that the video contains AI-gen
 - Keep `ZMOVIE_BILIBILI_AUTO_PUBLISH=false` unless you intentionally want prepared jobs auto-approved.
 - Do not commit browser state/cookies.
 - Do not share the state file.
+- Do not expose a Chrome remote-debugging endpoint to the LAN or Internet; perform capture locally on the Chrome workstation.
 - Treat `configured=true` and `authenticated=true` as separate conditions.
-- If the Creator Center session is revoked, run the interactive login again on a visible GUI host.
+- If the Creator Center session is revoked, capture/login again on a visible GUI host.
 - Treat `submitted` as a remote-confirmation boundary, not as proof of public visibility.
 - If Bilibili changes its form, use a headed publish run on a GUI host and the generated `publish-error.png` to update selectors.
