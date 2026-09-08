@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 WORKFLOW_SOURCE="${1:-}"
 COMFYUI_URL="${2:-http://127.0.0.1:8188}"
+WORKFLOW_ROLE="${3:-generic}"
 DATA_DIR="${ZMOVIE_DATA_DIR:-/var/lib/zmovie}"
 ENV_FILE="${ZMOVIE_ENV_FILE:-/etc/zmovie/zmovie.env}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
@@ -12,9 +13,13 @@ TARGET_WORKFLOW="${TARGET_DIR}/workflow_api.json"
 fail(){ printf '[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
 log(){ printf '[zMovie] %s\n' "$*"; }
 [[ "$EUID" -eq 0 ]] || fail "run with sudo"
-[[ -n "$WORKFLOW_SOURCE" ]] || fail "usage: sudo bash scripts/configure-comfyui.sh /path/to/workflow_api.json [http://127.0.0.1:8188]"
+[[ -n "$WORKFLOW_SOURCE" ]] || fail "usage: sudo bash scripts/configure-comfyui.sh /path/to/workflow_api.json [COMFYUI_URL] [generic|smoke|video]"
 [[ -f "$WORKFLOW_SOURCE" ]] || fail "workflow file not found: $WORKFLOW_SOURCE"
 [[ -f "$ENV_FILE" ]] || fail "zMovie env file not found: $ENV_FILE"
+case "$WORKFLOW_ROLE" in
+  generic|smoke|video) ;;
+  *) fail "workflow role must be one of: generic, smoke, video" ;;
+esac
 
 python3 - "$WORKFLOW_SOURCE" <<'PY'
 import json
@@ -47,6 +52,7 @@ upsert_env(){
 
 upsert_env ZMOVIE_COMFYUI_URL "$COMFYUI_URL"
 upsert_env ZMOVIE_COMFYUI_WORKFLOW "$TARGET_WORKFLOW"
+upsert_env ZMOVIE_COMFYUI_WORKFLOW_ROLE "$WORKFLOW_ROLE"
 chmod 0640 "$ENV_FILE"
 chown root:"$SERVICE_USER" "$ENV_FILE"
 
@@ -59,7 +65,7 @@ for _ in $(seq 1 30); do
     printf '%s\n' "$health" | python3 -m json.tool
     ready="$(printf '%s' "$health" | python3 -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("comfyui",{}).get("ready"))).lower())')"
     if [[ "$ready" == "true" ]]; then
-      log "ComfyUI is configured and zMovie reports render readiness."
+      log "ComfyUI is configured and zMovie reports render readiness (role=$WORKFLOW_ROLE)."
       exit 0
     fi
     fail "zMovie is healthy but ComfyUI readiness failed; inspect comfyui.error and missing_node_types above"
