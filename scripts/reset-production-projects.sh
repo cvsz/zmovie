@@ -16,6 +16,7 @@ fail(){ printf '[zMovie project reset] ERROR: %s\n' "$*" >&2; exit 1; }
 [[ -x "$INSTALL_DIR/.venv/bin/python" ]] || fail "zMovie Python not found: $INSTALL_DIR/.venv/bin/python"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
 command -v ffprobe >/dev/null 2>&1 || fail "ffprobe not found"
+command -v curl >/dev/null 2>&1 || fail "curl not found"
 
 set -a
 # shellcheck disable=SC1090
@@ -27,7 +28,7 @@ MEDIA_ROOT="${ZMOVIE_MEDIA_ROOT:?ZMOVIE_MEDIA_ROOT is required}"
 PUBLISH_ROOT="${ZMOVIE_PUBLISH_ROOT:?ZMOVIE_PUBLISH_ROOT is required}"
 EXPORT_ROOT="${ZMOVIE_EXPORT_ROOT:?ZMOVIE_EXPORT_ROOT is required}"
 
-mkdir -p "$BACKUP_DIR"
+mkdir -p "$BACKUP_DIR" "$MEDIA_ROOT" "$PUBLISH_ROOT" "$EXPORT_ROOT"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 backup="$BACKUP_DIR/zmovie-project-reset-$stamp.db"
 quarantine="$(dirname "$DB_PATH")/.project-reset-$stamp"
@@ -43,6 +44,7 @@ fi
 committed=0
 rollback(){
   rc=$?
+  trap - EXIT
   if [[ "$committed" -eq 0 ]]; then
     log "reset did not commit; restoring previous database and project files"
     if [[ -f "$backup" ]]; then
@@ -50,8 +52,8 @@ rollback(){
 import sqlite3, sys
 from pathlib import Path
 src = Path(sys.argv[1]); dst = Path(sys.argv[2])
-with sqlite3.connect(src) as s, sqlite3.connect(dst) as d:
-    s.backup(d)
+with sqlite3.connect(src) as source, sqlite3.connect(dst) as destination:
+    source.backup(destination)
 PY
       chown "$SERVICE_USER:$SERVICE_USER" "$DB_PATH" || true
     fi
@@ -89,6 +91,9 @@ with sqlite3.connect(target) as check:
     result = check.execute('PRAGMA quick_check').fetchone()
     if result is None or str(result[0]).lower() != 'ok':
         raise SystemExit(f'backup integrity check failed: {result}')
+    violations = check.execute('PRAGMA foreign_key_check').fetchall()
+    if violations:
+        raise SystemExit(f'backup foreign-key check failed: {violations[:10]}')
 PY
 chmod 0640 "$backup"
 
@@ -97,7 +102,7 @@ mapfile -t project_ids < <(
   runuser -u "$SERVICE_USER" -- bash -lc "cd '$INSTALL_DIR'; set -a; source '$ENV_FILE'; set +a; exec .venv/bin/python -m zmovie_platform.project_reset list" \
     | python3 -c 'import json,sys; data=json.load(sys.stdin); [print(x) for x in data.get("project_ids", [])]'
 )
-printf '[zMovie project reset] projects to remove: %s\n' "${#project_ids[@]}"
+printf '[zMovie project reset] database projects to remove: %s\n' "${#project_ids[@]}"
 for project_id in "${project_ids[@]}"; do
   printf '  - %s\n' "$project_id"
 done
@@ -109,13 +114,32 @@ move_if_exists(){
   mv -- "$source" "$destination/"
 }
 
-log "quarantining managed files before deleting database rows"
+quarantine_safe_project_entries(){
+  local root="$1" destination="$2" allow_zip="${3:-false}"
+  [[ -d "$root" ]] || return 0
+  find "$root" -mindepth 1 -maxdepth 1 -print0 | while IFS= read -r -d '' item; do
+    local name
+    name="$(basename "$item")"
+    if [[ "$name" =~ ^prj_[A-Za-z0-9]+$ ]]; then
+      move_if_exists "$item" "$destination"
+    elif [[ "$allow_zip" == "true" && "$name" =~ ^prj_[A-Za-z0-9]+\.zip$ ]]; then
+      move_if_exists "$item" "$destination"
+    fi
+  done
+}
+
+log "quarantining DB-linked project files"
 for project_id in "${project_ids[@]}"; do
   move_if_exists "$MEDIA_ROOT/$project_id" "$quarantine/media"
   move_if_exists "$PUBLISH_ROOT/$project_id" "$quarantine/publish"
   move_if_exists "$EXPORT_ROOT/$project_id" "$quarantine/exports"
   move_if_exists "$EXPORT_ROOT/$project_id.zip" "$quarantine/exports"
 done
+
+log "quarantining orphaned safe prj_* project files"
+quarantine_safe_project_entries "$MEDIA_ROOT" "$quarantine/media"
+quarantine_safe_project_entries "$PUBLISH_ROOT" "$quarantine/publish"
+quarantine_safe_project_entries "$EXPORT_ROOT" "$quarantine/exports" true
 
 log "deleting project rows with cascade semantics"
 runuser -u "$SERVICE_USER" -- bash -lc "
@@ -164,20 +188,23 @@ PY
 [[ "$remaining_count" == "1" ]] || fail "expected exactly one project after reset; found $remaining_count"
 
 chown -R "$SERVICE_USER:$SERVICE_USER" "$MEDIA_ROOT" "$PUBLISH_ROOT" "$EXPORT_ROOT"
-committed=1
-rm -rf -- "$quarantine"
 
 if [[ "$service_was_active" -eq 1 ]]; then
+  log "starting zmovie and validating health before commit"
   systemctl start zmovie
+  healthy=0
   for _ in $(seq 1 30); do
     if curl -fsS "http://127.0.0.1:${ZMOVIE_PORT:-8080}/api/v2/health" >/dev/null 2>&1; then
+      healthy=1
       break
     fi
     sleep 1
   done
-  curl -fsS "http://127.0.0.1:${ZMOVIE_PORT:-8080}/api/v2/health" >/dev/null || fail "service did not recover after reset"
+  [[ "$healthy" -eq 1 ]] || fail "service did not recover after reset"
 fi
 
+committed=1
+rm -rf -- "$quarantine"
 trap - EXIT
 log "PASS: old prj_* projects removed and fresh production project created"
 printf '[zMovie project reset] new project: %s\n' "$new_project_id"
