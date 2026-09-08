@@ -36,6 +36,72 @@ class _Page:
         return self._locator
 
 
+class _CapturePage:
+    def __init__(self):
+        self.url = "https://studio.bilibili.tv/"
+        self.closed = False
+        self.reloaded = False
+
+    def reload(self, **_kwargs):
+        self.reloaded = True
+
+    def close(self):
+        self.closed = True
+
+
+class _CaptureContext:
+    def __init__(self, page):
+        self.pages = [page]
+        self.saved = None
+
+    def new_page(self):
+        page = _CapturePage()
+        self.pages.append(page)
+        return page
+
+    def storage_state(self, *, path, indexed_db=False):
+        self.saved = (Path(path), indexed_db)
+        Path(path).write_text('{"cookies":[],"origins":[]}', encoding="utf-8")
+        return {"cookies": [], "origins": []}
+
+
+class _CaptureBrowser:
+    def __init__(self, context):
+        self.contexts = [context]
+        self.closed = False
+
+    def close(self):
+        self.closed = True
+
+
+class _CaptureChromium:
+    def __init__(self, browser):
+        self.browser = browser
+        self.endpoint = None
+        self.timeout = None
+
+    def connect_over_cdp(self, endpoint, timeout=0):
+        self.endpoint = endpoint
+        self.timeout = timeout
+        return self.browser
+
+
+class _CapturePlaywright:
+    def __init__(self, chromium):
+        self.chromium = chromium
+
+
+class _CaptureManager:
+    def __init__(self, playwright):
+        self.playwright = playwright
+
+    def __enter__(self):
+        return self.playwright
+
+    def __exit__(self, *_args):
+        return False
+
+
 class BilibiliHardeningTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -86,6 +152,62 @@ class BilibiliHardeningTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"DISPLAY": "", "WAYLAND_DISPLAY": ""}, clear=False):
             with self.assertRaisesRegex(RuntimeError, "requires a visible GUI display"):
                 hardened._require_interactive_display()
+
+    def test_devtools_active_port_builds_loopback_websocket(self):
+        user_data = self.root / "Chrome User Data"
+        user_data.mkdir()
+        (user_data / "DevToolsActivePort").write_text(
+            "9222\n/devtools/browser/example-token\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            hardened._devtools_ws_endpoint(user_data),
+            "ws://127.0.0.1:9222/devtools/browser/example-token",
+        )
+
+    def test_capture_existing_chrome_saves_authenticated_storage_state(self):
+        page = _CapturePage()
+        context = _CaptureContext(page)
+        browser = _CaptureBrowser(context)
+        chromium = _CaptureChromium(browser)
+        playwright = _CapturePlaywright(chromium)
+        manager = _CaptureManager(playwright)
+        target = self.root / "storage_state.json"
+
+        with mock.patch.object(bilibili, "_playwright_import", return_value=lambda: manager), mock.patch.object(
+            bilibili, "_logged_in", return_value=True
+        ):
+            result = hardened.capture_existing_chrome_session(
+                target,
+                cdp_endpoint="ws://127.0.0.1:9222/devtools/browser/example-token",
+            )
+
+        self.assertEqual(result, target.resolve())
+        self.assertTrue(target.is_file())
+        self.assertEqual(context.saved, (target.resolve(), True))
+        self.assertEqual(chromium.endpoint, "ws://127.0.0.1:9222/devtools/browser/example-token")
+        self.assertEqual(chromium.timeout, 30000)
+        self.assertTrue(page.reloaded)
+        self.assertTrue(browser.closed)
+
+    def test_capture_existing_chrome_refuses_unauthenticated_profile(self):
+        page = _CapturePage()
+        context = _CaptureContext(page)
+        browser = _CaptureBrowser(context)
+        chromium = _CaptureChromium(browser)
+        manager = _CaptureManager(_CapturePlaywright(chromium))
+
+        with mock.patch.object(bilibili, "_playwright_import", return_value=lambda: manager), mock.patch.object(
+            bilibili, "_logged_in", return_value=False
+        ):
+            with self.assertRaisesRegex(RuntimeError, "not authenticated"):
+                hardened.capture_existing_chrome_session(
+                    self.root / "bad-state.json",
+                    cdp_endpoint="ws://127.0.0.1:9222/devtools/browser/example-token",
+                )
+
+        self.assertFalse((self.root / "bad-state.json").exists())
+        self.assertTrue(browser.closed)
 
     def test_successful_submit_without_public_url_stays_submitted(self):
         job = self._approved_job()
