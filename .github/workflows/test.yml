@@ -29,6 +29,9 @@ jobs:
       - name: Compile application
         run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
 
+      - name: Validate Studio MP4 preview JavaScript
+        run: node --check static/studio-preview.js
+
       - name: Validate installers and operations scripts
         run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
 
