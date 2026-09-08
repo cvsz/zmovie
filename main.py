@@ -4,12 +4,13 @@ from pathlib import Path
 
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 
 from app import app
 from zmovie_platform.api_routes import router as v2_router
 from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
+from zmovie_platform.media_preview import router as media_preview_router
 from zmovie_platform.migrations import migrate
 from zmovie_platform.publisher_routes import router as publisher_router
 from zmovie_platform.security import SECURITY_HEADERS
@@ -17,6 +18,7 @@ from zmovie_platform.security import SECURITY_HEADERS
 configure_logging()
 migrate()
 app.include_router(v2_router)
+app.include_router(media_preview_router)
 app.include_router(publisher_router)
 
 if settings.cors_origins:
@@ -39,5 +41,9 @@ async def production_security_headers(request: Request, call_next):
 
 
 @app.get("/studio", include_in_schema=False)
-def studio() -> FileResponse:
-    return FileResponse(Path("static/studio.html"))
+def studio() -> HTMLResponse:
+    html = Path("static/studio.html").read_text(encoding="utf-8")
+    preview_hook = '<script src="/static/studio-preview.js"></script>'
+    if preview_hook not in html:
+        html = html.replace("</body>", preview_hook + "\n</body>")
+    return HTMLResponse(html)
