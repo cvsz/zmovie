@@ -16,6 +16,15 @@ fail(){ printf '[zMovie Bilibili session] ERROR: %s\n' "$*" >&2; exit 1; }
 [[ -x "$INSTALL_DIR/.venv/bin/python" ]] || fail "zMovie Python not found: $INSTALL_DIR/.venv/bin/python"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
 
+# Detect partial/version-skew deployments before touching the currently working
+# production session. The installer depends on the hardened publisher's
+# sanitize-state command, so a newer shell script paired with an older Python
+# module must fail closed with an actionable upgrade instruction.
+HARDENED_HELP="$($INSTALL_DIR/.venv/bin/python -m zmovie_platform.publishers.bilibili_hardened --help 2>&1 || true)"
+if ! grep -q 'sanitize-state' <<<"$HARDENED_HELP"; then
+  fail "installed zMovie code is revision-skewed: install-bilibili-session.sh requires the hardened sanitize-state command, but the Python module does not provide it. Do not overwrite the currently authenticated session. Run: curl -fsSL https://raw.githubusercontent.com/cvsz/zmovie/main/install.sh | sudo bash -s -- upgrade ; then rerun this command."
+fi
+
 TARGET="$(sed -n 's/^ZMOVIE_BILIBILI_STATE_PATH=//p' "$ENV_FILE" | tail -n1)"
 TARGET="${TARGET:-/var/lib/zmovie/bilibili/storage_state.json}"
 PLAYWRIGHT_DIR="$(sed -n 's/^PLAYWRIGHT_BROWSERS_PATH=//p' "$ENV_FILE" | tail -n1)"
