@@ -41,7 +41,7 @@ chown "$COMFYUI_USER:$COMFYUI_USER" "$SMOKE_IMAGE"
 chmod 0640 "$SMOKE_IMAGE"
 
 log "configuring zMovie with the smoke API workflow"
-bash "${ZMOVIE_DIR}/scripts/configure-comfyui.sh" "$SMOKE_WORKFLOW" "$COMFYUI_URL"
+bash "${ZMOVIE_DIR}/scripts/configure-comfyui.sh" "$SMOKE_WORKFLOW" "$COMFYUI_URL" smoke
 
 log "submitting through the zMovie ComfyUI provider and downloading the output"
 runuser -u "$ZMOVIE_USER" -- bash -c "set -a; source '$ZMOVIE_ENV'; set +a; cd '$ZMOVIE_DIR'; exec .venv/bin/python -" <<'PY'
