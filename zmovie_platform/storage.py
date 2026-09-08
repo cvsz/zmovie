@@ -70,10 +70,32 @@ CREATE TABLE IF NOT EXISTS assets (
   metadata TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS publish_jobs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  platform TEXT NOT NULL,
+  status TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  tags TEXT NOT NULL DEFAULT '[]',
+  video_path TEXT NOT NULL,
+  cover_path TEXT NOT NULL DEFAULT '',
+  subtitle_path TEXT NOT NULL DEFAULT '',
+  playlist TEXT NOT NULL DEFAULT '',
+  content_type TEXT NOT NULL DEFAULT 'Original',
+  schedule_at TEXT NOT NULL DEFAULT '',
+  published_url TEXT NOT NULL DEFAULT '',
+  error TEXT NOT NULL DEFAULT '',
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE INDEX IF NOT EXISTS idx_scenes_project ON scenes(project_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_shots_project ON shots(project_id, scene_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_jobs_project ON render_jobs(project_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project_id, kind);
+CREATE INDEX IF NOT EXISTS idx_publish_project ON publish_jobs(project_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_publish_status ON publish_jobs(status, created_at);
 """
 
 
