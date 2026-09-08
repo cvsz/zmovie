@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import html
+import asyncio
 import json
 import os
-import re
 import shutil
 import subprocess
 import tempfile
-import urllib.error
-import urllib.parse
-import urllib.request
 from pathlib import Path
 from typing import Any
+
+import edge_tts
 
 from ..repository import add_asset, save_project
 from ..storyboard import create_storyboard
@@ -29,16 +27,10 @@ DEFAULT_CONCEPT = (
 DEFAULT_DURATION = 30
 DEFAULT_TTS_VOICE = "th-TH-PremwadeeNeural"
 DEFAULT_VOICEOVER = (
-    "พบกับ zMovie จาก ZeaZDev ระบบสร้างวิดีโอแบบ self-hosted "
-    "ตั้งแต่ไอเดีย สตอรี่บอร์ด เรนเดอร์ ตรวจคุณภาพ ตัดต่อ "
-    "และอนุมัติก่อนเผยแพร่ผ่าน Bilibili Creator Center. "
-    "Create. Render. Publish."
-)
-EDGE_TRANSLATOR_URL = "https://www.bing.com/translator"
-EDGE_TTS_URL = "https://www.bing.com/tfettts?isVertical=1&&IG=1&IID=translator.5023&SFX=1"
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    "พบกับ ซีมูฟวี่ จาก ซีแซดเดฟ ระบบผลิตวิดีโอแบบเซลฟ์โฮสต์ "
+    "ตั้งแต่ไอเดีย สตอรี่บอร์ด เรนเดอร์ ตรวจคุณภาพ และตัดต่อ "
+    "ก่อนตรวจทาน อนุมัติ และเผยแพร่ผ่าน บิลิบิลิ ครีเอเตอร์ เซ็นเตอร์ "
+    "สร้าง เรนเดอร์ เผยแพร่"
 )
 
 
@@ -69,58 +61,25 @@ def _local_tts_engine() -> str:
     return shutil.which("espeak-ng") or shutil.which("espeak") or ""
 
 
-def _edge_token() -> tuple[str, str, str]:
-    request = urllib.request.Request(
-        EDGE_TRANSLATOR_URL,
-        headers={"User-Agent": USER_AGENT, "Accept-Language": "th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7"},
+async def _save_edge_tts(output: Path, text: str, voice_id: str) -> None:
+    communicate = edge_tts.Communicate(
+        text=text,
+        voice=voice_id,
+        rate="-8%",
+        pitch="+0Hz",
+        volume="+0%",
     )
-    with urllib.request.urlopen(request, timeout=20) as response:
-        cookies = [value.split(";", 1)[0] for value in (response.headers.get_all("Set-Cookie") or [])]
-        page = response.read().decode("utf-8", errors="replace")
-    match = re.search(r"params_AbusePreventionHelper\s*=\s*\[([^,]+),([^,]+),", page)
-    if not match:
-        raise RuntimeError("Edge TTS token could not be parsed")
-    key = match.group(1).strip().strip("\"'")
-    token = match.group(2).strip().strip("\"'")
-    return key, token, "; ".join(cookies)
+    await communicate.save(str(output))
 
 
 def _edge_tts(output: Path, text: str, voice_id: str) -> bool:
-    for attempt in range(2):
-        try:
-            key, token, cookie = _edge_token()
-            parts = voice_id.split("-")
-            xml_lang = "-".join(parts[:2]) if len(parts) >= 2 else "th-TH"
-            escaped_text = html.escape(text, quote=True)
-            ssml = (
-                f"<speak version='1.0' xml:lang='{xml_lang}'>"
-                f"<voice xml:lang='{xml_lang}' name='{html.escape(voice_id, quote=True)}'>"
-                f"<prosody rate='-8.00%' pitch='+0Hz'>{escaped_text}</prosody>"
-                "</voice></speak>"
-            )
-            body = urllib.parse.urlencode({"ssml": ssml, "token": token, "key": key}).encode("utf-8")
-            headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Accept": "*/*",
-                "Origin": "https://www.bing.com",
-                "Referer": EDGE_TRANSLATOR_URL,
-                "User-Agent": USER_AGENT,
-            }
-            if cookie:
-                headers["Cookie"] = cookie
-            request = urllib.request.Request(EDGE_TTS_URL, data=body, headers=headers, method="POST")
-            with urllib.request.urlopen(request, timeout=30) as response:
-                payload = response.read()
-            if len(payload) < 1024:
-                raise RuntimeError("Edge TTS returned empty audio")
-            output.write_bytes(payload)
-            return True
-        except urllib.error.HTTPError as exc:
-            if exc.code not in {403, 429} or attempt == 1:
-                break
-        except (OSError, RuntimeError, urllib.error.URLError):
-            break
-    return False
+    output.unlink(missing_ok=True)
+    try:
+        asyncio.run(_save_edge_tts(output, text, voice_id))
+    except Exception:
+        output.unlink(missing_ok=True)
+        return False
+    return output.is_file() and output.stat().st_size > 1024
 
 
 def _local_tts(output: Path, text: str) -> tuple[bool, str]:
@@ -156,8 +115,9 @@ def _render_voiceover(workdir: Path, text: str) -> dict[str, Any]:
             }
         if provider == "edge" and not allow_local:
             raise RuntimeError(
-                "Edge neural TTS failed; production render stopped rather than using robotic local fallback. "
-                "Fix Edge TTS or explicitly set ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK=true."
+                "Edge neural TTS failed through the maintained edge-tts client; production render stopped. "
+                "Verify outbound HTTPS/DNS from the production runtime or explicitly opt into the local fallback with "
+                "ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK=true."
             )
 
     if provider == "local" or allow_local:
