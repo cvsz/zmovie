@@ -61,12 +61,47 @@ class BackupAndHealthTests(unittest.TestCase):
             "ZMOVIE_PUBLISH_ROOT": str(publish),
             "ZMOVIE_COMFYUI_WORKFLOW": "",
         }
-        with patch.dict(os.environ, env, clear=False):
+        with patch.dict(os.environ, env, clear=False), patch.object(
+            health.COMFYUI,
+            "_request_json",
+            side_effect=RuntimeError("offline"),
+        ):
             report = health.health_report()
         self.assertEqual(report["status"], "ok")
         self.assertFalse(report["comfyui"]["configured"])
+        self.assertFalse(report["comfyui"]["reachable"])
         self.assertFalse(report["comfyui"]["ready"])
         self.assertEqual(report["comfyui"]["error"], "workflow_not_configured")
+
+    def test_health_reports_reachable_even_before_workflow_configuration(self) -> None:
+        env = {
+            "ZMOVIE_MEDIA_ROOT": str(self.root / "media"),
+            "ZMOVIE_EXPORT_ROOT": str(self.root / "exports"),
+            "ZMOVIE_PUBLISH_ROOT": str(self.root / "publish"),
+            "ZMOVIE_COMFYUI_WORKFLOW": "",
+            "ZMOVIE_COMFYUI_URL": "http://127.0.0.1:8188",
+        }
+        stats = {
+            "system": {
+                "comfyui_version": "0.34.0",
+                "python_version": "3.14.4",
+                "pytorch_version": "2.14.0+cpu",
+            },
+            "devices": [{"name": "cpu", "type": "cpu"}],
+        }
+        with patch.dict(os.environ, env, clear=False), patch.object(
+            health.COMFYUI,
+            "_request_json",
+            return_value=stats,
+        ):
+            report = health.health_report()
+        comfy = report["comfyui"]
+        self.assertFalse(comfy["configured"])
+        self.assertTrue(comfy["reachable"])
+        self.assertFalse(comfy["ready"])
+        self.assertEqual(comfy["version"], "0.34.0")
+        self.assertEqual(comfy["devices"], [{"name": "cpu", "type": "cpu"}])
+        self.assertEqual(comfy["error"], "workflow_not_configured")
 
     def test_health_reports_reachable_configured_comfyui(self) -> None:
         workflow = self.root / "workflow_api.json"
@@ -78,7 +113,11 @@ class BackupAndHealthTests(unittest.TestCase):
             "ZMOVIE_COMFYUI_WORKFLOW": str(workflow),
             "ZMOVIE_COMFYUI_URL": "http://127.0.0.1:8188",
         }
-        with patch.dict(os.environ, env, clear=False), patch.object(health.COMFYUI, "_request_json", return_value={"system": {}}):
+        with patch.dict(os.environ, env, clear=False), patch.object(
+            health.COMFYUI,
+            "_request_json",
+            return_value={"system": {}},
+        ):
             report = health.health_report()
         self.assertTrue(report["comfyui"]["configured"])
         self.assertTrue(report["comfyui"]["reachable"])
