@@ -26,8 +26,11 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Compile
-        run: python -m py_compile zmovie.py app.py
+      - name: Compile application
+        run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
+
+      - name: Validate installers
+        run: bash -n install.sh install-docker.sh
 
       - name: Test
         run: python -m unittest discover -s tests -v
@@ -38,11 +41,14 @@ jobs:
       - name: Smoke test JSON output
         run: python zmovie.py --seed 42 --json | python -m json.tool > /dev/null
 
+      - name: Smoke test publisher CLI without external login
+        run: python -m zmovie_platform.publishers.bilibili status | python -m json.tool > /dev/null
+
   docker:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build container
+      - name: Build production container
         run: docker build -t zmovie:test .
