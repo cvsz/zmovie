@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""zMovie full-stack API server."""
+
+from __future__ import annotations
+
+import json
+import os
+import random
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+import zmovie
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+DATA_DIR = Path(os.getenv("ZMOVIE_DATA_DIR", str(BASE_DIR / "data"))).expanduser().resolve()
+DB_PATH = DATA_DIR / "zmovie.db"
+APP_VERSION = "0.2.0"
+
+app = FastAPI(
+    title="zMovie Prompt Generator",
+    version=APP_VERSION,
+    description="Full-stack cinematic prompt generator API backed by the zMovie core engine.",
+)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+class GenerateRequest(BaseModel):
+    count: int = Field(default=1, ge=1, le=100)
+    seed: int | None = None
+    save_history: bool = True
+
+
+def get_connection() -> sqlite3.Connection:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db() -> None:
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS generations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                seed INTEGER,
+                title TEXT NOT NULL,
+                payload TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+
+
+def save_generation(item: dict[str, Any], seed: int | None) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "INSERT INTO generations (created_at, seed, title, payload) VALUES (?, ?, ?, ?)",
+            (now, seed, str(item["title"]), json.dumps(item, ensure_ascii=False)),
+        )
+        conn.commit()
+        return int(cursor.lastrowid)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+
+
+@app.get("/", include_in_schema=False)
+def home() -> FileResponse:
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/api/health")
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "service": "zmovie",
+        "version": APP_VERSION,
+        "database": str(DB_PATH),
+    }
+
+
+@app.get("/api/options")
+def options() -> dict[str, Any]:
+    return {
+        "settings": zmovie.SETTINGS,
+        "times": zmovie.TIMES,
+        "faces": zmovie.FACES,
+        "hair": zmovie.HAIR,
+        "outfits": zmovie.OUTFITS,
+        "personalities": zmovie.PERSONALITIES,
+        "attackers": zmovie.ATTACKERS,
+        "attacker_styles": zmovie.ATTACKER_STYLES,
+        "lead_styles": zmovie.LEAD_STYLES,
+        "destruction": zmovie.DESTRUCTION,
+        "endings": zmovie.ENDINGS,
+        "cameras": zmovie.CAMERAS,
+        "lighting": zmovie.LIGHTING,
+        "visual_styles": zmovie.VISUAL_STYLES,
+        "finishers": zmovie.FINISHERS,
+    }
+
+
+@app.post("/api/generate")
+def generate(request: GenerateRequest) -> dict[str, Any]:
+    rng = random.Random(request.seed)
+    results: list[dict[str, Any]] = []
+
+    for _ in range(request.count):
+        item = zmovie.generate(rng)
+        if request.save_history:
+            item = dict(item)
+            item["history_id"] = save_generation(item, request.seed)
+        results.append(item)
+
+    return {
+        "seed": request.seed,
+        "count": len(results),
+        "results": results,
+    }
+
+
+@app.get("/api/history")
+def history(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT id, created_at, seed, title, payload FROM generations ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+
+    items = []
+    for row in rows:
+        payload = json.loads(row["payload"])
+        items.append(
+            {
+                "id": row["id"],
+                "created_at": row["created_at"],
+                "seed": row["seed"],
+                "title": row["title"],
+                "payload": payload,
+            }
+        )
+    return {"count": len(items), "items": items}
+
+
+@app.get("/api/history/{generation_id}")
+def history_item(generation_id: int) -> dict[str, Any]:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, created_at, seed, title, payload FROM generations WHERE id = ?",
+            (generation_id,),
+        ).fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Generation not found")
+
+    return {
+        "id": row["id"],
+        "created_at": row["created_at"],
+        "seed": row["seed"],
+        "title": row["title"],
+        "payload": json.loads(row["payload"]),
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    host = os.getenv("ZMOVIE_HOST", "0.0.0.0")
+    port = int(os.getenv("ZMOVIE_PORT", "8080"))
+    uvicorn.run("app:app", host=host, port=port, reload=False)
