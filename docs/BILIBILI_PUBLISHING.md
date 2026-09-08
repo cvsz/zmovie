@@ -34,36 +34,53 @@ A successful button click is **not** treated as proof that a video is publicly v
 
 ## One-time Google login
 
-Install dependencies and the browser if you are not using the automated installer:
+The login command requires a **visible GUI display**. A headless server with an empty `DISPLAY`/`WAYLAND_DISPLAY` cannot perform this interactive authentication. `xvfb-run` alone is not sufficient because the operator must see and complete Google sign-in and any 2FA challenges.
+
+On a GUI checkout, install dependencies and Chromium if needed:
 
 ```bash
-python -m pip install -r requirements.txt
-python -m playwright install chromium
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python -m playwright install chromium
 ```
 
-Open the interactive login flow on a GUI host:
+Open the interactive login flow:
 
 ```bash
-python -m zmovie_platform.publishers.bilibili_hardened login
+.venv/bin/python -m zmovie_platform.publishers.bilibili_hardened login \
+  --state "$HOME/storage_state.json"
 ```
 
-The browser opens Creator Center and attempts to surface the Google login option. Complete Google authentication and any 2FA yourself, then return to the terminal and press Enter. The saved state defaults to:
+The browser opens Creator Center and attempts to surface the Google login option. Complete Google authentication and any 2FA yourself, then return to the terminal and press Enter.
 
-```text
-data/bilibili/storage_state.json
-```
+Treat `storage_state.json` like a credential. Do not commit it, paste it into chat, or make it world-readable.
 
-Treat this file like a credential. It is stored under `data/`, which is ignored by Git, and should be readable only by the zMovie runtime account.
-
-For a remote/headless server, perform the login on a GUI machine and securely copy `storage_state.json` to the path configured by `ZMOVIE_BILIBILI_STATE_PATH` (native installer default: `/var/lib/zmovie/bilibili/storage_state.json`).
-
-After copying it, validate the session from the zMovie host:
+For a remote/headless native server, securely copy the generated state file to the path configured by `ZMOVIE_BILIBILI_STATE_PATH` (installer default: `/var/lib/zmovie/bilibili/storage_state.json`) and set ownership/permissions:
 
 ```bash
-python -m zmovie_platform.publishers.bilibili_hardened session
+sudo install -d -o zmovie -g zmovie -m 0700 /var/lib/zmovie/bilibili
+sudo install -o zmovie -g zmovie -m 0600 "$HOME/storage_state.json" /var/lib/zmovie/bilibili/storage_state.json
 ```
 
-`configured=true` only means the state file exists. For a usable session the live probe must also return `authenticated=true`.
+## Native production host commands
+
+Do not clone another working tree under `/opt/zmovie`; that directory is the installed production application and is normally root-owned.
+
+When running the CLI manually on a native install, use the application's virtualenv **and load the production environment first**. Otherwise the module defaults to relative development paths such as `/opt/zmovie/data/bilibili/storage_state.json` instead of the native installer path under `/var/lib/zmovie`.
+
+Validate the production session as the runtime user:
+
+```bash
+sudo -u zmovie bash -lc '
+cd /opt/zmovie
+set -a
+source /etc/zmovie/zmovie.env
+set +a
+exec .venv/bin/python -m zmovie_platform.publishers.bilibili_hardened session
+'
+```
+
+`configured=true` only means the state file exists. A usable session requires the live probe to return both `checked=true` and `authenticated=true`.
 
 ## CLI workflow
 
@@ -126,7 +143,7 @@ GET  /api/v2/publish/jobs?project_id={project_id}
 GET  /api/v2/publish/bilibili/session
 ```
 
-The API now probes the saved browser state before a real publish queue request. A stale or unauthenticated state file is rejected instead of being treated as ready.
+The API probes the saved browser state before a real publish queue request. A stale or unauthenticated state file is rejected instead of being treated as ready.
 
 The Studio UI exposes the same approval boundary. `Publish` is unavailable until a job has been explicitly approved, and a `submitted` job is labelled as not yet independently confirmed public.
 
@@ -150,6 +167,6 @@ Default metadata includes a transparent statement that the video contains AI-gen
 - Do not commit browser state/cookies.
 - Do not share the state file.
 - Treat `configured=true` and `authenticated=true` as separate conditions.
-- If the Creator Center session is revoked, run the interactive login again.
+- If the Creator Center session is revoked, run the interactive login again on a visible GUI host.
 - Treat `submitted` as a remote-confirmation boundary, not as proof of public visibility.
-- If Bilibili changes its form, use a headed publish run and the generated `publish-error.png` to update selectors.
+- If Bilibili changes its form, use a headed publish run on a GUI host and the generated `publish-error.png` to update selectors.
