@@ -17,6 +17,12 @@ ZMOVIE_ADMIN_USER=${ZMOVIE_ADMIN_USER:-admin}
 ZMOVIE_ADMIN_PASSWORD=${ADMIN_PASSWORD}
 ZMOVIE_PROVIDER_WEBHOOK=${ZMOVIE_PROVIDER_WEBHOOK:-}
 ZMOVIE_PROVIDER_TOKEN=${ZMOVIE_PROVIDER_TOKEN:-}
+ZMOVIE_COMFYUI_URL=${ZMOVIE_COMFYUI_URL:-http://host.docker.internal:8188}
+ZMOVIE_COMFYUI_WORKFLOW=${ZMOVIE_COMFYUI_WORKFLOW:-/app/workflows/comfyui/workflow_api.json}
+ZMOVIE_BILIBILI_STUDIO_URL=https://studio.bilibili.tv/
+ZMOVIE_BILIBILI_HEADLESS=true
+ZMOVIE_BILIBILI_AUTO_PUBLISH=false
+ZMOVIE_BILIBILI_TIMEOUT_MS=120000
 EOF
   chmod 0600 "$ENV_FILE"
   echo "[zMovie] Initial admin user: ${ZMOVIE_ADMIN_USER:-admin}"
@@ -29,9 +35,11 @@ fi
 docker compose --env-file "$ENV_FILE" up -d --build
 PORT="$(sed -n 's/^ZMOVIE_PORT=//p' "$ENV_FILE" | tail -n 1)"
 PORT="${PORT:-8080}"
-for _ in $(seq 1 60); do
+for _ in $(seq 1 90); do
   if curl -fsS "http://127.0.0.1:${PORT}/api/v2/health" >/dev/null 2>&1; then
     echo "[zMovie] Healthy: http://127.0.0.1:${PORT}/studio"
+    echo "[zMovie] Headless Chromium is included in the image."
+    echo "[zMovie] Perform the one-time Bilibili Google login on a GUI checkout and securely copy storage_state.json into the zmovie-data volume at /app/data/bilibili/storage_state.json."
     exit 0
   fi
   sleep 1
