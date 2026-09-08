@@ -89,7 +89,7 @@ install_or_upgrade(){
   export DEBIAN_FRONTEND=noninteractive
   log "installing OS dependencies"
   apt-get update -y
-  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync
+  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync espeak-ng
 
   if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
@@ -143,6 +143,8 @@ ZMOVIE_COMFYUI_URL=${ZMOVIE_COMFYUI_URL:-http://127.0.0.1:8188}
 ZMOVIE_COMFYUI_WORKFLOW=${ZMOVIE_COMFYUI_WORKFLOW:-}
 ZMOVIE_COMFYUI_TOKEN=${ZMOVIE_COMFYUI_TOKEN:-}
 ZMOVIE_COMFYUI_TIMEOUT=${ZMOVIE_COMFYUI_TIMEOUT:-3600}
+ZMOVIE_TTS_PROVIDER=${ZMOVIE_TTS_PROVIDER:-edge}
+ZMOVIE_TTS_VOICE=${ZMOVIE_TTS_VOICE:-en-US-AriaNeural}
 ZMOVIE_BILIBILI_STUDIO_URL=https://studio.bilibili.tv/
 ZMOVIE_BILIBILI_STATE_PATH=${DATA_DIR}/bilibili/storage_state.json
 ZMOVIE_BILIBILI_HEADLESS=true
@@ -161,6 +163,8 @@ EOF
       PORT="${existing_port:-$PORT}"
     fi
     grep -q '^ZMOVIE_PUBLISH_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_PUBLISH_ROOT=%s\n' "$DATA_DIR/publish" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_TTS_PROVIDER=' "$ENV_FILE" || printf 'ZMOVIE_TTS_PROVIDER=edge\n' >>"$ENV_FILE"
+    grep -q '^ZMOVIE_TTS_VOICE=' "$ENV_FILE" || printf 'ZMOVIE_TTS_VOICE=en-US-AriaNeural\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_BILIBILI_STATE_PATH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_STATE_PATH=%s\n' "$DATA_DIR/bilibili/storage_state.json" >>"$ENV_FILE"
     grep -q '^ZMOVIE_BILIBILI_HEADLESS=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_HEADLESS=true\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_BILIBILI_AUTO_PUBLISH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_AUTO_PUBLISH=false\n' >>"$ENV_FILE"
@@ -218,8 +222,7 @@ EOF
   done
   if [[ "$ok" -ne 1 ]]; then
     systemctl --no-pager --full status zmovie || true
-    journalctl -u zmovie -n 100 --no-pager || true
-    fail "service failed health validation"
+    fail "health check failed"
   fi
 
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
@@ -230,17 +233,16 @@ EOF
   log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
   log "For a server, securely copy the resulting storage_state.json to ${DATA_DIR}/bilibili/storage_state.json and chown ${SERVICE_USER}:${SERVICE_USER}."
   if [[ -n "$generated_password" ]]; then
-    log "Initial admin user: ${ZMOVIE_ADMIN_USER:-admin}"
-    log "Initial admin password: ${generated_password}"
-    log "Save this password now; upgrades preserve it and do not print it again."
+    log "admin username: ${ZMOVIE_ADMIN_USER:-admin}"
+    log "admin password: ${generated_password}"
+    log "save this password now; upgrades do not print it again"
   fi
 }
 
 need_root
 case "$ACTION" in
-  install|--install|upgrade|--upgrade) install_or_upgrade ;;
-  backup|--backup) backup_data ;;
-  status|--status) status ;;
-  uninstall|--uninstall) uninstall_service "$@" ;;
-  *) fail "unknown action '$ACTION' (use install, upgrade, backup, status, uninstall [--purge])" ;;
+  install|upgrade) install_or_upgrade ;;
+  status) status ;;
+  uninstall) uninstall_service "$@" ;;
+  *) fail "usage: install.sh [install|upgrade|status|uninstall [--purge]]" ;;
 esac
