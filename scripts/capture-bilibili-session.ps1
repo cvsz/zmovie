@@ -16,6 +16,7 @@ $Requirements = Join-Path $RepoRoot "requirements.txt"
 Write-Step "This reuses the Chrome profile that is already open."
 Write-Step "In that Chrome, open chrome://inspect/#remote-debugging and enable remote debugging first."
 Write-Step "Keep the Chrome window open and approve Chrome's connection dialog when prompted."
+Write-Step "The resulting state is automatically reduced to Bilibili-only cookies/origin storage."
 
 if (-not (Test-Path $Python)) {
     Write-Step "creating local Python virtual environment"
@@ -47,5 +48,6 @@ if (-not (Test-Path $StatePath)) {
     throw "capture command returned without creating $StatePath"
 }
 
-Write-Step "PASS: saved authenticated browser state to $StatePath"
-Write-Step "Treat this file as a credential. Do not commit, upload, or share it."
+Write-Step "PASS: saved Bilibili-only authenticated browser state to $StatePath"
+Write-Step "Disable Chrome remote debugging now that capture is complete."
+Write-Step "Treat this file as a credential. Do not commit, upload publicly, or share it."
