@@ -12,7 +12,6 @@ fail(){ printf '[zMovie Bilibili candidates] ERROR: %s\n' "$*" >&2; exit 1; }
 [[ -f "$ENV_FILE" ]] || fail "zMovie environment not found: $ENV_FILE"
 [[ -x "$INSTALL_DIR/.venv/bin/python" ]] || fail "zMovie Python not found: $INSTALL_DIR/.venv/bin/python"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
-command -v ffprobe >/dev/null 2>&1 || fail "ffprobe is required"
 
 log "listing projects with managed final video assets; no publication state is changed"
 
@@ -31,6 +30,7 @@ runuser -u "$SERVICE_USER" -- \
     exec .venv/bin/python -
   ' <<'PY'
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -38,6 +38,7 @@ from zmovie_platform.repository import get_project, list_assets, list_projects
 
 markers = ("smoke", "mock", "test", "dry run", "dry-run", "example", "demo")
 rows = []
+ffprobe = shutil.which("ffprobe")
 
 for item in list_projects(limit=500):
     project_id = str(item["id"])
@@ -60,37 +61,40 @@ for item in list_projects(limit=500):
             "duration_seconds": 0.0,
         }
 
-        try:
-            proc = subprocess.run(
-                [
-                    "ffprobe",
-                    "-v",
-                    "error",
-                    "-select_streams",
-                    "v:0",
-                    "-show_entries",
-                    "stream=codec_name,width,height:format=duration",
-                    "-of",
-                    "json",
-                    str(path),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                check=True,
-            )
-            data = json.loads(proc.stdout or "{}")
-            streams = list(data.get("streams") or [])
-            stream = streams[0] if streams else {}
-            fmt = dict(data.get("format") or {})
-            media = {
-                "codec": str(stream.get("codec_name") or ""),
-                "width": int(stream.get("width") or 0),
-                "height": int(stream.get("height") or 0),
-                "duration_seconds": round(float(fmt.get("duration") or 0.0), 3),
-            }
-        except Exception as exc:
-            media["ffprobe_error"] = str(exc)[:200]
+        if not ffprobe:
+            media["ffprobe_error"] = "ffprobe is not installed"
+        else:
+            try:
+                proc = subprocess.run(
+                    [
+                        ffprobe,
+                        "-v",
+                        "error",
+                        "-select_streams",
+                        "v:0",
+                        "-show_entries",
+                        "stream=codec_name,width,height:format=duration",
+                        "-of",
+                        "json",
+                        str(path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                    check=True,
+                )
+                data = json.loads(proc.stdout or "{}")
+                streams = list(data.get("streams") or [])
+                stream = streams[0] if streams else {}
+                fmt = dict(data.get("format") or {})
+                media = {
+                    "codec": str(stream.get("codec_name") or ""),
+                    "width": int(stream.get("width") or 0),
+                    "height": int(stream.get("height") or 0),
+                    "duration_seconds": round(float(fmt.get("duration") or 0.0), 3),
+                }
+            except Exception as exc:
+                media["ffprobe_error"] = str(exc)[:200]
 
         rows.append(
             {
