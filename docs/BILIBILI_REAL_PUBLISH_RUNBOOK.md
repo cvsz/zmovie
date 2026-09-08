@@ -80,7 +80,27 @@ exec .venv/bin/python -m zmovie_platform.publishers.bilibili_hardened approve --
 
 Expected state: `approved`.
 
-## 5. Submit the upload
+## 5. Run fail-closed publication preflight
+
+Before browser automation is allowed to upload, run:
+
+```bash
+sudo bash /opt/zmovie/scripts/preflight-bilibili-publish.sh PUB_JOB_ID
+```
+
+The preflight requires:
+
+- the publish job is still `approved`;
+- the project name/concept does not look like a smoke/mock/test/dry-run project;
+- the final video exists under `ZMOVIE_MEDIA_ROOT`;
+- cover/subtitle files exist under approved media/publish roots;
+- file extensions are supported;
+- `ffprobe` can read a real video stream with valid dimensions and duration;
+- Bilibili-only browser-state scope and live authentication still pass.
+
+Do not use the override for the first production publication. If this gate reports a smoke/mock/test marker, choose the correct real project instead.
+
+## 6. Submit the upload
 
 ```bash
 sudo -u zmovie bash -lc '
@@ -104,7 +124,7 @@ exec .venv/bin/python -m zmovie_platform.publishers.bilibili_hardened status --j
 
 If automation fails, inspect the durable error and the `publish-error.png` diagnostic in that job's publish directory. Do not blindly retry if Creator Center may already have accepted the upload.
 
-## 6. Confirm the public URL
+## 7. Confirm the public URL
 
 When Creator Center exposes the final public video URL, confirm it through the production host:
 
@@ -141,7 +161,7 @@ published_url = https://...bilibili.tv/.../video/...
 metadata.remote_confirmation = true
 ```
 
-## 7. Close temporary access paths
+## 8. Close temporary access paths
 
 After the session has been captured and verified:
 
