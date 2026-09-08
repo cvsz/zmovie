@@ -2,130 +2,189 @@
 set -Eeuo pipefail
 
 REPO_URL="${ZMOVIE_REPO_URL:-https://github.com/cvsz/zmovie.git}"
-BRANCH="${ZMOVIE_BRANCH:-main}"
+REPO_REF="${ZMOVIE_REPO_REF:-main}"
 INSTALL_DIR="${ZMOVIE_INSTALL_DIR:-/opt/zmovie}"
-SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
-ENV_DIR="${ZMOVIE_ENV_DIR:-/etc/zmovie}"
-ENV_FILE="${ENV_DIR}/zmovie.env"
+DATA_DIR="${ZMOVIE_DATA_DIR:-/var/lib/zmovie}"
+CONFIG_DIR="${ZMOVIE_CONFIG_DIR:-/etc/zmovie}"
+ENV_FILE="${CONFIG_DIR}/zmovie.env"
 SERVICE_FILE="/etc/systemd/system/zmovie.service"
+BACKUP_DIR="${ZMOVIE_BACKUP_DIR:-/var/backups/zmovie}"
+SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
+PORT="${ZMOVIE_PORT:-8080}"
+ACTION="${1:-install}"
 
-log() { printf '\n[zMovie] %s\n' "$*"; }
-fail() { printf '\n[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
+log(){ printf '[zMovie] %s\n' "$*"; }
+fail(){ printf '[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
+need_root(){ [[ "${EUID}" -eq 0 ]] || fail "run as root (for example: curl ... | sudo bash)"; }
+random_hex(){ openssl rand -hex "${1:-24}"; }
 
-if [[ ${EUID} -ne 0 ]]; then
-  fail "Run as root (for example: sudo bash install.sh)."
-fi
+backup_data(){
+  mkdir -p "$BACKUP_DIR"
+  if [[ -f "$DATA_DIR/zmovie.db" ]]; then
+    local stamp
+    stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    cp -a "$DATA_DIR/zmovie.db" "$BACKUP_DIR/zmovie-${stamp}.db"
+    log "database backup: $BACKUP_DIR/zmovie-${stamp}.db"
+  else
+    log "no database exists yet; backup skipped"
+  fi
+}
 
-if ! command -v apt-get >/dev/null 2>&1; then
-  fail "This installer currently supports Debian/Ubuntu systems with apt-get."
-fi
+status(){
+  systemctl --no-pager --full status zmovie || true
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS "http://127.0.0.1:${PORT}/api/v2/health" || true
+    printf '\n'
+  fi
+}
 
-export DEBIAN_FRONTEND=noninteractive
-log "Installing operating-system prerequisites"
-apt-get update -y
-apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates
+uninstall_service(){
+  local purge="${2:-}"
+  systemctl disable --now zmovie 2>/dev/null || true
+  rm -f "$SERVICE_FILE"
+  systemctl daemon-reload
+  rm -rf "$INSTALL_DIR"
+  rm -rf "$CONFIG_DIR"
+  if [[ "$purge" == "--purge" ]]; then
+    backup_data
+    rm -rf "$DATA_DIR"
+    log "service, code, config and data removed; backup retained in $BACKUP_DIR"
+  else
+    log "service/code/config removed; persistent data retained at $DATA_DIR"
+  fi
+}
 
-if ! id "$SERVICE_USER" >/dev/null 2>&1; then
-  log "Creating service account: $SERVICE_USER"
-  useradd --system --home-dir "$INSTALL_DIR" --create-home --shell /usr/sbin/nologin "$SERVICE_USER"
-fi
+install_or_upgrade(){
+  export DEBIAN_FRONTEND=noninteractive
+  log "installing OS dependencies"
+  apt-get update -y
+  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync
 
-mkdir -p "$INSTALL_DIR"
-chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+  if ! id "$SERVICE_USER" >/dev/null 2>&1; then
+    useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
+  fi
+  install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$BACKUP_DIR"
+  install -d -o root -g "$SERVICE_USER" -m 0750 "$CONFIG_DIR"
 
-if [[ -d "$INSTALL_DIR/.git" ]]; then
-  log "Updating existing zMovie checkout"
-  runuser -u "$SERVICE_USER" -- git -C "$INSTALL_DIR" fetch --prune origin "$BRANCH"
-  runuser -u "$SERVICE_USER" -- git -C "$INSTALL_DIR" checkout "$BRANCH"
-  runuser -u "$SERVICE_USER" -- git -C "$INSTALL_DIR" pull --ff-only origin "$BRANCH"
-elif [[ -n "$(find "$INSTALL_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-  fail "$INSTALL_DIR is not empty and is not a zMovie git checkout. Set ZMOVIE_INSTALL_DIR to another path."
-else
-  log "Cloning zMovie"
-  runuser -u "$SERVICE_USER" -- git clone --branch "$BRANCH" --depth 1 "$REPO_URL" "$INSTALL_DIR"
-fi
+  if [[ -d "$INSTALL_DIR" ]]; then
+    backup_data
+  fi
 
-log "Creating/updating Python virtual environment"
-if [[ ! -x "$INSTALL_DIR/.venv/bin/python" ]]; then
-  runuser -u "$SERVICE_USER" -- python3 -m venv "$INSTALL_DIR/.venv"
-fi
-runuser -u "$SERVICE_USER" -- "$INSTALL_DIR/.venv/bin/python" -m pip install --upgrade pip
-runuser -u "$SERVICE_USER" -- "$INSTALL_DIR/.venv/bin/python" -m pip install -r "$INSTALL_DIR/requirements.txt"
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf "$tmp"' EXIT
+  log "fetching ${REPO_URL} (${REPO_REF})"
+  git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
+  install -d -o root -g root -m 0755 "$INSTALL_DIR"
+  rsync -a --delete --exclude '.git/' --exclude '.venv/' --exclude 'data/' "$tmp/repo/" "$INSTALL_DIR/"
 
-mkdir -p "$ENV_DIR" "$INSTALL_DIR/data"
-chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/data"
+  python3 -m venv "$INSTALL_DIR/.venv"
+  "$INSTALL_DIR/.venv/bin/python" -m pip install --upgrade pip wheel
+  "$INSTALL_DIR/.venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
-if [[ ! -f "$ENV_FILE" ]]; then
-  log "Creating runtime environment file"
-  cat > "$ENV_FILE" <<EOF
+  local generated_password=""
+  if [[ ! -f "$ENV_FILE" ]]; then
+    generated_password="${ZMOVIE_ADMIN_PASSWORD:-$(random_hex 16)}"
+    local secret
+    secret="${ZMOVIE_SECRET_KEY:-$(random_hex 32)}"
+    cat >"$ENV_FILE" <<EOF
 ZMOVIE_HOST=0.0.0.0
-ZMOVIE_PORT=${ZMOVIE_PORT:-8080}
-ZMOVIE_DATA_DIR=$INSTALL_DIR/data
+ZMOVIE_PORT=${PORT}
+ZMOVIE_DB_PATH=${DATA_DIR}/zmovie.db
+ZMOVIE_MEDIA_ROOT=${DATA_DIR}/media
+ZMOVIE_EXPORT_ROOT=${DATA_DIR}/exports
+ZMOVIE_OBJECT_ROOT=${DATA_DIR}/objects
+ZMOVIE_AUDIT_PATH=${DATA_DIR}/audit.jsonl
+ZMOVIE_AUTH_ENABLED=${ZMOVIE_AUTH_ENABLED:-true}
+ZMOVIE_SECRET_KEY=${secret}
+ZMOVIE_ADMIN_USER=${ZMOVIE_ADMIN_USER:-admin}
+ZMOVIE_ADMIN_PASSWORD=${generated_password}
+ZMOVIE_TOKEN_TTL=${ZMOVIE_TOKEN_TTL:-86400}
+ZMOVIE_CORS_ORIGINS=${ZMOVIE_CORS_ORIGINS:-}
+ZMOVIE_PROVIDER_WEBHOOK=${ZMOVIE_PROVIDER_WEBHOOK:-}
+ZMOVIE_PROVIDER_TOKEN=${ZMOVIE_PROVIDER_TOKEN:-}
 EOF
-  chmod 0640 "$ENV_FILE"
-  chown root:"$SERVICE_USER" "$ENV_FILE"
-else
-  log "Preserving existing $ENV_FILE"
-fi
+    chmod 0640 "$ENV_FILE"
+    chown root:"$SERVICE_USER" "$ENV_FILE"
+  else
+    # Keep generated credentials/secrets stable across upgrades; update only the listening port if explicitly supplied.
+    if [[ -n "${ZMOVIE_PORT:-}" ]]; then
+      sed -i -E "s/^ZMOVIE_PORT=.*/ZMOVIE_PORT=${PORT}/" "$ENV_FILE"
+    fi
+  fi
 
-if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
-  log "Installing systemd service"
-  cat > "$SERVICE_FILE" <<EOF
+  cat >"$SERVICE_FILE" <<EOF
 [Unit]
-Description=zMovie Cinematic Prompt Generator
+Description=zMovie AI Movie Production Platform
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=$SERVICE_USER
-Group=$SERVICE_USER
-WorkingDirectory=$INSTALL_DIR
-EnvironmentFile=$ENV_FILE
-ExecStart=$INSTALL_DIR/.venv/bin/python $INSTALL_DIR/app.py
+User=${SERVICE_USER}
+Group=${SERVICE_USER}
+WorkingDirectory=${INSTALL_DIR}
+EnvironmentFile=${ENV_FILE}
+ExecStart=${INSTALL_DIR}/.venv/bin/uvicorn main:app --host 0.0.0.0 --port \${ZMOVIE_PORT} --workers 1 --proxy-headers
 Restart=on-failure
 RestartSec=3
+TimeoutStopSec=30
+UMask=0027
 NoNewPrivileges=true
 PrivateTmp=true
+PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=$INSTALL_DIR/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=${DATA_DIR}
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+  chown -R root:root "$INSTALL_DIR"
+  chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR"
   systemctl daemon-reload
-  systemctl enable --now zmovie.service
-  systemctl restart zmovie.service
+  systemctl enable --now zmovie
+  systemctl restart zmovie
 
-  # Read the configured port without executing arbitrary shell content.
-  PORT="$(awk -F= '$1=="ZMOVIE_PORT" {print $2}' "$ENV_FILE" | tail -n1 | tr -d '[:space:]')"
-  PORT="${PORT:-8080}"
-
-  log "Waiting for health endpoint"
-  healthy=0
-  for _ in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
-      healthy=1
-      break
-    fi
+  log "waiting for health check"
+  local ok=0
+  for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:${PORT}/api/v2/health" >/dev/null 2>&1; then ok=1; break; fi
     sleep 1
   done
-
-  if [[ "$healthy" -ne 1 ]]; then
-    systemctl --no-pager --full status zmovie.service || true
-    journalctl -u zmovie.service -n 50 --no-pager || true
-    fail "Service did not become healthy."
+  if [[ "$ok" -ne 1 ]]; then
+    systemctl --no-pager --full status zmovie || true
+    journalctl -u zmovie -n 100 --no-pager || true
+    fail "service failed health validation"
   fi
 
-  log "Installation complete"
-  printf 'Web UI:  http://<server-ip>:%s/\n' "$PORT"
-  printf 'Health:  http://127.0.0.1:%s/api/health\n' "$PORT"
-  printf 'Status:  systemctl status zmovie\n'
-  printf 'Logs:    journalctl -u zmovie -f\n'
-else
-  log "systemd is unavailable; installation completed without a persistent service"
-  printf 'Start manually with:\n'
-  printf '  cd %q && ZMOVIE_HOST=0.0.0.0 ZMOVIE_PORT=%q ZMOVIE_DATA_DIR=%q .venv/bin/python app.py\n' "$INSTALL_DIR" "${ZMOVIE_PORT:-8080}" "$INSTALL_DIR/data"
-fi
+  log "installation healthy"
+  log "Studio: http://SERVER-IP:${PORT}/studio"
+  log "Legacy generator: http://SERVER-IP:${PORT}/"
+  log "API docs: http://SERVER-IP:${PORT}/docs"
+  if [[ -n "$generated_password" ]]; then
+    log "Initial admin user: ${ZMOVIE_ADMIN_USER:-admin}"
+    log "Initial admin password: ${generated_password}"
+    log "Save this password now; upgrades preserve it and do not print it again."
+  fi
+}
+
+need_root
+case "$ACTION" in
+  install|--install|upgrade|--upgrade) install_or_upgrade ;;
+  backup|--backup) backup_data ;;
+  status|--status) status ;;
+  uninstall|--uninstall) uninstall_service "$@" ;;
+  *) fail "unknown action '$ACTION' (use install, upgrade, backup, status, uninstall [--purge])" ;;
+esac
