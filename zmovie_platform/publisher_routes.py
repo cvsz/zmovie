@@ -7,7 +7,7 @@ from .api_schemas import BilibiliPrepareRequest, BilibiliPublishRequest
 from .audit import write as audit
 from .jobs import submit
 from .metrics import increment
-from .publishers.bilibili import (
+from .publishers.bilibili_hardened import (
     approve_publish_job,
     get_publish_job,
     list_publish_jobs,
@@ -92,6 +92,9 @@ def publish_bilibili(job_id: str, payload: BilibiliPublishRequest, actor: dict[s
     job = _require_publish_job(job_id, actor)
     if str(job["status"]) != "approved":
         raise HTTPException(status_code=409, detail="publish job must be approved before publishing")
+    session = session_status()
+    if not session.get("authenticated"):
+        raise HTTPException(status_code=409, detail="Bilibili browser session is missing, expired, or not authenticated; run the one-time Google login and validate the session first")
     submit(publish_bilibili_job, job_id, headless=payload.headless)
     increment("publish.bilibili.queued")
     audit("publish.bilibili.queue", actor=actor["username"], project_id=str(job["project_id"]), job_id=job_id)
