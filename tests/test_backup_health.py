@@ -51,16 +51,15 @@ class BackupAndHealthTests(unittest.TestCase):
         with sqlite3.connect(self.db_path) as conn:
             self.assertEqual(conn.execute("SELECT value FROM backup_probe").fetchone()[0], "before-backup")
 
-    def test_health_reports_comfyui_not_configured_without_failing_service(self) -> None:
-        media = self.root / "media"
-        exports = self.root / "exports"
-        publish = self.root / "publish"
-        env = {
-            "ZMOVIE_MEDIA_ROOT": str(media),
-            "ZMOVIE_EXPORT_ROOT": str(exports),
-            "ZMOVIE_PUBLISH_ROOT": str(publish),
-            "ZMOVIE_COMFYUI_WORKFLOW": "",
+    def _base_env(self) -> dict[str, str]:
+        return {
+            "ZMOVIE_MEDIA_ROOT": str(self.root / "media"),
+            "ZMOVIE_EXPORT_ROOT": str(self.root / "exports"),
+            "ZMOVIE_PUBLISH_ROOT": str(self.root / "publish"),
         }
+
+    def test_health_reports_comfyui_not_configured_without_failing_service(self) -> None:
+        env = {**self._base_env(), "ZMOVIE_COMFYUI_WORKFLOW": ""}
         with patch.dict(os.environ, env, clear=False), patch.object(
             health.COMFYUI,
             "_request_json",
@@ -71,13 +70,12 @@ class BackupAndHealthTests(unittest.TestCase):
         self.assertFalse(report["comfyui"]["configured"])
         self.assertFalse(report["comfyui"]["reachable"])
         self.assertFalse(report["comfyui"]["ready"])
+        self.assertFalse(report["production_video_ready"])
         self.assertEqual(report["comfyui"]["error"], "workflow_not_configured")
 
     def test_health_reports_reachable_even_before_workflow_configuration(self) -> None:
         env = {
-            "ZMOVIE_MEDIA_ROOT": str(self.root / "media"),
-            "ZMOVIE_EXPORT_ROOT": str(self.root / "exports"),
-            "ZMOVIE_PUBLISH_ROOT": str(self.root / "publish"),
+            **self._base_env(),
             "ZMOVIE_COMFYUI_WORKFLOW": "",
             "ZMOVIE_COMFYUI_URL": "http://127.0.0.1:8188",
         }
@@ -99,29 +97,64 @@ class BackupAndHealthTests(unittest.TestCase):
         self.assertFalse(comfy["configured"])
         self.assertTrue(comfy["reachable"])
         self.assertFalse(comfy["ready"])
+        self.assertFalse(comfy["accelerated"])
         self.assertEqual(comfy["version"], "0.34.0")
         self.assertEqual(comfy["devices"], [{"name": "cpu", "type": "cpu"}])
         self.assertEqual(comfy["error"], "workflow_not_configured")
 
-    def test_health_reports_reachable_configured_comfyui(self) -> None:
+    def test_cpu_smoke_can_be_render_ready_without_production_video_ready(self) -> None:
         workflow = self.root / "workflow_api.json"
-        workflow.write_text('{"1":{"inputs":{}}}', encoding="utf-8")
+        workflow.write_text('{"1":{"inputs":{},"class_type":"LoadImage"}}', encoding="utf-8")
         env = {
-            "ZMOVIE_MEDIA_ROOT": str(self.root / "media"),
-            "ZMOVIE_EXPORT_ROOT": str(self.root / "exports"),
-            "ZMOVIE_PUBLISH_ROOT": str(self.root / "publish"),
+            **self._base_env(),
             "ZMOVIE_COMFYUI_WORKFLOW": str(workflow),
+            "ZMOVIE_COMFYUI_WORKFLOW_ROLE": "smoke",
             "ZMOVIE_COMFYUI_URL": "http://127.0.0.1:8188",
         }
+        responses = [
+            {
+                "system": {"comfyui_version": "0.34.0", "pytorch_version": "2.14.0+cpu"},
+                "devices": [{"name": "cpu", "type": "cpu"}],
+            },
+            {"LoadImage": {}},
+        ]
         with patch.dict(os.environ, env, clear=False), patch.object(
             health.COMFYUI,
             "_request_json",
-            return_value={"system": {}},
+            side_effect=responses,
         ):
             report = health.health_report()
-        self.assertTrue(report["comfyui"]["configured"])
-        self.assertTrue(report["comfyui"]["reachable"])
-        self.assertTrue(report["comfyui"]["ready"])
+        self.assertTrue(report["render_ready"])
+        self.assertFalse(report["production_video_ready"])
+        self.assertEqual(report["comfyui"]["workflow_role"], "smoke")
+        self.assertFalse(report["comfyui"]["accelerated"])
+
+    def test_accelerated_video_workflow_is_production_video_ready(self) -> None:
+        workflow = self.root / "video_workflow_api.json"
+        workflow.write_text('{"1":{"inputs":{},"class_type":"VideoNode"}}', encoding="utf-8")
+        env = {
+            **self._base_env(),
+            "ZMOVIE_COMFYUI_WORKFLOW": str(workflow),
+            "ZMOVIE_COMFYUI_WORKFLOW_ROLE": "video",
+            "ZMOVIE_COMFYUI_URL": "http://10.0.0.20:8188",
+        }
+        responses = [
+            {
+                "system": {"comfyui_version": "0.34.0", "pytorch_version": "2.14.0+cu130"},
+                "devices": [{"name": "cuda:0", "type": "cuda"}],
+            },
+            {"VideoNode": {}},
+        ]
+        with patch.dict(os.environ, env, clear=False), patch.object(
+            health.COMFYUI,
+            "_request_json",
+            side_effect=responses,
+        ):
+            report = health.health_report()
+        self.assertTrue(report["render_ready"])
+        self.assertTrue(report["production_video_ready"])
+        self.assertTrue(report["comfyui"]["accelerated"])
+        self.assertEqual(report["comfyui"]["workflow_role"], "video")
 
 
 if __name__ == "__main__":
