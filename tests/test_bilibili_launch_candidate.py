@@ -31,7 +31,16 @@ class BilibiliLaunchCandidateTests(unittest.TestCase):
                 "frame_rate": "24/1",
                 "duration_seconds": float(duration),
                 "size_bytes": output.stat().st_size,
+                "audio_codec": "aac",
+                "audio_sample_rate": 48000,
+                "audio_channels": 2,
                 "font_rendered": True,
+                "soundtrack_generated": True,
+                "soundtrack_source": "ffmpeg_synth",
+                "voiceover_generated": True,
+                "voiceover_provider": "edge-tts",
+                "voiceover_voice": bilibili_launch_candidate.DEFAULT_TTS_VOICE,
+                "audio_mastering": "loudnorm I=-16 TP=-1.5 LRA=11",
             }
 
         with mock.patch.object(bilibili_launch_candidate, "_render_launch_video", side_effect=fake_render):
@@ -61,6 +70,27 @@ class BilibiliLaunchCandidateTests(unittest.TestCase):
         self.assertIn("FFmpeg", metadata["disclosure"])
         self.assertIn("does not represent an official partnership", metadata["disclosure"])
         self.assertEqual(result["media"]["duration_seconds"], float(bilibili_launch_candidate.DEFAULT_DURATION))
+        self.assertEqual(result["media"]["audio_codec"], "aac")
+        self.assertEqual(result["media"]["audio_sample_rate"], 48000)
+        self.assertEqual(result["media"]["audio_channels"], 2)
+        self.assertTrue(result["media"]["soundtrack_generated"])
+        self.assertTrue(result["media"]["voiceover_generated"])
+        self.assertEqual(result["media"]["voiceover_provider"], "edge-tts")
+        self.assertIn("loudnorm", result["media"]["audio_mastering"])
+
+    def test_edge_provider_falls_back_to_local_tts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with (
+                mock.patch.dict("os.environ", {"ZMOVIE_TTS_PROVIDER": "edge"}, clear=False),
+                mock.patch.object(bilibili_launch_candidate, "_edge_tts", return_value=False),
+                mock.patch.object(bilibili_launch_candidate, "_local_tts", return_value=(True, "espeak-ng")),
+            ):
+                result = bilibili_launch_candidate._render_voiceover(root, "hello")
+
+        self.assertTrue(result["generated"])
+        self.assertEqual(result["provider"], "espeak-ng")
+        self.assertEqual(result["voice"], "en-us")
 
 
 if __name__ == "__main__":
