@@ -122,7 +122,7 @@ class BackupAndHealthTests(unittest.TestCase):
             health.COMFYUI,
             "_request_json",
             side_effect=responses,
-        ):
+        ), patch.object(health.shutil, "which", return_value="/usr/bin/tool"):
             report = health.health_report()
         self.assertTrue(report["render_ready"])
         self.assertFalse(report["production_video_ready"])
@@ -149,7 +149,7 @@ class BackupAndHealthTests(unittest.TestCase):
             health.COMFYUI,
             "_request_json",
             side_effect=responses,
-        ):
+        ), patch.object(health.shutil, "which", return_value="/usr/bin/tool"):
             report = health.health_report()
         self.assertTrue(report["render_ready"])
         self.assertTrue(report["production_video_ready"])
