@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -52,17 +53,25 @@ class _CapturePage:
 class _CaptureContext:
     def __init__(self, page):
         self.pages = [page]
-        self.saved = None
+        self.indexed_db = None
 
     def new_page(self):
         page = _CapturePage()
         self.pages.append(page)
         return page
 
-    def storage_state(self, *, path, indexed_db=False):
-        self.saved = (Path(path), indexed_db)
-        Path(path).write_text('{"cookies":[],"origins":[]}', encoding="utf-8")
-        return {"cookies": [], "origins": []}
+    def storage_state(self, *, indexed_db=False):
+        self.indexed_db = indexed_db
+        return {
+            "cookies": [
+                {"name": "SESSDATA", "value": "secret", "domain": ".bilibili.tv", "path": "/"},
+                {"name": "GMAIL_AT", "value": "other-secret", "domain": "mail.google.com", "path": "/"},
+            ],
+            "origins": [
+                {"origin": "https://studio.bilibili.tv", "localStorage": [{"name": "lang", "value": "en"}]},
+                {"origin": "https://github.com", "localStorage": [{"name": "x", "value": "y"}]},
+            ],
+        }
 
 
 class _CaptureBrowser:
@@ -153,6 +162,42 @@ class BilibiliHardeningTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "requires a visible GUI display"):
                 hardened._require_interactive_display()
 
+    def test_storage_state_sanitizer_drops_non_bilibili_credentials(self):
+        scoped = hardened._sanitize_storage_state(
+            {
+                "cookies": [
+                    {"name": "SESSDATA", "domain": ".bilibili.tv", "value": "keep"},
+                    {"name": "sessionKey", "domain": ".claude.ai", "value": "drop"},
+                ],
+                "origins": [
+                    {"origin": "https://studio.bilibili.tv", "localStorage": []},
+                    {"origin": "https://mail.google.com", "localStorage": []},
+                ],
+            }
+        )
+        self.assertEqual([c["domain"] for c in scoped["cookies"]], [".bilibili.tv"])
+        self.assertEqual([o["origin"] for o in scoped["origins"]], ["https://studio.bilibili.tv"])
+
+    def test_sanitize_storage_state_file_writes_bilibili_only(self):
+        source = self.root / "raw.json"
+        output = self.root / "scoped.json"
+        source.write_text(
+            json.dumps(
+                {
+                    "cookies": [
+                        {"name": "SESSDATA", "domain": ".bilibili.tv", "value": "keep"},
+                        {"name": "GMAIL_AT", "domain": "mail.google.com", "value": "drop"},
+                    ],
+                    "origins": [{"origin": "https://studio.bilibili.tv", "localStorage": []}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        hardened.sanitize_storage_state_file(source, output)
+        scoped = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(len(scoped["cookies"]), 1)
+        self.assertEqual(scoped["cookies"][0]["name"], "SESSDATA")
+
     def test_devtools_active_port_builds_loopback_websocket(self):
         user_data = self.root / "Chrome User Data"
         user_data.mkdir()
@@ -165,7 +210,7 @@ class BilibiliHardeningTests(unittest.TestCase):
             "ws://127.0.0.1:9222/devtools/browser/example-token",
         )
 
-    def test_capture_existing_chrome_saves_authenticated_storage_state(self):
+    def test_capture_existing_chrome_saves_bilibili_only_storage_state(self):
         page = _CapturePage()
         context = _CaptureContext(page)
         browser = _CaptureBrowser(context)
@@ -184,7 +229,10 @@ class BilibiliHardeningTests(unittest.TestCase):
 
         self.assertEqual(result, target.resolve())
         self.assertTrue(target.is_file())
-        self.assertEqual(context.saved, (target.resolve(), True))
+        saved = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual([c["domain"] for c in saved["cookies"]], [".bilibili.tv"])
+        self.assertEqual([o["origin"] for o in saved["origins"]], ["https://studio.bilibili.tv"])
+        self.assertTrue(context.indexed_db)
         self.assertEqual(chromium.endpoint, "ws://127.0.0.1:9222/devtools/browser/example-token")
         self.assertEqual(chromium.timeout, 30000)
         self.assertTrue(page.reloaded)
