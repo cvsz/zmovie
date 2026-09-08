@@ -30,7 +30,10 @@ jobs:
         run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
 
       - name: Validate installers
-        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/install-comfyui.sh
+        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/install-comfyui.sh scripts/smoke-zmovie-comfyui.sh
+
+      - name: Validate ComfyUI smoke workflow
+        run: python -m json.tool workflows/comfyui/smoke_api.json > /dev/null
 
       - name: Test
         run: python -m unittest discover -s tests -v
