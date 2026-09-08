@@ -7,11 +7,13 @@ import sys
 import threading
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from . import bilibili as legacy
 
 _LOCK = threading.Lock()
 _LEGACY_AUTOMATE = legacy._automate_publish
+_BILIBILI_DOMAIN_SUFFIXES = ("bilibili.tv", "bilibili.com")
 
 prepare_bilibili_publish = legacy.prepare_bilibili_publish
 approve_publish_job = legacy.approve_publish_job
@@ -97,6 +99,52 @@ def _devtools_ws_endpoint(user_data_dir: Path) -> str:
     return f"ws://127.0.0.1:{port}{websocket_path}"
 
 
+def _is_bilibili_host(value: str) -> bool:
+    host = str(value or "").strip().lower().lstrip(".")
+    return any(host == suffix or host.endswith(f".{suffix}") for suffix in _BILIBILI_DOMAIN_SUFFIXES)
+
+
+def _sanitize_storage_state(data: dict[str, Any]) -> dict[str, Any]:
+    """Keep only Bilibili cookies and origin storage from a browser context snapshot."""
+    cookies = [
+        dict(cookie)
+        for cookie in list(data.get("cookies") or [])
+        if isinstance(cookie, dict) and _is_bilibili_host(str(cookie.get("domain") or ""))
+    ]
+    origins: list[dict[str, Any]] = []
+    for origin in list(data.get("origins") or []):
+        if not isinstance(origin, dict):
+            continue
+        parsed = urlparse(str(origin.get("origin") or ""))
+        if parsed.hostname and _is_bilibili_host(parsed.hostname):
+            origins.append(dict(origin))
+    return {"cookies": cookies, "origins": origins}
+
+
+def sanitize_storage_state_file(source: Path, output: Path) -> Path:
+    """Write a least-privilege Bilibili-only Playwright storage-state file."""
+    source = source.expanduser().resolve()
+    output = output.expanduser().resolve()
+    if not source.is_file():
+        raise FileNotFoundError(f"browser state file not found: {source}")
+    try:
+        raw = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"invalid browser state JSON: {source}") from exc
+    if not isinstance(raw, dict):
+        raise RuntimeError("browser state must be a JSON object")
+    scoped = _sanitize_storage_state(raw)
+    if not scoped["cookies"] and not scoped["origins"]:
+        raise RuntimeError("browser state contains no Bilibili cookies or origin storage")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(scoped, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        output.chmod(0o600)
+    except OSError:
+        pass
+    return output
+
+
 def capture_existing_chrome_session(
     state_path: Path,
     *,
@@ -107,7 +155,7 @@ def capture_existing_chrome_session(
 
     This does not launch a new browser and does not ask for Google credentials. The
     operator explicitly enables Chrome remote debugging locally, approves Chrome's
-    connection prompt, and zMovie snapshots the existing context storage state.
+    connection prompt, and zMovie snapshots only Bilibili cookies/origin storage.
     """
     state_path = state_path.expanduser().resolve()
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +196,11 @@ def capture_existing_chrome_session(
                     "Sign in to https://studio.bilibili.tv/ in that same Chrome window, then rerun capture-chrome."
                 )
 
-            context.storage_state(path=state_path, indexed_db=True)
+            raw_state = context.storage_state(indexed_db=True)
+            scoped_state = _sanitize_storage_state(raw_state)
+            if not scoped_state["cookies"] and not scoped_state["origins"]:
+                raise RuntimeError("authenticated Chrome context produced no Bilibili browser state")
+            state_path.write_text(json.dumps(scoped_state, ensure_ascii=False, indent=2), encoding="utf-8")
             try:
                 state_path.chmod(0o600)
             except OSError:
@@ -262,6 +314,10 @@ def main(argv: list[str] | None = None) -> int:
     capture.add_argument("--user-data-dir", default="")
     capture.add_argument("--cdp-endpoint", default="")
 
+    sanitize = sub.add_parser("sanitize-state", help="strip a browser state file down to Bilibili-only storage")
+    sanitize.add_argument("--input", required=True)
+    sanitize.add_argument("--output", required=True)
+
     session = sub.add_parser("session", help="validate the saved Creator Center session")
     session.add_argument("--state", default=str(legacy.STATE_PATH))
     session.add_argument("--no-probe", action="store_true")
@@ -299,7 +355,29 @@ def main(argv: list[str] | None = None) -> int:
                 user_data_dir=data_dir,
                 cdp_endpoint=args.cdp_endpoint,
             )
-            _print({"status": "captured", "state_path": str(path), "source": "existing_chrome"})
+            scoped = json.loads(path.read_text(encoding="utf-8"))
+            _print(
+                {
+                    "status": "captured",
+                    "state_path": str(path),
+                    "source": "existing_chrome",
+                    "scope": "bilibili_only",
+                    "cookies": len(scoped.get("cookies") or []),
+                    "origins": len(scoped.get("origins") or []),
+                }
+            )
+        elif args.command == "sanitize-state":
+            path = sanitize_storage_state_file(Path(args.input), Path(args.output))
+            scoped = json.loads(path.read_text(encoding="utf-8"))
+            _print(
+                {
+                    "status": "sanitized",
+                    "state_path": str(path),
+                    "scope": "bilibili_only",
+                    "cookies": len(scoped.get("cookies") or []),
+                    "origins": len(scoped.get("origins") or []),
+                }
+            )
         elif args.command == "session":
             _print(session_status(Path(args.state), probe=not args.no_probe))
         elif args.command == "prepare":
