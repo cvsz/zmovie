@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zMovie — Cinematic Prompt Generator</title>
+  <meta name="description" content="Generate production-ready cinematic AI video prompts with deterministic seeds and history.">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">ZEAzDEV / zMovie</p>
+      <h1>Cinematic Prompt Generator</h1>
+      <p>Generate reproducible 20-second continuous long-take action prompts for Wan 3.0-style workflows.</p>
+    </header>
+
+    <section class="panel controls">
+      <div class="field">
+        <label for="seed">Seed <span>optional</span></label>
+        <input id="seed" type="number" placeholder="42">
+      </div>
+      <div class="field">
+        <label for="count">Count</label>
+        <input id="count" type="number" min="1" max="20" value="1">
+      </div>
+      <label class="checkbox">
+        <input id="history" type="checkbox" checked>
+        Save generation history
+      </label>
+      <button id="generate" class="primary">Generate Prompt</button>
+      <button id="refresh-history" class="secondary">Refresh History</button>
+    </section>
+
+    <p id="status" class="status" aria-live="polite"></p>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <section class="panel history-panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">LOCAL HISTORY</p>
+          <h2>Recent generations</h2>
+        </div>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </section>
+  </main>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
