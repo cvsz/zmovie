@@ -15,8 +15,9 @@ from .bilibili import list_publish_jobs
 
 PRODUCTION_DURATION_SECONDS = 30
 PRODUCTION_VOICE = "th-TH-PremwadeeNeural"
-PRODUCTION_TTS_RATE = "-15%"
-PRODUCTION_PROFILE = "thai-30s-voice-music-v2"
+PRODUCTION_TTS_RATE = launch.DEFAULT_TTS_RATE
+PRODUCTION_MUSIC_GAIN = launch.DEFAULT_MUSIC_GAIN
+PRODUCTION_PROFILE = "thai-30s-voice-music-v3"
 VOICE_START_SECONDS = launch.DEFAULT_VOICE_START_SECONDS
 MIN_MUSIC_OUTRO_SECONDS = 1.5
 SAFE_SUPERSEDE_PUBLISH_STATUSES = {"prepared", "failed"}
@@ -98,6 +99,15 @@ def _validate_result(result: dict[str, Any]) -> None:
         raise RuntimeError(
             "production voice-start mismatch: "
             f"expected {VOICE_START_SECONDS:.2f}s, got {float(media.get('voice_start_seconds') or 0):.3f}s"
+        )
+    if str(media.get("tts_rate") or "") != PRODUCTION_TTS_RATE:
+        raise RuntimeError(
+            f"production TTS rate mismatch: expected {PRODUCTION_TTS_RATE}, got {media.get('tts_rate')!r}"
+        )
+    if abs(float(media.get("music_gain") or 0) - PRODUCTION_MUSIC_GAIN) > 0.0001:
+        raise RuntimeError(
+            "production music-gain mismatch: "
+            f"expected {PRODUCTION_MUSIC_GAIN:.3f}, got {float(media.get('music_gain') or 0):.3f}"
         )
 
 
@@ -240,6 +250,7 @@ def create_production_candidate() -> dict[str, Any]:
         "tts_provider": "edge",
         "tts_voice": PRODUCTION_VOICE,
         "tts_rate": PRODUCTION_TTS_RATE,
+        "music_gain": PRODUCTION_MUSIC_GAIN,
         "voice_preflight_seconds": round(voice_duration, 3),
         "voice_start_seconds": VOICE_START_SECONDS,
         "minimum_music_outro_seconds": MIN_MUSIC_OUTRO_SECONDS,
