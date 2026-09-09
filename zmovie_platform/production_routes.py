@@ -83,6 +83,30 @@ def _ensure_no_active_render(project_id: str) -> None:
         raise HTTPException(status_code=409, detail="project already has active render jobs")
 
 
+def _require_ready_provider_from_state(state: dict[str, Any], provider_id: str) -> None:
+    ready = {str(item.get("id") or "") for item in state.get("providers", []) if isinstance(item, dict)}
+    if provider_id in ready:
+        return
+    blocked = next(
+        (
+            item
+            for item in state.get("blocked_providers", [])
+            if isinstance(item, dict) and str(item.get("id") or "") == provider_id
+        ),
+        None,
+    )
+    if blocked is not None:
+        reasons = ", ".join(str(item) for item in blocked.get("reasons") or [])
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"production render provider is configured but not production-ready: {provider_id}; "
+                f"{reasons or 'runtime readiness failed'}. Run 'sudo zmovie-ctl doctor'."
+            ),
+        )
+    raise HTTPException(status_code=409, detail=f"production render provider is not configured: {provider_id}")
+
+
 @router.post("/content/storyboard", tags=["production"])
 def one_click_content_storyboard(
     payload: ContentStoryboardRequest,
@@ -130,9 +154,7 @@ def production_render(
 ) -> dict[str, object]:
     require_project(project_id, actor)
     state = production_readiness(project_id)
-    configured = {str(item["id"]) for item in state.get("providers", [])}
-    if payload.provider not in configured:
-        raise HTTPException(status_code=409, detail=f"production render provider is not configured: {payload.provider}")
+    _require_ready_provider_from_state(state, payload.provider)
     if not state["qc"]["passed"]:
         raise HTTPException(status_code=409, detail={"message": "project failed QC", "qc": state["qc"]})
     _ensure_no_active_render(project_id)
