@@ -104,7 +104,7 @@ install_or_upgrade(){
 
   local tmp
   tmp="$(mktemp -d)"
-  trap "rm -rf -- '$tmp'" EXIT
+  trap 'rm -rf -- "$tmp"' EXIT
   log "fetching ${REPO_URL} (${REPO_REF})"
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
   install -d -o root -g root -m 0755 "$INSTALL_DIR"
@@ -132,6 +132,7 @@ ZMOVIE_PUBLISH_ROOT=${DATA_DIR}/publish
 ZMOVIE_OBJECT_ROOT=${DATA_DIR}/objects
 ZMOVIE_AUDIT_PATH=${DATA_DIR}/audit.jsonl
 ZMOVIE_AUTH_ENABLED=${ZMOVIE_AUTH_ENABLED:-true}
+ZMOVIE_ENABLE_DOCS=${ZMOVIE_ENABLE_DOCS:-false}
 ZMOVIE_SECRET_KEY=${secret}
 ZMOVIE_ADMIN_USER=${ZMOVIE_ADMIN_USER:-admin}
 ZMOVIE_ADMIN_PASSWORD=${generated_password}
@@ -163,6 +164,7 @@ EOF
       PORT="${existing_port:-$PORT}"
     fi
     grep -q '^ZMOVIE_PUBLISH_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_PUBLISH_ROOT=%s\n' "$DATA_DIR/publish" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_ENABLE_DOCS=' "$ENV_FILE" || printf 'ZMOVIE_ENABLE_DOCS=%s\n' "${ZMOVIE_ENABLE_DOCS:-false}" >>"$ENV_FILE"
     grep -q '^ZMOVIE_TTS_PROVIDER=' "$ENV_FILE" || printf 'ZMOVIE_TTS_PROVIDER=edge\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_TTS_VOICE=' "$ENV_FILE" || printf 'ZMOVIE_TTS_VOICE=en-US-AriaNeural\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_BILIBILI_STATE_PATH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_STATE_PATH=%s\n' "$DATA_DIR/bilibili/storage_state.json" >>"$ENV_FILE"
@@ -229,7 +231,7 @@ EOF
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
   log "installation healthy"
   log "Studio: ${PUBLIC_BASE_URL}/studio"
-  log "API docs: ${PUBLIC_BASE_URL}/docs"
+  log "API docs: disabled by default; set ZMOVIE_ENABLE_DOCS=true to expose ${PUBLIC_BASE_URL}/docs"
   log "Bilibili Google login requires a one-time interactive browser session."
   log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
   log "For a server, securely copy the resulting storage_state.json to ${DATA_DIR}/bilibili/storage_state.json and chown ${SERVICE_USER}:${SERVICE_USER}."

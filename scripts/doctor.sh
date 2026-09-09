@@ -15,7 +15,6 @@ log "probing zMovie: ${ZMOVIE_URL%/}/api/v2/health"
 ZHEALTH="$(curl -fsS --max-time 8 "${ZMOVIE_URL%/}/api/v2/health")" || fail "zMovie health endpoint is unavailable"
 printf '%s\n' "$ZHEALTH" | python3 -m json.tool
 
-COMFYUI_URL="$(printf '%s' "$ZHEALTH" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("comfyui",{}).get("url") or "http://127.0.0.1:8188")')"
 log "probing ComfyUI: ${COMFYUI_URL%/}/system_stats"
 CSTATS="$(curl -fsS --max-time 8 "${COMFYUI_URL%/}/system_stats")" || fail "ComfyUI API is unavailable"
 

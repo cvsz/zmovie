@@ -1,1 +1,1 @@
-Production API mutation routes should require authentication when `ZMOVIE_AUTH_ENABLED=true`; health and login/bootstrap discovery remain intentionally accessible.
+Production API mutation and legacy history/generation routes require authentication when `ZMOVIE_AUTH_ENABLED=true`; health and login/bootstrap discovery remain intentionally accessible. Legacy paths remain for compatibility, while `/studio` is the primary operator surface.

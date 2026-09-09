@@ -1,1 +1,1 @@
-CI validates Python 3.11–3.13, API/platform tests, compile checks, smoke generation and Docker image build.
+CI validates Python 3.11–3.14, focused lint, dependency vulnerabilities, shell and JavaScript syntax, API/platform tests, compile checks, smoke generation, Compose configuration and Docker image build.

@@ -21,9 +21,9 @@ class RuntimePathTests(unittest.TestCase):
             code = (
                 "import app; "
                 "app.init_db(); "
-                "assert app.DB_PATH == __import__('pathlib').Path(r'%s').resolve(); "
+                f"assert app.DB_PATH == __import__('pathlib').Path({str(db_path)!r}).resolve(); "
                 "assert app.DATA_DIR == app.DB_PATH.parent"
-            ) % str(db_path)
+            )
             subprocess.run([sys.executable, "-c", code], env=env, cwd=root, check=True)
             self.assertTrue(db_path.is_file())
             self.assertFalse((root / "data" / "zmovie.db").exists())

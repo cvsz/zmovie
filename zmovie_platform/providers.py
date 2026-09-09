@@ -56,10 +56,10 @@ class MockProvider:
             "-vf", "drawtext=text='zMovie render placeholder':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=(h-text_h)/2",
             "-r", "24", "-pix_fmt", "yuv420p", str(target),
         ]
-        proc = subprocess.run(command, capture_output=True, text=True, timeout=max(60, duration * 4))
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=max(60, duration * 4), check=False)
         if proc.returncode != 0:
             command = [ffmpeg, "-y", "-f", "lavfi", "-i", f"color=c=black:s=1280x720:d={duration}", "-r", "24", "-pix_fmt", "yuv420p", str(target)]
-            proc = subprocess.run(command, capture_output=True, text=True, timeout=max(60, duration * 4))
+            proc = subprocess.run(command, capture_output=True, text=True, timeout=max(60, duration * 4), check=False)
         if proc.returncode != 0:
             raise RuntimeError(proc.stderr[-1000:])
         return {"status": "completed", "output_path": str(target), "kind": "video"}
@@ -91,7 +91,7 @@ class GenericWebhookProvider:
             body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"provider HTTP {exc.code}: {body[:1000]}") from exc
         if not isinstance(data, dict):
-            raise RuntimeError("provider response must be a JSON object")
+            raise TypeError("provider response must be a JSON object")
         return data
 
 
@@ -183,7 +183,7 @@ class ComfyUIProvider:
 
     @staticmethod
     def _frames(duration: int, fps: int) -> int:
-        raw = max(1, int(round(duration * fps)))
+        raw = max(1, round(duration * fps))
         multiple = max(1, int(os.getenv("ZMOVIE_COMFYUI_FRAME_MULTIPLE", "4")))
         offset = int(os.getenv("ZMOVIE_COMFYUI_FRAME_OFFSET", "1"))
         remainder = (raw - offset) % multiple
@@ -194,7 +194,7 @@ class ComfyUIProvider:
         configured = os.getenv("ZMOVIE_COMFYUI_SEED", "").strip()
         if configured:
             return int(configured)
-        digest = hashlib.sha256(f"{job_id}\0{prompt}".encode("utf-8")).digest()
+        digest = hashlib.sha256(f"{job_id}\0{prompt}".encode()).digest()
         return int.from_bytes(digest[:8], "big") & ((1 << 63) - 1)
 
     @staticmethod

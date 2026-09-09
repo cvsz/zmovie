@@ -132,7 +132,7 @@ def sanitize_storage_state_file(source: Path, output: Path) -> Path:
     except (OSError, json.JSONDecodeError) as exc:
         raise RuntimeError(f"invalid browser state JSON: {source}") from exc
     if not isinstance(raw, dict):
-        raise RuntimeError("browser state must be a JSON object")
+        raise TypeError("browser state must be a JSON object")
     scoped = _sanitize_storage_state(raw)
     if not scoped["cookies"] and not scoped["origins"]:
         raise RuntimeError("browser state contains no Bilibili cookies or origin storage")

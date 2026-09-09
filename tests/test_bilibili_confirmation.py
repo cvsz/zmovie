@@ -4,8 +4,7 @@ from pathlib import Path
 from unittest import mock
 
 from zmovie_platform import storage
-from zmovie_platform.publishers import bilibili
-from zmovie_platform.publishers import bilibili_confirm
+from zmovie_platform.publishers import bilibili, bilibili_confirm
 from zmovie_platform.repository import add_asset, save_project
 from zmovie_platform.storyboard import create_storyboard
 

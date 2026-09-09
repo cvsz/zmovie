@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from .storage import DB_PATH, ensure_database
 
 
 def _verify_database(path: Path) -> None:
-    with sqlite3.connect(path) as conn:
+    with closing(sqlite3.connect(path)) as conn:
         result = conn.execute("PRAGMA quick_check").fetchone()
         if result is None or str(result[0]).lower() != "ok":
             raise RuntimeError(f"SQLite integrity check failed for {path}: {result}")
@@ -28,8 +29,9 @@ def create_backup(root: Path = Path("data/backups")) -> Path:
     temp.unlink(missing_ok=True)
 
     try:
-        with sqlite3.connect(DB_PATH) as source, sqlite3.connect(temp) as destination:
+        with closing(sqlite3.connect(DB_PATH)) as source, closing(sqlite3.connect(temp)) as destination:
             source.backup(destination)
+            destination.commit()
         _verify_database(temp)
         temp.replace(target)
     finally:
@@ -48,7 +50,8 @@ def restore_backup(source: Path) -> Path:
 
     ensure_database()
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(source) as backup_conn, sqlite3.connect(DB_PATH) as destination:
+    with closing(sqlite3.connect(source)) as backup_conn, closing(sqlite3.connect(DB_PATH)) as destination:
         backup_conn.backup(destination)
+        destination.commit()
     _verify_database(DB_PATH)
     return DB_PATH

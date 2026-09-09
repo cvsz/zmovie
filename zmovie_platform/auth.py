@@ -14,13 +14,16 @@ from .storage import connect
 PBKDF2_ROUNDS = 250_000
 TOKEN_TTL_SECONDS = int(os.getenv("ZMOVIE_TOKEN_TTL", "86400"))
 MEDIA_PREVIEW_TOKEN_TTL_SECONDS = max(60, min(int(os.getenv("ZMOVIE_MEDIA_PREVIEW_TOKEN_TTL", "3600")), 14400))
+_EPHEMERAL_SECRET = secrets.token_bytes(32)
 
 
 def _secret() -> bytes:
     value = os.getenv("ZMOVIE_SECRET_KEY", "").strip()
     if not value:
-        # Safe local default for zero-config development; production installer writes a random secret.
-        value = "zmovie-local-development-secret-change-me"
+        # An unset key must never become a predictable deployment-wide credential.
+        # Installer/Compose paths configure a persistent key; direct zero-config
+        # development gets process-local tokens that expire on restart.
+        return _EPHEMERAL_SECRET
     return value.encode("utf-8")
 
 

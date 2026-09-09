@@ -8,10 +8,11 @@ import subprocess
 import sys
 import time
 import uuid
-from dataclasses import dataclass, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from ..models import Project, utcnow
 from ..repository import get_project, list_assets
@@ -116,7 +117,7 @@ def _cover_from_video(video: Path, output: Path) -> Path:
         "2",
         str(output),
     ]
-    proc = subprocess.run(command, capture_output=True, text=True, timeout=90)
+    proc = subprocess.run(command, capture_output=True, text=True, timeout=90, check=False)
     if proc.returncode != 0 or not output.is_file():
         raise RuntimeError(f"cover generation failed: {proc.stderr[-1000:]}")
     return output.resolve()

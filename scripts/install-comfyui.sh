@@ -39,7 +39,7 @@ install -d -o "$COMFYUI_USER" -g "$COMFYUI_USER" -m 0750 \
   "$COMFYUI_DATA/custom_nodes"
 
 tmp="$(mktemp -d)"
-trap "rm -rf -- '$tmp'" EXIT
+trap 'rm -rf -- "$tmp"' EXIT
 log "fetching ${COMFYUI_REPO} (${COMFYUI_REF})"
 git clone --depth 1 --branch "$COMFYUI_REF" "$COMFYUI_REPO" "$tmp/repo"
 rsync -a --delete --exclude '.git/' --exclude '.venv/' "$tmp/repo/" "$COMFYUI_DIR/"

@@ -168,7 +168,8 @@ http://127.0.0.1:8080/studio
 API documentation:
 
 ```text
-http://127.0.0.1:8080/docs
+disabled by default. To enable it locally:
+ZMOVIE_ENABLE_DOCS=true uvicorn main:app --reload --host 127.0.0.1 --port 8080
 ```
 
 ## ComfyUI

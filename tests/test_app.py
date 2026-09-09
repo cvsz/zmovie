@@ -22,6 +22,11 @@ class AppTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["service"], "zmovie")
 
+    def test_api_docs_are_disabled_by_default(self) -> None:
+        self.assertIsNone(app.app.docs_url)
+        self.assertIsNone(app.app.redoc_url)
+        self.assertIsNone(app.app.openapi_url)
+
     def test_generate_is_deterministic_with_seed(self) -> None:
         request = app.GenerateRequest(count=1, seed=42, save_history=False)
         first = app.generate(request)

@@ -133,3 +133,33 @@ def health_report() -> dict[str, object]:
         "render_ready": render_ready,
         "production_video_ready": production_video_ready,
     }
+
+
+def public_health_report(report: dict[str, object] | None = None) -> dict[str, object]:
+    """Return liveness/readiness facts without disclosing server-local details."""
+    source = report if report is not None else health_report()
+    raw_comfyui = source.get("comfyui")
+    comfyui: dict[str, object] = {}
+    if isinstance(raw_comfyui, dict):
+        for key in (
+            "configured",
+            "reachable",
+            "workflow_valid",
+            "nodes_available",
+            "ready",
+            "accelerated",
+            "workflow_role",
+            "missing_node_types",
+        ):
+            if key in raw_comfyui:
+                comfyui[key] = raw_comfyui[key]
+    return {
+        "status": source.get("status", "unknown"),
+        "service": "zmovie",
+        "database_exists": bool(source.get("database_exists")),
+        "ffmpeg": bool(source.get("ffmpeg")),
+        "ffprobe": bool(source.get("ffprobe")),
+        "comfyui": comfyui,
+        "render_ready": bool(source.get("render_ready")),
+        "production_video_ready": bool(source.get("production_video_ready")),
+    }

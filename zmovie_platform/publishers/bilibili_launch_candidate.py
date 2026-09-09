@@ -50,6 +50,7 @@ def _font_path() -> str:
         capture_output=True,
         text=True,
         timeout=10,
+        check=False,
     )
     if proc.returncode != 0:
         return ""
@@ -91,6 +92,7 @@ def _local_tts(output: Path, text: str) -> tuple[bool, str]:
         capture_output=True,
         text=True,
         timeout=120,
+        check=False,
     )
     return proc.returncode == 0 and output.is_file() and output.stat().st_size > 1024, Path(engine).name
 
@@ -265,11 +267,15 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
 
         filters = [
             f"[0:v]{','.join(vf)}[vout]",
-            "[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
-            f"volume=0.055,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]",
-            "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
-            "highpass=f=80,lowpass=f=12000,acompressor=threshold=0.12:ratio=3:attack=5:release=80,"
-            f"adelay=850|850,volume=1.75,apad=whole_dur={duration},atrim=duration={duration},asplit=2[voice_sc][voice_mix]",
+            (
+                "[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+                f"volume=0.055,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]"
+            ),
+            (
+                "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
+                "highpass=f=80,lowpass=f=12000,acompressor=threshold=0.12:ratio=3:attack=5:release=80,"
+                f"adelay=850|850,volume=1.75,apad=whole_dur={duration},atrim=duration={duration},asplit=2[voice_sc][voice_mix]"
+            ),
             "[music][voice_sc]sidechaincompress=threshold=0.012:ratio=14:attack=8:release=420[ducked]",
             "[ducked][voice_mix]amix=inputs=2:duration=longest:dropout_transition=2[mixed]",
             f"[mixed]loudnorm=I=-15:TP=-1.5:LRA=9,apad=whole_dur={duration},atrim=duration={duration}[aout]",
@@ -304,7 +310,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 str(output),
             ]
         )
-        proc = subprocess.run(command, capture_output=True, text=True, timeout=600)
+        proc = subprocess.run(command, capture_output=True, text=True, timeout=600, check=False)
         if proc.returncode != 0 or not output.is_file():
             raise RuntimeError(f"launch video render failed: {proc.stderr[-1600:]}")
 

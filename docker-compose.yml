@@ -9,8 +9,10 @@ services:
       ZMOVIE_MEDIA_ROOT: /app/data/media
       ZMOVIE_EXPORT_ROOT: /app/data/exports
       ZMOVIE_PUBLISH_ROOT: /app/data/publish
+      ZMOVIE_OBJECT_ROOT: /app/data/objects
+      ZMOVIE_ENABLE_DOCS: "${ZMOVIE_ENABLE_DOCS:-false}"
       ZMOVIE_AUTH_ENABLED: "${ZMOVIE_AUTH_ENABLED:-true}"
-      ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-zmovie-change-this-before-internet-exposure}"
+      ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-}"
       ZMOVIE_ADMIN_USER: "${ZMOVIE_ADMIN_USER:-admin}"
       ZMOVIE_ADMIN_PASSWORD: "${ZMOVIE_ADMIN_PASSWORD:-}"
       ZMOVIE_PROVIDER_WEBHOOK: "${ZMOVIE_PROVIDER_WEBHOOK:-}"

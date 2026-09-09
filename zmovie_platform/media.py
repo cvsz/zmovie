@@ -37,7 +37,7 @@ def assemble_project(project: Project, clips: list[str], *, output_name: str | N
     ffmpeg = shutil.which("ffmpeg")
     assert ffmpeg
     copy_cmd = [ffmpeg, "-y", "-f", "concat", "-safe", "0", "-i", str(concat), "-c", "copy", str(output)]
-    proc = subprocess.run(copy_cmd, capture_output=True, text=True, timeout=1800)
+    proc = subprocess.run(copy_cmd, capture_output=True, text=True, timeout=1800, check=False)
     if proc.returncode != 0:
         # Normalize mixed provider outputs to a broadly compatible delivery format.
         transcode_cmd = [
@@ -45,7 +45,7 @@ def assemble_project(project: Project, clips: list[str], *, output_name: str | N
             "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output),
         ]
-        proc = subprocess.run(transcode_cmd, capture_output=True, text=True, timeout=3600)
+        proc = subprocess.run(transcode_cmd, capture_output=True, text=True, timeout=3600, check=False)
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr[-2000:])
     return {"status": "completed", "output_path": str(output), "clip_count": len(valid), "ffmpeg": True}
@@ -61,7 +61,7 @@ def probe_media(path: str) -> dict[str, Any]:
         return info
     proc = subprocess.run(
         [ffprobe, "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(target)],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True, text=True, timeout=30, check=False,
     )
     if proc.returncode == 0:
         try:

@@ -43,7 +43,7 @@ class PlatformTestCase(unittest.TestCase):
         self.assertGreater(len(manifest["render_order"]), 0)
 
     def test_local_auth_password_and_token(self):
-        user = auth.create_user("admin", "correct-horse-battery-staple")
+        auth.create_user("admin", "correct-horse-battery-staple")
         self.assertEqual(auth.user_count(), 1)
         authenticated = auth.authenticate("admin", "correct-horse-battery-staple")
         self.assertIsNotNone(authenticated)

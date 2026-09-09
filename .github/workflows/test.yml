@@ -30,7 +30,9 @@ jobs:
         run: python -m compileall -q zmovie.py app.py main.py zmovie_platform tests
 
       - name: Validate Studio MP4 preview JavaScript
-        run: node --check static/studio-preview.js
+        run: |
+          node --check static/app.js
+          node --check static/studio-preview.js
 
       - name: Validate installers and operations scripts
         run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/install-comfyui.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/reset-production-projects.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/copy-github-environment.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh
@@ -88,5 +90,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
       - name: Build production container
         run: docker build -t zmovie:test .
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies and quality tools
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install ruff==0.16.1 pip-audit==2.10.1
+
+      - name: Run focused Python lint
+        run: ruff check app.py main.py zmovie_platform tests
+
+      - name: Audit Python dependencies
+        run: pip-audit -r requirements.txt
+
+      - name: Validate shell scripts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck --severity=warning install.sh install-docker.sh scripts/*.sh
+
+      - name: Validate frontend JavaScript
+        run: |
+          node --check static/app.js
+          node --check static/studio-preview.js

@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from contextlib import contextmanager
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 DB_PATH = Path(os.getenv("ZMOVIE_DB_PATH", "data/zmovie.db"))
 
@@ -101,8 +102,9 @@ CREATE INDEX IF NOT EXISTS idx_publish_status ON publish_jobs(status, created_at
 
 def ensure_database() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         conn.executescript(SCHEMA)
+        conn.commit()
 
 
 @contextmanager

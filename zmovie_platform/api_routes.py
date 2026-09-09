@@ -13,14 +13,25 @@ from .auth import authenticate, bootstrap_admin_from_env, create_user, decode_to
 from .backup import create_backup
 from .config import settings
 from .exporter import export_project
-from .health import health_report
+from .health import public_health_report
 from .jobs import submit
 from .metrics import increment, snapshot
 from .pipeline import assemble_from_jobs, render_project, render_shot, run_end_to_end
 from .presets import PRESETS
 from .providers import provider_specs
 from .qc import director_notes, inspect_project
-from .repository import add_asset, delete_project, get_job, get_project, list_assets, list_jobs, list_projects, save_project
+from .rate_limit import allowed
+from .repository import (
+    add_asset,
+    delete_project,
+    get_job,
+    get_project,
+    list_assets,
+    list_jobs,
+    list_projects,
+    save_project,
+)
+from .security import validate_managed_asset_path
 from .storyboard import create_storyboard, production_manifest, regenerate_project_prompts
 
 router = APIRouter(prefix="/api/v2")
@@ -50,9 +61,19 @@ def require_project(project_id: str, actor: dict[str, str]) -> Any:
     return project
 
 
+def _enforce_rate_limit(request: Request, *, name: str, limit: int) -> None:
+    host = request.client.host if request.client else "unknown"
+    if not allowed(f"{name}:{host}", limit=limit, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail="rate limit exceeded",
+            headers={"Retry-After": "60"},
+        )
+
+
 @router.get("/health", tags=["system"])
 def v2_health() -> dict[str, object]:
-    return health_report()
+    return public_health_report()
 
 
 @router.get("/capabilities", tags=["system"])
@@ -77,7 +98,8 @@ def metrics(actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]
 
 
 @router.post("/auth/bootstrap", tags=["auth"])
-def bootstrap(payload: BootstrapRequest) -> dict[str, object]:
+def bootstrap(payload: BootstrapRequest, request: Request) -> dict[str, object]:
+    _enforce_rate_limit(request, name="auth-bootstrap", limit=5)
     if not settings.auth_enabled:
         return {"auth_enabled": False, "message": "authentication is disabled"}
     if user_count() != 0:
@@ -91,7 +113,8 @@ def bootstrap(payload: BootstrapRequest) -> dict[str, object]:
 
 
 @router.post("/auth/login", tags=["auth"])
-def login(payload: LoginRequest) -> dict[str, object]:
+def login(payload: LoginRequest, request: Request) -> dict[str, object]:
+    _enforce_rate_limit(request, name="auth-login", limit=10)
     user = authenticate(payload.username, payload.password)
     if user is None:
         increment("auth.login_failed")
@@ -219,7 +242,11 @@ def assets(project_id: str, kind: str | None = None, actor: dict[str, str] = Dep
 @router.post("/projects/{project_id}/assets", tags=["assets"])
 def create_asset(project_id: str, payload: AssetRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
-    result = add_asset(project_id, payload.kind, payload.name, payload.path)
+    try:
+        asset_path = validate_managed_asset_path(payload.path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    result = add_asset(project_id, payload.kind, payload.name, str(asset_path))
     audit("asset.create", actor=actor["username"], project_id=project_id, asset_id=result["id"])
     return result
 

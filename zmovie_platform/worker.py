@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 
 from .pipeline import render_shot
-from .repository import get_job
 
 
 def main() -> int:

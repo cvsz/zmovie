@@ -8,8 +8,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from . import bilibili as legacy
 from ..repository import get_project
+from . import bilibili as legacy
 
 _VIDEO_EXTENSIONS = {".mp4", ".mov", ".mkv", ".webm", ".m4v"}
 _SUBTITLE_EXTENSIONS = {".srt", ".vtt", ".ass"}
@@ -51,6 +51,7 @@ def _probe_video(path: Path) -> dict[str, Any]:
         capture_output=True,
         text=True,
         timeout=60,
+        check=False,
     )
     if proc.returncode != 0:
         raise RuntimeError(f"ffprobe rejected final video: {proc.stderr[-800:]}")
