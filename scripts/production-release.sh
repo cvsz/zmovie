@@ -21,6 +21,7 @@ quote(){ printf '%q' "$1"; }
 [[ -x "$INSTALL_DIR/scripts/production-gen.sh" || -f "$INSTALL_DIR/scripts/production-gen.sh" ]] || fail "production-gen.sh not installed; upgrade zMovie first"
 [[ -f "$INSTALL_DIR/scripts/verify-bilibili-session.sh" ]] || fail "Bilibili session verifier not installed"
 id "$SERVICE_USER" >/dev/null 2>&1 || fail "service user not found: $SERVICE_USER"
+command -v ffmpeg >/dev/null 2>&1 || fail "ffmpeg not found"
 command -v ffprobe >/dev/null 2>&1 || fail "ffprobe not found"
 command -v sha256sum >/dev/null 2>&1 || fail "sha256sum not found"
 command -v python3 >/dev/null 2>&1 || fail "python3 not found"
@@ -119,6 +120,27 @@ if int(audio.get("channels") or 0) != 2:
 if errors:
     raise SystemExit("production media QC failed: " + ", ".join(errors))
 print(f"media_qc=PASS duration={duration:.3f}s video=h264 1280x720 audio=aac/48000Hz/stereo")
+PY
+
+AUDIO_STATS="$(ffmpeg -hide_banner -nostats -i "$PACKAGE_VIDEO" -map 0:a:0 -af volumedetect -f null - 2>&1)"
+MEAN_VOLUME="$(printf '%s\n' "$AUDIO_STATS" | sed -n 's/.*mean_volume: \([^ ]*\) dB.*/\1/p' | tail -n1)"
+MAX_VOLUME="$(printf '%s\n' "$AUDIO_STATS" | sed -n 's/.*max_volume: \([^ ]*\) dB.*/\1/p' | tail -n1)"
+python3 - "$MEAN_VOLUME" "$MAX_VOLUME" <<'PY'
+import math
+import sys
+
+mean_raw, max_raw = sys.argv[1:3]
+if not mean_raw or not max_raw or mean_raw == "-inf" or max_raw == "-inf":
+    raise SystemExit("production audio signal QC failed: silent or unmeasurable audio")
+mean_db = float(mean_raw)
+max_db = float(max_raw)
+if not math.isfinite(mean_db) or not math.isfinite(max_db):
+    raise SystemExit("production audio signal QC failed: non-finite loudness")
+if max_db <= -35.0:
+    raise SystemExit(f"production audio signal QC failed: max_volume={max_db:.1f} dB is effectively silent")
+if mean_db <= -50.0:
+    raise SystemExit(f"production audio signal QC failed: mean_volume={mean_db:.1f} dB is effectively silent")
+print(f"audio_signal_qc=PASS mean_volume={mean_db:.1f}dB max_volume={max_db:.1f}dB")
 PY
 
 COVER_PROBE="$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x "$COVER_PATH")"
