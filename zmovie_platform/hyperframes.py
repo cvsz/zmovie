@@ -147,11 +147,14 @@ def apply_hyperframes_template(topic: str, template_id: str) -> tuple[str, dict[
     template = get_hyperframes_template(template_id)
     if template is None:
         raise ValueError(f"Hyperframes template not found: {template_id}")
-    base = str(topic or "").strip()
+    # Reserve prompt space for the template structure and safety constraints so
+    # a maximum-length operator brief cannot truncate the template guardrails.
+    base = " ".join(str(topic or "").strip().split())[:3500]
     guidance = str(template["script_seed"]).strip()
     safety = "; ".join(str(item) for item in template["safety_notes"])
     enhanced = (
-        f"{base}\n\nHyperframes template: {template['title']} ({template['category']}).\n"
-        f"Creative structure:\n{guidance}\nSafety constraints: {safety}"
+        f"Hyperframes template: {template['title']} ({template['category']}).\n"
+        f"Creative structure:\n{guidance}\nSafety constraints: {safety}\n\n"
+        f"Operator brief: {base}"
     ).strip()
-    return enhanced, template
+    return enhanced[:5000], template
