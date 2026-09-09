@@ -104,7 +104,7 @@ install_or_upgrade(){
 
   local tmp
   tmp="$(mktemp -d)"
-  trap 'rm -rf -- "$tmp"' EXIT
+  trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
   log "fetching ${REPO_URL} (${REPO_REF})"
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
   install -d -o root -g root -m 0755 "$INSTALL_DIR"
