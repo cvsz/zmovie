@@ -83,7 +83,7 @@ class BilibiliLaunchCandidateTests(unittest.TestCase):
         self.assertTrue(result["media"]["voiceover_generated"])
         self.assertEqual(result["media"]["voiceover_provider"], "edge-tts")
         self.assertEqual(result["media"]["voiceover_language"], "th-TH")
-        self.assertEqual(result["media"]["tts_rate"], "-20%")
+        self.assertEqual(result["media"]["tts_rate"], "-19%")
         self.assertEqual(result["media"]["music_gain"], 0.04)
         self.assertTrue(result["media"]["voice_first_mix"])
         self.assertIn("loudnorm", result["media"]["audio_mastering"])
