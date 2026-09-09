@@ -109,8 +109,11 @@ Service / installation:
 Production data plane:
   providers                    list configured render providers
   projects                     list projects
+  hyperframes [--query TEXT] [--category CATEGORY]
+                               list copied Hyperframes creative templates
   readiness PROJECT_ID         strict production readiness
-  content --topic TEXT [...]   one-click content + storyboard generator
+  content --topic TEXT [--template TEMPLATE_ID] [...]
+                               one-click content + Hyperframes storyboard generator
   render PROJECT_ID PROVIDER   real production render; mock is rejected
   assemble PROJECT_ID          strict final assembly
   prepare PROJECT_ID           prepare Bilibili package from validated final
@@ -151,6 +154,7 @@ menu(){
 11) Restart service
 12) Upgrade full stack
 13) Show redacted config
+14) Hyperframes templates
  0) Exit
 EOF
     read -r -p 'Select: ' choice
@@ -178,6 +182,7 @@ EOF
       11) need_root; systemctl restart "$SERVICE_NAME"; status ;;
       12) need_root; bash "$INSTALL_DIR/install.sh" upgrade ;;
       13) config_redacted ;;
+      14) app hyperframes ;;
       0) return ;;
       *) log "unknown selection" ;;
     esac
@@ -201,6 +206,7 @@ case "$COMMAND" in
   studio) printf '%s/studio\n' "${PUBLIC_BASE_URL%/}" ;;
   providers) app providers ;;
   projects) app projects ;;
+  hyperframes) app hyperframes "$@" ;;
   readiness)
     [[ $# -eq 1 ]] || fail "usage: zmovie-ctl readiness PROJECT_ID"
     app readiness "$1"
