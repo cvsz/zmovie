@@ -13,6 +13,14 @@
 
 The original deterministic Wan-style prompt generator remains available, but the primary application is now the full production Studio.
 
+## Documentation
+
+Start with the [documentation index](docs/INDEX.md), which maps user, operator,
+developer, contributor, and maintainer workflows to the canonical guides and
+focused provider runbooks. The [status vocabulary](docs/STATUS.md) and
+[documentation standard](docs/DOCUMENTATION_STANDARD.md) define how readiness,
+evidence, security, and future i18n work are described.
+
 ## Production status
 
 > Status reflects verified implementation/runtime evidence. A feature is not marked complete when only code exists or when external publication has not been remotely confirmed.
@@ -383,12 +391,13 @@ Media, exports, publication packages, browser state and other runtime data are k
 ## Tests
 
 ```bash
-python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v
+python3 -m pip install -r requirements.txt
+python3 -m unittest discover -s tests -v
+python3 scripts/verify_docs.py
 ```
 
 CI validates supported Python versions, Studio preview JavaScript syntax, installer/operations shell syntax, the model-free ComfyUI workflow, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, ad-candidate metadata, one-click production generation safeguards, dependency/security quality gates, and the production container build without making external inference or publication calls.
 
 ## License
 
-Use and adapt for your own zMovie workflows.
+zMovie is licensed under the MIT License. See [`LICENSE`](LICENSE).
