@@ -14,11 +14,19 @@ PORT="${ZMOVIE_PORT:-8080}"
 PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-http://zmovie.zeaz.dev}"
 ACTION="${1:-install}"
 PLAYWRIGHT_DIR="${DATA_DIR}/playwright"
+INSTALL_TMP=""
 
 log(){ printf '[zMovie] %s\n' "$*"; }
 fail(){ printf '[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
 need_root(){ [[ "${EUID}" -eq 0 ]] || fail "run as root (for example: curl ... | sudo bash)"; }
 random_hex(){ openssl rand -hex "${1:-24}"; }
+cleanup_install_tmp(){
+  if [[ -n "${INSTALL_TMP:-}" ]]; then
+    rm -rf -- "$INSTALL_TMP"
+    INSTALL_TMP=""
+  fi
+}
+trap cleanup_install_tmp EXIT
 
 backup_data(){
   mkdir -p "$BACKUP_DIR"
@@ -104,7 +112,7 @@ install_or_upgrade(){
 
   local tmp
   tmp="$(mktemp -d)"
-  trap "rm -rf -- $(printf '%q' "$tmp")" EXIT
+  INSTALL_TMP="$tmp"
   log "fetching ${REPO_URL} (${REPO_REF})"
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$tmp/repo"
   install -d -o root -g root -m 0755 "$INSTALL_DIR"
