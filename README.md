@@ -20,15 +20,15 @@ The original deterministic Wan-style prompt generator remains available, but the
 | Area | Status | Notes |
 |---|---|---|
 | Native zMovie service | ✅ Verified | systemd deployment and health endpoint verified on the production host |
-| Public Studio | ✅ Verified | `http://zmovie.zeaz.dev/studio` |
+| Public Studio | ✅ Verified | `https://zmovie.zeaz.dev/studio` |
 | Studio MP4 preview | ✅ Implemented | signed managed-media preview URLs with browser video controls |
 | Managed project reset | ✅ Implemented | transactional SQLite backup, `prj_*` cleanup, rollback-safe regeneration |
 | ComfyUI API integration | ✅ Verified | queue/history/output contract verified with model-free smoke workflow |
 | Accelerated AI-video production | ⚠️ Not evidenced | current verified host is CPU-only; real accelerated video model throughput is not proven |
 | Bilibili browser session | ✅ Verified | Bilibili-only state scope and live Creator Center authentication verified |
 | Bilibili hardened package flow | ✅ Verified | prepare → approve → preflight gates exercised with a real managed MP4 |
-| Full Ads Production | ✅ Implemented | `ZeaZDev × Bilibili` 30-second creator-publishing campaign generator |
-| Voice-over / soundtrack | ✅ Implemented | Edge/Bing TTS primary, local `espeak-ng` fallback, FFmpeg mix/ducking/loudness normalization |
+| Full Ads Production | ✅ Implemented | idempotent `ZeaZDev × Bilibili` 30-second creator-publishing campaign generator |
+| Voice-over / soundtrack | ✅ Implemented | maintained `edge-tts` Thai neural voice, FFmpeg ducking/mastering, fail-closed local fallback policy |
 | Real Bilibili public publication | ⏳ Pending | complete only after live upload plus confirmed public URL and `remote_confirmation=true` |
 | YouTube publishing | ⏸ Deferred | intentionally deferred until Bilibili completion evidence exists |
 
@@ -90,9 +90,9 @@ Public URL Confirmation
 - Bilibili Creator Center publishing with one-time manual Google login and reusable browser session;
 - hardened Bilibili prepare/approve/preflight/publish/public-confirmation workflow;
 - rollback-safe `prj_*` project cleanup and production regeneration;
-- `ZeaZDev × Bilibili` Full Ads Production generator;
-- Edge/Bing TTS voice-over with local `espeak-ng` fallback;
-- FFmpeg-generated soundtrack, voice/music ducking, AAC stereo output, and `loudnorm` mastering;
+- idempotent `ZeaZDev × Bilibili` Full Ads Production generator with protected publish-state preservation;
+- maintained `edge-tts` Thai neural voice-over with local `espeak-ng` fallback disabled by default;
+- FFmpeg-generated soundtrack, 1.2-second music intro, voice/music ducking, AAC stereo output, and `loudnorm` mastering;
 - native systemd and Docker deployments;
 - automated Python and Docker CI.
 
@@ -115,7 +115,7 @@ http://<server-ip>:8080/studio
 Production Studio:
 
 ```text
-http://zmovie.zeaz.dev/studio
+https://zmovie.zeaz.dev/studio
 ```
 
 Operations:
@@ -223,41 +223,44 @@ See [`workflows/comfyui/README.md`](workflows/comfyui/README.md).
 
 ## Full Ads Production audio
 
-The production ad generator no longer uses a silent `anullsrc` track. The current audio chain is:
+The production ad generator uses a voice-first 30-second mix with an audible music intro and outro:
 
 ```text
-Narration
+0.0–1.2s
+Music intro
   ↓
-Edge/Bing TTS (default: en-US-AriaNeural)
-  ↓ fallback
-espeak-ng local TTS
-
-Generated soundtrack
+Thai narration + ducked soundtrack
   ↓
-FFmpeg voice/music mix + ducking
+edge-tts 7.2.8
+th-TH-PremwadeeNeural at -15%
   ↓
-loudnorm I=-16 / TP=-1.5 / LRA=11
+FFmpeg compression / sidechain ducking
+  ↓
+loudnorm I=-15 / TP=-1.5 / LRA=9
   ↓
 AAC stereo 48 kHz
   ↓
-final.mp4
+Music/logo outro >= 1.5s
+  ↓
+final.mp4 locked to 30.0s
 ```
 
-Native defaults:
+Production defaults:
 
 ```text
 ZMOVIE_TTS_PROVIDER=edge
-ZMOVIE_TTS_VOICE=en-US-AriaNeural
+ZMOVIE_TTS_VOICE=th-TH-PremwadeeNeural
+ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK=false
 ```
 
-Generate a clean production candidate with backup/rollback protection:
+The one-click production generator creates an online SQLite backup first, generates and validates the new 30-second candidate, and only then supersedes older exact-match candidates that have no protected publish state. Candidates with approval/submission/publication evidence, scheduled or unknown states are preserved.
 
 ```bash
-sudo bash /opt/zmovie/scripts/reset-production-projects.sh DELETE-ALL-PRJ
+sudo bash /opt/zmovie/scripts/production-gen.sh
 sudo bash /opt/zmovie/scripts/list-bilibili-publish-candidates.sh
 ```
 
-The generated asset metadata records the actual TTS provider, audio codec/sample rate/channels, campaign identity, and the fact that `ZeaZDev × Bilibili` does not represent an official partnership.
+The generated asset metadata records the actual TTS provider, Thai voice, `-15%` rate, 1.2-second voice start, audio codec/sample rate/channels, exact duration lock, campaign identity, and the fact that `ZeaZDev × Bilibili` does not represent an official partnership.
 
 ## Bilibili Creator Center automation
 
@@ -374,6 +377,7 @@ Media, exports, publication packages, browser state and other runtime data are k
 - Google passwords, 2FA codes and authenticator secrets are not accepted by zMovie.
 - `ZMOVIE_BILIBILI_AUTO_PUBLISH=false` is the default; real publication requires an approved publish job.
 - Managed MP4 preview URLs are short-lived and scoped to media access; arbitrary filesystem paths are rejected.
+- Production TTS fails closed by default rather than silently switching to a robotic local voice.
 - Use TLS/reverse proxy/Cloudflare Tunnel when exposing the service to the internet.
 
 ## Tests
@@ -383,7 +387,7 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-CI validates supported Python versions, Studio preview JavaScript syntax, installer/operations shell syntax, the model-free ComfyUI workflow, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, ad-candidate metadata, and the production container build without making external inference or publication calls.
+CI validates supported Python versions, Studio preview JavaScript syntax, installer/operations shell syntax, the model-free ComfyUI workflow, deterministic prompt output, the project pipeline, provider contracts, Bilibili publication-package state transitions, ad-candidate metadata, one-click production generation safeguards, dependency/security quality gates, and the production container build without making external inference or publication calls.
 
 ## License
 
