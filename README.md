@@ -161,8 +161,8 @@ git clone https://github.com/cvsz/zmovie.git
 cd zmovie
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m playwright install chromium
+python3 -m pip install -r requirements.txt
+python3 -m playwright install chromium
 cp .env.example .env
 uvicorn main:app --reload --host 127.0.0.1 --port 8080
 ```

@@ -1,1 +1,6 @@
+# FFmpeg media processing
+
+See the [documentation index](../docs/INDEX.md) for canonical guides and
+cross-component procedures.
+
 FFmpeg is used for local placeholder validation and final clip concatenation/transcoding. The platform still functions in manifest-only mode when FFmpeg is absent.

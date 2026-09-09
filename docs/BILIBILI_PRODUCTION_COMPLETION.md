@@ -33,7 +33,7 @@ Current capture writes a least-privilege state containing only Bilibili cookies/
 Copy that state file to the native zMovie host, then install transactionally:
 
 ```bash
-sudo bash /opt/zmovie/scripts/install-bilibili-session.sh /home/cvsz/storage_state.json
+sudo bash /opt/zmovie/scripts/install-bilibili-session.sh /path/to/storage_state.json
 ```
 
 The installer:

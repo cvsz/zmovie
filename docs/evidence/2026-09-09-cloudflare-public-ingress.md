@@ -22,7 +22,7 @@ Verified in the operator run:
 The Cloudflare resources were applied from the local zworkforce checkout at:
 
 ```text
-/home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare/
+<zworkforce-checkout>/infrastructure/terraform/cloudflare/
 ```
 
 The operator explicitly reported that pre-existing dirty files were preserved and **no commit or push was made** after the apply.
