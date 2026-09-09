@@ -5,6 +5,7 @@ INSTALL_DIR="${ZMOVIE_INSTALL_DIR:-/opt/zmovie}"
 ENV_FILE="${ZMOVIE_ENV:-/etc/zmovie/zmovie.env}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
 LOCK_DIR="${ZMOVIE_PRODUCTION_GEN_LOCK:-/var/lib/zmovie/.production-gen.lock}"
+BACKUP_DIR="${ZMOVIE_PRODUCTION_GEN_BACKUP_DIR:-/var/backups/zmovie}"
 
 log(){ printf '[zMovie production-gen] %s\n' "$*"; }
 fail(){ printf '[zMovie production-gen] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -29,9 +30,47 @@ cleanup(){
 }
 trap cleanup EXIT
 
+DB_PATH="$(sed -n 's/^ZMOVIE_DB_PATH=//p' "$ENV_FILE" | tail -n1)"
+DB_PATH="${DB_PATH:-/var/lib/zmovie/zmovie.db}"
+install -d -o root -g "$SERVICE_USER" -m 0750 "$BACKUP_DIR"
+if [[ -f "$DB_PATH" ]]; then
+  STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+  BACKUP_FILE="$BACKUP_DIR/zmovie-production-gen-${STAMP}-$$.db"
+  python3 - "$DB_PATH" "$BACKUP_FILE" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+temp = target.with_suffix(target.suffix + ".tmp")
+temp.unlink(missing_ok=True)
+try:
+    with sqlite3.connect(source) as src, sqlite3.connect(temp) as dst:
+        src.backup(dst)
+    with sqlite3.connect(temp) as check:
+        result = check.execute("PRAGMA quick_check").fetchone()
+        if result is None or str(result[0]).lower() != "ok":
+            raise SystemExit(f"SQLite integrity check failed: {result}")
+        violations = check.execute("PRAGMA foreign_key_check").fetchall()
+        if violations:
+            raise SystemExit(f"SQLite foreign-key check failed: {violations[:10]}")
+    temp.replace(target)
+finally:
+    temp.unlink(missing_ok=True)
+PY
+  chmod 0640 "$BACKUP_FILE"
+  chown root:"$SERVICE_USER" "$BACKUP_FILE"
+  log "database backup: $BACKUP_FILE"
+else
+  log "database does not exist yet; pre-generation backup skipped"
+fi
+
 log "profile: Thai neural voice + music, exact 30-second output"
+log "timeline: 1.2s music intro, narration with ducked music, at least 1.5s music outro"
 log "voice: th-TH-PremwadeeNeural at -15%; local robotic fallback disabled"
-log "no Bilibili upload, approval, or publication will be performed"
+log "idempotency: stale exact-match unapproved candidates are superseded only after a new candidate passes QC"
+log "protected publish states are preserved; no Bilibili upload, approval, or publication will be performed"
 
 runuser -u "$SERVICE_USER" -- bash -lc "
   cd '$INSTALL_DIR'
@@ -59,6 +98,7 @@ except json.JSONDecodeError:
 
 media = data.get("media") or {}
 profile = data.get("production_gen") or {}
+cleanup = profile.get("supersede_cleanup") or {}
 asset = data.get("final_asset") or {}
 final_path = Path(str(asset.get("path") or ""))
 if not final_path.is_file():
@@ -71,8 +111,19 @@ print(f"duration_seconds={float(media.get('duration_seconds') or 0):.3f}")
 print(f"video={media.get('codec')} {media.get('width')}x{media.get('height')} {media.get('frame_rate')}")
 print(f"audio={media.get('audio_codec')} {media.get('audio_sample_rate')}Hz channels={media.get('audio_channels')}")
 print(f"voice_preflight_seconds={profile.get('voice_preflight_seconds')}")
+print(f"voice_start_seconds={profile.get('voice_start_seconds')}")
 print(f"tts_voice={profile.get('tts_voice')} rate={profile.get('tts_rate')}")
 print(f"profile={profile.get('profile')}")
+print(f"superseded_projects={len(cleanup.get('deleted') or [])}")
+print(f"preserved_protected_projects={len(cleanup.get('preserved') or [])}")
+print(f"cleanup_complete={bool(cleanup.get('cleanup_complete'))}")
+for item in cleanup.get("preserved") or []:
+    print(
+        "preserved_project="
+        f"{item.get('project_id')} statuses={','.join(item.get('statuses') or [])}"
+    )
+for error in cleanup.get("errors") or []:
+    print(f"cleanup_warning={error}")
 print("publication=NOT PERFORMED")
 PY
 then
