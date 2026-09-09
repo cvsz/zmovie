@@ -4,6 +4,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -30,7 +31,7 @@ class BackupAndHealthTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_backup_includes_committed_wal_data_and_restores(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA wal_autocheckpoint=0")
             conn.execute("CREATE TABLE IF NOT EXISTS backup_probe(value TEXT NOT NULL)")
@@ -39,16 +40,16 @@ class BackupAndHealthTests(unittest.TestCase):
 
         target = backup.create_backup(self.root / "backups")
         self.assertTrue(target.is_file())
-        with sqlite3.connect(target) as conn:
+        with closing(sqlite3.connect(target)) as conn, conn:
             self.assertEqual(conn.execute("SELECT value FROM backup_probe").fetchone()[0], "before-backup")
             self.assertEqual(conn.execute("PRAGMA quick_check").fetchone()[0], "ok")
 
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute("DELETE FROM backup_probe")
             conn.execute("INSERT INTO backup_probe(value) VALUES('after-backup')")
             conn.commit()
         backup.restore_backup(target)
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             self.assertEqual(conn.execute("SELECT value FROM backup_probe").fetchone()[0], "before-backup")
 
     def _base_env(self) -> dict[str, str]:
