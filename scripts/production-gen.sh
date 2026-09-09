@@ -66,9 +66,10 @@ else
   log "database does not exist yet; pre-generation backup skipped"
 fi
 
-log "profile: Thai neural voice + music, exact 30-second output"
+log "profile: Thai neural voice + soft background music, exact 30-second output"
 log "timeline: 1.2s music intro, narration with ducked music, at least 1.5s music outro"
-log "voice: th-TH-PremwadeeNeural at -15%; local robotic fallback disabled"
+log "voice: th-TH-PremwadeeNeural at -20%; local robotic fallback disabled"
+log "music: soft background gain 0.04 with sidechain ducking under narration"
 log "idempotency: stale exact-match unapproved candidates are superseded only after a new candidate passes QC"
 log "protected publish states are preserved; no Bilibili upload, approval, or publication will be performed"
 
@@ -113,6 +114,7 @@ print(f"audio={media.get('audio_codec')} {media.get('audio_sample_rate')}Hz chan
 print(f"voice_preflight_seconds={profile.get('voice_preflight_seconds')}")
 print(f"voice_start_seconds={profile.get('voice_start_seconds')}")
 print(f"tts_voice={profile.get('tts_voice')} rate={profile.get('tts_rate')}")
+print(f"music_gain={profile.get('music_gain')}")
 print(f"profile={profile.get('profile')}")
 print(f"superseded_projects={len(cleanup.get('deleted') or [])}")
 print(f"preserved_protected_projects={len(cleanup.get('preserved') or [])}")
