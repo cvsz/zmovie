@@ -82,12 +82,80 @@ def production_video_report(raw_path: str) -> dict[str, Any]:
     return report
 
 
+def _comfyui_production_status() -> dict[str, Any]:
+    """Return fail-closed ComfyUI production-video readiness without leaking host paths."""
+    try:
+        from .health import health_report
+
+        report = health_report()
+    except Exception as exc:
+        return {
+            "production_ready": False,
+            "reasons": ["renderer_health_probe_failed"],
+            "detail": type(exc).__name__,
+        }
+
+    raw = report.get("comfyui")
+    comfy = raw if isinstance(raw, dict) else {}
+    role = str(comfy.get("workflow_role") or "generic").strip().lower() or "generic"
+    reasons: list[str] = []
+    if not bool(comfy.get("configured")):
+        reasons.append("workflow_not_configured")
+    if not bool(comfy.get("reachable")):
+        reasons.append("renderer_unreachable")
+    if not bool(comfy.get("workflow_valid")):
+        reasons.append("workflow_invalid")
+    if not bool(comfy.get("nodes_available")):
+        reasons.append("workflow_nodes_unavailable")
+    if role != "video":
+        reasons.append(f"workflow_role_not_video:{role}")
+    if not bool(comfy.get("accelerated")):
+        reasons.append("accelerator_required")
+    if not bool(report.get("ffmpeg")):
+        reasons.append("ffmpeg_required")
+    if not bool(report.get("ffprobe")):
+        reasons.append("ffprobe_required")
+    production_ready = bool(report.get("production_video_ready")) and not reasons
+    if not production_ready and not reasons:
+        reasons.append("production_video_ready_false")
+    return {
+        "production_ready": production_ready,
+        "reasons": reasons,
+        "workflow_role": role,
+        "accelerated": bool(comfy.get("accelerated")),
+        "reachable": bool(comfy.get("reachable")),
+    }
+
+
+def _production_provider_catalog() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    ready: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for item in provider_specs():
+        provider_id = str(item.get("id") or "")
+        if provider_id == "mock" or not bool(item.get("configured")):
+            continue
+        if provider_id == "comfyui":
+            status = _comfyui_production_status()
+            if not status["production_ready"]:
+                blocked.append(
+                    {
+                        "id": provider_id,
+                        "name": str(item.get("name") or provider_id),
+                        "production_ready": False,
+                        "reasons": list(status.get("reasons") or []),
+                        "workflow_role": str(status.get("workflow_role") or ""),
+                        "accelerated": bool(status.get("accelerated")),
+                        "reachable": bool(status.get("reachable")),
+                    }
+                )
+                continue
+        ready.append(item)
+    return ready, blocked
+
+
 def _production_providers() -> list[dict[str, Any]]:
-    return [
-        item
-        for item in provider_specs()
-        if item.get("id") != "mock" and bool(item.get("configured"))
-    ]
+    ready, _ = _production_provider_catalog()
+    return ready
 
 
 def _shot_video_map(project_id: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
@@ -109,6 +177,32 @@ def _shot_video_map(project_id: str) -> tuple[dict[str, dict[str, Any]], list[st
     return selected, missing
 
 
+def _invalid_shot_outputs(project_id: str, missing: list[str]) -> list[dict[str, str]]:
+    pending = set(missing)
+    found: set[str] = set()
+    invalid: list[dict[str, str]] = []
+    for job in list_jobs(project_id, limit=5000):
+        shot_id = str(job.get("shot_id") or "")
+        if shot_id not in pending or shot_id in found:
+            continue
+        if str(job.get("status")) != "completed" or not job.get("output_path"):
+            continue
+        raw_path = str(job.get("output_path") or "")
+        media = production_video_report(raw_path)
+        if media["ready"]:
+            continue
+        invalid.append(
+            {
+                "shot_id": shot_id,
+                "provider": str(job.get("provider") or ""),
+                "reason": str(media.get("reason") or "unknown"),
+                "output_name": Path(raw_path).name,
+            }
+        )
+        found.add(shot_id)
+    return invalid
+
+
 def _final_video(project_id: str) -> dict[str, Any] | None:
     for asset in list_assets(project_id, "final"):
         raw = str(asset.get("path") or "")
@@ -127,9 +221,10 @@ def production_readiness(project_id: str) -> dict[str, Any]:
         raise ValueError("project not found")
     qc = inspect_project(project)
     shot_map, missing = _shot_video_map(project_id)
+    invalid_outputs = _invalid_shot_outputs(project_id, missing)
     total_shots = sum(len(scene.shots) for scene in project.scenes)
     final = _final_video(project_id)
-    providers = _production_providers()
+    providers, blocked_providers = _production_provider_catalog()
     export_path = EXPORT_ROOT / f"{project_id}.zip"
     return {
         "schema": "zmovie.production-readiness/v1",
@@ -145,6 +240,7 @@ def production_readiness(project_id: str) -> dict[str, Any]:
             "completed_shots": len(shot_map),
             "total_shots": total_shots,
             "missing_shots": missing,
+            "invalid_outputs": invalid_outputs,
         },
         "assemble": {"ready": bool(qc.get("passed")) and total_shots > 0 and not missing},
         "final": {
@@ -161,6 +257,7 @@ def production_readiness(project_id: str) -> dict[str, Any]:
             {"id": str(item.get("id") or ""), "name": str(item.get("name") or "")}
             for item in providers
         ],
+        "blocked_providers": blocked_providers,
     }
 
 
@@ -168,9 +265,18 @@ def _require_production_provider(provider_id: str) -> None:
     provider_id = str(provider_id or "").strip()
     if provider_id == "mock":
         raise RuntimeError("Local mock is a dry-run provider and cannot be used for production rendering")
-    available = {str(item.get("id")) for item in _production_providers()}
-    if provider_id not in available:
-        raise RuntimeError(f"production render provider is not configured: {provider_id}")
+    available, blocked = _production_provider_catalog()
+    ready_ids = {str(item.get("id")) for item in available}
+    if provider_id in ready_ids:
+        return
+    blocked_item = next((item for item in blocked if item.get("id") == provider_id), None)
+    if blocked_item is not None:
+        reasons = ", ".join(str(item) for item in blocked_item.get("reasons") or [])
+        raise RuntimeError(
+            f"production render provider is configured but not production-ready: {provider_id}; "
+            f"{reasons or 'runtime readiness failed'}. Run 'sudo zmovie-ctl doctor' and configure a role=video accelerated renderer."
+        )
+    raise RuntimeError(f"production render provider is not configured: {provider_id}")
 
 
 def render_all_production(project_id: str, provider_id: str, max_workers: int = 2) -> dict[str, Any]:
@@ -462,7 +568,16 @@ def execute_production_run(project_id: str, run_id: str) -> dict[str, Any]:
         update(status="running", stage="render", error="")
         render = render_all_production(project_id, str(run["provider"]), int(run["max_workers"]))
         if render.get("status") != "completed":
-            raise RuntimeError(f"production render did not complete: {render.get('reason') or render.get('status')}")
+            reason = str(render.get("reason") or render.get("status") or "unknown")
+            invalid = ((render.get("readiness") or {}).get("render") or {}).get("invalid_outputs") or []
+            if invalid:
+                first = invalid[0] if isinstance(invalid[0], dict) else {}
+                reason += (
+                    f"; invalid_outputs={len(invalid)}; "
+                    f"first_reason={first.get('reason', 'unknown')}; "
+                    f"first_output={first.get('output_name', 'unknown')}"
+                )
+            raise RuntimeError(f"production render did not complete: {reason}")
         update(stage="assemble")
         assemble_production(project_id)
         update(stage="prepare-bilibili")
