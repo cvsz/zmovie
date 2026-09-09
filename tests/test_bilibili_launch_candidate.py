@@ -42,8 +42,9 @@ class BilibiliLaunchCandidateTests(unittest.TestCase):
                 "voiceover_voice": bilibili_launch_candidate.DEFAULT_TTS_VOICE,
                 "voiceover_language": "th-TH",
                 "voiceover_text": bilibili_launch_candidate.DEFAULT_VOICEOVER,
+                "tts_rate": bilibili_launch_candidate.DEFAULT_TTS_RATE,
                 "voice_first_mix": True,
-                "music_gain": 0.055,
+                "music_gain": bilibili_launch_candidate.DEFAULT_MUSIC_GAIN,
                 "voice_gain": 1.75,
                 "audio_mastering": "loudnorm I=-15 TP=-1.5 LRA=9",
             }
@@ -82,6 +83,8 @@ class BilibiliLaunchCandidateTests(unittest.TestCase):
         self.assertTrue(result["media"]["voiceover_generated"])
         self.assertEqual(result["media"]["voiceover_provider"], "edge-tts")
         self.assertEqual(result["media"]["voiceover_language"], "th-TH")
+        self.assertEqual(result["media"]["tts_rate"], "-20%")
+        self.assertEqual(result["media"]["music_gain"], 0.04)
         self.assertTrue(result["media"]["voice_first_mix"])
         self.assertIn("loudnorm", result["media"]["audio_mastering"])
 
