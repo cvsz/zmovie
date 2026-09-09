@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a scoped improvement to zMovie
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep the proposal focused and explain how it fits the documented
+        production, security, i18n, and evidence boundaries.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who is affected and what outcome is currently difficult?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-visible or maintainer-visible result.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: Name affected workflows, integrations, and explicit exclusions.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable checks that would prove the proposal is complete.
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact review
+      options:
+        - label: I considered documentation changes.
+          required: true
+        - label: I considered i18n, accessibility, and locale-formatting impact.
+          required: true
+        - label: I did not include credentials, private data, or unsupported production claims.
+          required: true

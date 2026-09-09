@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible problem in zMovie
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remove credentials, browser state, tokens, private host details,
+        personal data, and unredacted production logs before submitting.
+        Suspected vulnerabilities must be reported privately through SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Commit or deployment version
+      description: Provide a commit SHA, image tag, or reviewed deployment version.
+      placeholder: "commit SHA or image tag"
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment mode
+      options:
+        - Native systemd
+        - Docker Compose
+        - Local development
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Python, Node.js, Docker, FFmpeg, and renderer versions that matter.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Give the smallest safe sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted logs
+      description: Paste only sanitized, relevant output. Never include secrets or browser storage.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed credentials, tokens, browser state, private paths, and personal data.
+          required: true
+        - label: This is not a suspected security vulnerability requiring private disclosure.
+          required: true
