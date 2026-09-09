@@ -26,7 +26,9 @@ DEFAULT_CONCEPT = (
 )
 DEFAULT_DURATION = 30
 DEFAULT_TTS_VOICE = "th-TH-PremwadeeNeural"
+DEFAULT_TTS_RATE = "-20%"
 DEFAULT_VOICE_START_SECONDS = 1.2
+DEFAULT_MUSIC_GAIN = 0.04
 DEFAULT_VOICEOVER = (
     "พบกับ ซีมูฟวี่ จาก ซีแซดเดฟ ระบบผลิตวิดีโอแบบเซลฟ์โฮสต์ "
     "ตั้งแต่ไอเดีย สตอรี่บอร์ด เรนเดอร์ ตรวจคุณภาพ และตัดต่อ "
@@ -67,7 +69,7 @@ async def _save_edge_tts(output: Path, text: str, voice_id: str) -> None:
     communicate = edge_tts.Communicate(
         text=text,
         voice=voice_id,
-        rate="-15%",
+        rate=DEFAULT_TTS_RATE,
         pitch="+0Hz",
         volume="+0%",
     )
@@ -271,7 +273,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
             f"[0:v]{','.join(vf)}[vout]",
             (
                 "[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
-                f"volume=0.055,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]"
+                f"volume={DEFAULT_MUSIC_GAIN},afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]"
             ),
             (
                 "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
@@ -332,10 +334,10 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "voiceover_voice": str(voiceover["voice"]),
                 "voiceover_language": str(voiceover["language"]),
                 "voiceover_text": DEFAULT_VOICEOVER,
-                "tts_rate": "-15%",
+                "tts_rate": DEFAULT_TTS_RATE,
                 "voice_first_mix": True,
                 "voice_start_seconds": DEFAULT_VOICE_START_SECONDS,
-                "music_gain": 0.055,
+                "music_gain": DEFAULT_MUSIC_GAIN,
                 "voice_gain": 1.75,
                 "target_duration_seconds": duration,
                 "duration_locked": True,
