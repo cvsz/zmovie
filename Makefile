@@ -13,6 +13,7 @@ PROJECT_ID ?=
 RUN_ID ?=
 JOB_ID ?=
 TOPIC ?=
+TEMPLATE ?=
 CONFIRM ?=
 BACKEND ?= auto
 WORKFLOW ?=
@@ -21,7 +22,7 @@ RENDERER_URL ?= http://127.0.0.1:8188
 
 .PHONY: help install full-stack upgrade uninstall purge backup status health doctor logs restart start stop control ctl \
 	dev-setup dev test lint audit check compose-up compose-down compose-build compose-logs compose-ps \
-	renderer-install renderer-config renderer-smoke renderer-production providers projects readiness content render assemble prepare export production run-status \
+	renderer-install renderer-config renderer-smoke renderer-production providers projects hyperframes readiness content render assemble prepare export production run-status \
 	bili-session bili-status bili-approve bili-publish production-release
 
 help: ## Show Makefile commands
@@ -154,13 +155,16 @@ providers: ## List render providers
 projects: ## List projects
 	sudo zmovie-ctl projects
 
+hyperframes: ## List copied Hyperframes creative templates
+	sudo zmovie-ctl hyperframes
+
 readiness: ## Show strict production readiness; PROJECT_ID=prj_...
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
 	sudo zmovie-ctl readiness "$(PROJECT_ID)"
 
-content: ## Generate content + storyboard; TOPIC='...'
+content: ## Generate content + storyboard; TOPIC='...' optional TEMPLATE=showcase-clean
 	@test -n "$(TOPIC)" || { echo "TOPIC is required" >&2; exit 2; }
-	sudo zmovie-ctl content --topic "$(TOPIC)"
+	@set -Eeuo pipefail; args=(--topic "$(TOPIC)"); if [[ -n "$(TEMPLATE)" ]]; then args+=(--template "$(TEMPLATE)"); fi; sudo zmovie-ctl content "$${args[@]}"
 
 render: ## Render every shot with a real provider; PROJECT_ID=... PROVIDER=comfyui
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
