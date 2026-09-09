@@ -65,6 +65,31 @@ class ProductionWorkflowTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             production.render_all_production(self.project.id, "mock", 2)
 
+    def test_configured_comfyui_is_blocked_when_runtime_is_not_production_ready(self):
+        specs = [
+            {
+                "id": "comfyui",
+                "name": "ComfyUI / Local AI Renderer",
+                "configured": True,
+            }
+        ]
+        blocked_status = {
+            "production_ready": False,
+            "reasons": ["workflow_role_not_video:smoke", "accelerator_required"],
+            "workflow_role": "smoke",
+            "accelerated": False,
+            "reachable": True,
+        }
+        with mock.patch.object(production, "provider_specs", return_value=specs), mock.patch.object(
+            production, "_comfyui_production_status", return_value=blocked_status
+        ):
+            state = production.production_readiness(self.project.id)
+            self.assertEqual(state["providers"], [])
+            self.assertEqual(state["blocked_providers"][0]["id"], "comfyui")
+            self.assertIn("accelerator_required", state["blocked_providers"][0]["reasons"])
+            with self.assertRaisesRegex(RuntimeError, "configured but not production-ready"):
+                production._require_production_provider("comfyui")
+
     def test_readiness_requires_valid_video_for_every_shot(self):
         shots = [shot for scene in self.project.scenes for shot in scene.shots]
         for shot in shots:
@@ -78,6 +103,27 @@ class ProductionWorkflowTests(unittest.TestCase):
         self.assertTrue(state["assemble"]["ready"])
         self.assertFalse(state["final"]["ready"])
         self.assertEqual(state["render"]["completed_shots"], len(shots))
+        self.assertEqual(state["render"]["invalid_outputs"], [])
+
+    def test_readiness_reports_non_video_comfyui_outputs(self):
+        shot = self.project.scenes[0].shots[0]
+        job = new_job(self.project.id, shot.id, "comfyui")
+        job.status = "completed"
+        job.output_path = str(self.media / "preview.png")
+        save_job(job)
+
+        def report(path: str):
+            if Path(path).suffix == ".png":
+                return {"ready": False, "reason": "not_video_file", "path": path}
+            return {"ready": False, "reason": "file_missing", "path": path}
+
+        with mock.patch.object(production, "production_video_report", side_effect=report):
+            state = production.production_readiness(self.project.id)
+        invalid = state["render"]["invalid_outputs"]
+        self.assertEqual(len(invalid), 1)
+        self.assertEqual(invalid[0]["shot_id"], shot.id)
+        self.assertEqual(invalid[0]["reason"], "not_video_file")
+        self.assertEqual(invalid[0]["output_name"], "preview.png")
 
     def test_production_export_contains_final_media_metadata_and_checksums(self):
         final = self.media / self.project.id / "final.mp4"
