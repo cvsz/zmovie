@@ -65,7 +65,7 @@ async def _save_edge_tts(output: Path, text: str, voice_id: str) -> None:
     communicate = edge_tts.Communicate(
         text=text,
         voice=voice_id,
-        rate="-8%",
+        rate="-15%",
         pitch="+0Hz",
         volume="+0%",
     )
@@ -269,10 +269,10 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
             f"volume=0.055,afade=t=in:st=0:d=0.8,afade=t=out:st={max(duration - 1.2, 1)}:d=1.0[music]",
             "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
             "highpass=f=80,lowpass=f=12000,acompressor=threshold=0.12:ratio=3:attack=5:release=80,"
-            "adelay=850|850,volume=1.75,asplit=2[voice_sc][voice_mix]",
+            f"adelay=850|850,volume=1.75,apad=whole_dur={duration},atrim=duration={duration},asplit=2[voice_sc][voice_mix]",
             "[music][voice_sc]sidechaincompress=threshold=0.012:ratio=14:attack=8:release=420[ducked]",
-            "[ducked][voice_mix]amix=inputs=2:duration=first:dropout_transition=2,"
-            "loudnorm=I=-15:TP=-1.5:LRA=9[aout]",
+            "[ducked][voice_mix]amix=inputs=2:duration=longest:dropout_transition=2[mixed]",
+            f"[mixed]loudnorm=I=-15:TP=-1.5:LRA=9,apad=whole_dur={duration},atrim=duration={duration}[aout]",
         ]
 
         command.extend(
@@ -297,7 +297,8 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "192k",
                 "-ar",
                 "48000",
-                "-shortest",
+                "-t",
+                str(duration),
                 "-movflags",
                 "+faststart",
                 str(output),
@@ -308,6 +309,10 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
             raise RuntimeError(f"launch video render failed: {proc.stderr[-1600:]}")
 
         probe = _probe_media(ffprobe, output)
+        if abs(float(probe["duration_seconds"]) - float(duration)) > 0.15:
+            raise RuntimeError(
+                f"launch video duration mismatch: expected {duration}s, got {probe['duration_seconds']:.3f}s"
+            )
         probe.update(
             {
                 "font_rendered": bool(font),
@@ -318,9 +323,12 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "voiceover_voice": str(voiceover["voice"]),
                 "voiceover_language": str(voiceover["language"]),
                 "voiceover_text": DEFAULT_VOICEOVER,
+                "tts_rate": "-15%",
                 "voice_first_mix": True,
                 "music_gain": 0.055,
                 "voice_gain": 1.75,
+                "target_duration_seconds": duration,
+                "duration_locked": True,
                 "audio_mastering": "loudnorm I=-15 TP=-1.5 LRA=9",
             }
         )
