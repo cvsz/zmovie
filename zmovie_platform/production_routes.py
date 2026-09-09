@@ -10,6 +10,7 @@ from .api_routes import current_actor, require_project
 from .api_schemas import BilibiliPrepareRequest
 from .audit import write as audit
 from .content_storyboard import create_content_storyboard
+from .hyperframes import get_hyperframes_template, list_hyperframes_templates
 from .jobs import submit
 from .metrics import increment
 from .production import (
@@ -42,6 +43,7 @@ class ContentStoryboardRequest(BaseModel):
     target_duration_seconds: int = Field(default=60, ge=10, le=3600)
     scene_count: int | None = Field(default=None, ge=1, le=24)
     seed: int | None = None
+    template_id: str = Field(default="", max_length=80)
 
 
 class ProductionRenderRequest(BaseModel):
@@ -107,6 +109,32 @@ def _require_ready_provider_from_state(state: dict[str, Any], provider_id: str) 
     raise HTTPException(status_code=409, detail=f"production render provider is not configured: {provider_id}")
 
 
+@router.get("/hyperframes/templates", tags=["production"])
+def hyperframes_templates(
+    query: str = "",
+    category: str = "",
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    del actor
+    try:
+        items = list_hyperframes_templates(query=query, category=category)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"count": len(items), "items": items}
+
+
+@router.get("/hyperframes/templates/{template_id}", tags=["production"])
+def hyperframes_template(
+    template_id: str,
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    del actor
+    item = get_hyperframes_template(template_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Hyperframes template not found")
+    return item
+
+
 @router.post("/content/storyboard", tags=["production"])
 def one_click_content_storyboard(
     payload: ContentStoryboardRequest,
@@ -128,12 +156,18 @@ def one_click_content_storyboard(
             scene_count=payload.scene_count,
             seed=payload.seed,
             owner=actor["username"],
+            template_id=payload.template_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     project_id = str(result["project"]["id"])
     increment("content.storyboard.generated")
-    audit("content.storyboard.generate", actor=actor["username"], project_id=project_id)
+    audit(
+        "content.storyboard.generate",
+        actor=actor["username"],
+        project_id=project_id,
+        hyperframes_template=payload.template_id,
+    )
     return result
 
 
@@ -197,7 +231,6 @@ def production_prepare_bilibili(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     increment("production.publish.bilibili.prepared")
     audit("production.publish.bilibili.prepare", actor=actor["username"], project_id=project_id, job_id=job.get("id"))
-    # Reuse the publisher route's public-field policy without exposing local media paths.
     return {
         key: job[key]
         for key in (
