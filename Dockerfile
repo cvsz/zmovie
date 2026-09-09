@@ -9,7 +9,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     ZMOVIE_EXPORT_ROOT=/app/data/exports \
     ZMOVIE_PUBLISH_ROOT=/app/data/publish \
     ZMOVIE_TTS_PROVIDER=edge \
-    ZMOVIE_TTS_VOICE=en-US-AriaNeural \
+    ZMOVIE_TTS_VOICE=th-TH-PremwadeeNeural \
+    ZMOVIE_TTS_ALLOW_LOCAL_FALLBACK=false \
     ZMOVIE_BILIBILI_STATE_PATH=/app/data/bilibili/storage_state.json \
     ZMOVIE_AUTH_ENABLED=true
 
