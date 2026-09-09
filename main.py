@@ -45,7 +45,11 @@ async def production_security_headers(request: Request, call_next):
 @app.get("/studio", include_in_schema=False)
 def studio() -> HTMLResponse:
     html = Path("static/studio.html").read_text(encoding="utf-8")
-    preview_hook = '<script src="/static/studio-preview.js"></script>'
-    if preview_hook not in html:
-        html = html.replace("</body>", preview_hook + "\n</body>")
+    hooks = (
+        '<script src="/static/studio-preview.js"></script>',
+        '<script src="/static/hyperframes-studio.js"></script>',
+    )
+    for hook in hooks:
+        if hook not in html:
+            html = html.replace("</body>", hook + "\n</body>")
     return HTMLResponse(html)
