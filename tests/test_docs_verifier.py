@@ -1,8 +1,7 @@
+import importlib.util
 import tempfile
 import unittest
-import importlib.util
 from pathlib import Path
-
 
 VERIFIER_PATH = Path(__file__).resolve().parents[1] / "scripts" / "verify_docs.py"
 VERIFIER_SPEC = importlib.util.spec_from_file_location("zmovie_verify_docs", VERIFIER_PATH)
