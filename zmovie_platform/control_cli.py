@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .content_storyboard import create_content_storyboard
+from .hyperframes import TEMPLATE_CATEGORIES, list_hyperframes_templates
 from .production import (
     assemble_production,
     execute_production_run,
@@ -61,11 +62,16 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("providers", help="list render providers and configuration state")
     sub.add_parser("projects", help="list projects")
 
+    hyperframes = sub.add_parser("hyperframes", help="list Hyperframes creative templates")
+    hyperframes.add_argument("--query", default="")
+    hyperframes.add_argument("--category", choices=("", *TEMPLATE_CATEGORIES), default="")
+
     readiness = sub.add_parser("readiness", help="show strict production readiness")
     readiness.add_argument("project_id")
 
     content = sub.add_parser("content", help="generate content strategy and storyboard in one step")
     content.add_argument("--topic", required=True)
+    content.add_argument("--template", default="", help="Hyperframes template id, for example showcase-clean")
     content.add_argument("--name", default="")
     content.add_argument("--audience", default="general audience")
     content.add_argument("--goal", default="engagement")
@@ -145,6 +151,8 @@ def main(argv: list[str] | None = None) -> int:
             result: Any = provider_specs()
         elif args.command == "projects":
             result = list_projects(limit=500)
+        elif args.command == "hyperframes":
+            result = list_hyperframes_templates(query=args.query, category=args.category)
         elif args.command == "readiness":
             result = production_readiness(args.project_id)
         elif args.command == "content":
@@ -163,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
                 scene_count=args.scene_count,
                 seed=args.seed,
                 owner=args.owner,
+                template_id=args.template,
             )
         elif args.command == "render":
             _ensure_no_active_render(args.project_id)
