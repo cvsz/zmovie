@@ -61,6 +61,9 @@ class StableDiffusionCppProvider:
         "--video-frames",
         "--fps",
         "--backend",
+        "--params-backend",
+        "--max-vram",
+        "--auto-fit",
         "--mode",
         "--seed",
     }
@@ -263,6 +266,7 @@ class StableDiffusionCppProvider:
         target = job_dir / f"video.{output_format}"
         target.unlink(missing_ok=True)
 
+        backend = self._backend()
         command = [
             cli,
             "-M",
@@ -280,19 +284,21 @@ class StableDiffusionCppProvider:
             str(frames),
             "--fps",
             str(fps),
-            "--backend",
-            self._backend(),
-            "-s",
-            str(seed),
         ]
+        # Upstream treats an explicit --backend assignment as disabling its
+        # automatic placement planner. Omitting --backend for `auto` preserves
+        # the documented GPU -> integrated GPU -> CPU selection and auto-fit.
+        if backend != "auto":
+            command.extend(("--backend", backend))
         params_backend = os.getenv("ZMOVIE_SDCPP_PARAMS_BACKEND", "").strip()
         if params_backend:
             command.extend(("--params-backend", params_backend))
         max_vram = os.getenv("ZMOVIE_SDCPP_MAX_VRAM", "").strip()
         if max_vram:
             command.extend(("--max-vram", max_vram))
-        if _flag("ZMOVIE_SDCPP_AUTO_FIT", False):
-            command.append("--auto-fit")
+        if backend == "auto":
+            command.extend(("--auto-fit", "on" if _flag("ZMOVIE_SDCPP_AUTO_FIT", True) else "off"))
+        command.extend(("-s", str(seed)))
         command.extend(self._extra_arguments())
         command.extend(("-o", str(target)))
 
@@ -318,7 +324,7 @@ class StableDiffusionCppProvider:
             "status": "completed",
             "output_path": str(target),
             "kind": "video",
-            "backend": self._backend(),
+            "backend": backend,
             "fps": fps,
             "frames": frames,
             "width": width,
