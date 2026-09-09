@@ -4,6 +4,7 @@ import math
 import random
 from typing import Any
 
+from .hyperframes import apply_hyperframes_template
 from .qc import director_notes, inspect_project
 from .repository import save_project
 from .storyboard import create_storyboard, regenerate_project_prompts
@@ -128,9 +129,15 @@ def create_content_storyboard(
     scene_count: int | None = None,
     seed: int | None = None,
     owner: str = "local",
+    template_id: str = "",
 ) -> dict[str, Any]:
+    hyperframe: dict[str, Any] | None = None
+    effective_topic = topic
+    if str(template_id or "").strip():
+        effective_topic, hyperframe = apply_hyperframes_template(topic, template_id)
+
     blueprint = build_content_blueprint(
-        topic=topic,
+        topic=effective_topic,
         audience=audience,
         goal=goal,
         tone=tone,
@@ -141,6 +148,11 @@ def create_content_storyboard(
         scene_count=scene_count,
         seed=seed,
     )
+    # Preserve the operator's raw brief separately so API/CLI consumers do not
+    # have to strip the template guidance back out of the effective prompt.
+    blueprint["raw_topic"] = _clean(topic, 5000)
+    blueprint["hyperframes_template_id"] = str((hyperframe or {}).get("id") or "")
+
     project = create_storyboard(
         name=_clean(name, 200) or str(blueprint["title"]),
         concept=str(blueprint["concept"]),
@@ -172,6 +184,7 @@ def create_content_storyboard(
     save_project(project)
     return {
         "content": blueprint,
+        "hyperframe": hyperframe,
         "project": project.to_dict(),
         "qc": inspect_project(project),
         "director_notes": director_notes(project),
