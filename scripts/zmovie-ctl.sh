@@ -82,6 +82,8 @@ doctor(){
   require_install
   local comfy_url
   comfy_url="$(sed -n 's/^ZMOVIE_COMFYUI_URL=//p' "$ENV_FILE" | tail -n1)"
+  comfy_url="${comfy_url#\'}"
+  comfy_url="${comfy_url%\'}"
   ZMOVIE_URL="http://127.0.0.1:$(port)" \
   ZMOVIE_COMFYUI_URL="${comfy_url:-http://127.0.0.1:8188}" \
     bash "$INSTALL_DIR/scripts/doctor.sh"
@@ -105,6 +107,12 @@ Service / installation:
   upgrade                      upgrade from configured repository/ref (root)
   config                       print redacted runtime configuration
   studio                       print Studio URL
+
+Local stable-diffusion.cpp:
+  sdcpp-status                 CPU/Vulkan engine + model production readiness
+  sdcpp-install [BACKEND]      install/update engine; auto|vulkan|cpu (root)
+  sdcpp-config OPTIONS...      configure video model bundle (root)
+                               see: zmovie-ctl sdcpp-config --help
 
 Production data plane:
   providers                    list configured render providers
@@ -155,6 +163,8 @@ menu(){
 12) Upgrade full stack
 13) Show redacted config
 14) Hyperframes templates
+15) stable-diffusion.cpp status
+16) Install/update stable-diffusion.cpp (auto CPU/Vulkan)
  0) Exit
 EOF
     read -r -p 'Select: ' choice
@@ -169,7 +179,7 @@ EOF
         ;;
       6)
         read -r -p 'Project ID: ' project_id
-        read -r -p 'Provider (comfyui/webhook): ' provider_id
+        read -r -p 'Provider (comfyui/sdcpp/webhook): ' provider_id
         app production "$project_id" --provider "$provider_id"
         ;;
       7) app bili-session ;;
@@ -183,6 +193,8 @@ EOF
       12) need_root; bash "$INSTALL_DIR/install.sh" upgrade ;;
       13) config_redacted ;;
       14) app hyperframes ;;
+      15) app sdcpp-status ;;
+      16) need_root; bash "$INSTALL_DIR/scripts/install-sdcpp.sh" auto ;;
       0) return ;;
       *) log "unknown selection" ;;
     esac
@@ -204,6 +216,19 @@ case "$COMMAND" in
   upgrade) need_root; require_install; bash "$INSTALL_DIR/install.sh" upgrade ;;
   config) config_redacted ;;
   studio) printf '%s/studio\n' "${PUBLIC_BASE_URL%/}" ;;
+  sdcpp-status) app sdcpp-status ;;
+  sdcpp-install)
+    need_root
+    require_install
+    backend="${1:-auto}"
+    [[ "$backend" =~ ^(auto|vulkan|cpu)$ ]] || fail "usage: zmovie-ctl sdcpp-install [auto|vulkan|cpu]"
+    bash "$INSTALL_DIR/scripts/install-sdcpp.sh" "$backend"
+    ;;
+  sdcpp-config)
+    need_root
+    require_install
+    bash "$INSTALL_DIR/scripts/configure-sdcpp.sh" "$@"
+    ;;
   providers) app providers ;;
   projects) app projects ;;
   hyperframes) app hyperframes "$@" ;;
