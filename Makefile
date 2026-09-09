@@ -14,10 +14,14 @@ RUN_ID ?=
 JOB_ID ?=
 TOPIC ?=
 CONFIRM ?=
+BACKEND ?= auto
+WORKFLOW ?=
+ROLE ?= video
+RENDERER_URL ?= http://127.0.0.1:8188
 
 .PHONY: help install full-stack upgrade uninstall purge backup status health doctor logs restart start stop control ctl \
 	dev-setup dev test lint audit check compose-up compose-down compose-build compose-logs compose-ps \
-	renderer-install renderer-config providers projects readiness content render assemble prepare export production run-status \
+	renderer-install renderer-config renderer-smoke renderer-production providers projects readiness content render assemble prepare export production run-status \
 	bili-session bili-status bili-approve bili-publish production-release
 
 help: ## Show Makefile commands
@@ -27,8 +31,25 @@ install: ## Native production install on Ubuntu/Debian (systemd + Playwright + F
 	sudo bash ./install.sh install
 	sudo install -m 0755 /opt/zmovie/scripts/zmovie-ctl.sh /usr/local/bin/zmovie-ctl
 
-full-stack: install ## Install the complete native zMovie application stack
-	@printf '\nInstallation complete. Next checks:\n  make status\n  make doctor\n  sudo zmovie-ctl\n'
+full-stack: install ## Install zMovie + ComfyUI software stack; preserve existing renderer workflow
+	@set -Eeuo pipefail; \
+	if systemctl is-active --quiet comfyui 2>/dev/null; then \
+		echo "ComfyUI service already active; preserving the existing renderer installation."; \
+	else \
+		echo "Installing ComfyUI backend=$(BACKEND)..."; \
+		sudo env COMFYUI_BACKEND="$(BACKEND)" bash ./scripts/install-comfyui.sh; \
+	fi; \
+	configured="$$(sudo sed -n 's/^ZMOVIE_COMFYUI_WORKFLOW=//p' /etc/zmovie/zmovie.env 2>/dev/null | tail -n1)"; \
+	if [[ -z "$$configured" ]]; then \
+		echo "No renderer workflow configured; installing the model-free smoke workflow for integration checks only."; \
+		sudo bash ./scripts/configure-comfyui.sh ./workflows/comfyui/smoke_api.json http://127.0.0.1:8188 smoke; \
+	else \
+		echo "Existing renderer workflow preserved: $$configured"; \
+	fi; \
+	echo; \
+	echo "Full software stack installed."; \
+	echo "Run: sudo zmovie-ctl doctor"; \
+	echo "Real AI-video production additionally requires production_video_ready=true (role=video + accelerator)."
 
 upgrade: ## Backup and upgrade the native production installation and CLI
 	sudo bash ./install.sh upgrade
@@ -113,10 +134,19 @@ compose-ps: ## Show Docker stack state
 	$(COMPOSE) ps
 
 renderer-install: ## Install/update local ComfyUI service; BACKEND=auto|nvidia|rocm|cpu
-	sudo env COMFYUI_BACKEND=$${BACKEND:-auto} bash ./scripts/install-comfyui.sh
+	sudo env COMFYUI_BACKEND="$(BACKEND)" bash ./scripts/install-comfyui.sh
 
-renderer-config: ## Configure zMovie to use local ComfyUI workflow
-	sudo bash ./scripts/configure-comfyui.sh
+renderer-config: ## Configure a workflow; WORKFLOW=/path/api.json ROLE=generic|smoke|video RENDERER_URL=http://host:8188
+	@test -n "$(WORKFLOW)" || { echo "WORKFLOW=/real/path/to/workflow_api.json is required" >&2; exit 2; }
+	sudo bash ./scripts/configure-comfyui.sh "$(WORKFLOW)" "$(RENDERER_URL)" "$(ROLE)"
+
+renderer-smoke: ## Configure bundled model-free ComfyUI smoke workflow (never production-ready)
+	sudo bash ./scripts/configure-comfyui.sh ./workflows/comfyui/smoke_api.json "$(RENDERER_URL)" smoke
+
+renderer-production: ## Configure remote accelerated production video ComfyUI; WORKFLOW=... RENDERER_URL=http(s)://GPU:8188
+	@test -n "$(WORKFLOW)" || { echo "WORKFLOW=/real/path/to/video_workflow_api.json is required" >&2; exit 2; }
+	@test "$(RENDERER_URL)" != "http://127.0.0.1:8188" || { echo "renderer-production requires the real remote/private GPU URL; for a local accelerated GPU use renderer-config ROLE=video" >&2; exit 2; }
+	sudo bash ./scripts/configure-remote-comfyui.sh "$(WORKFLOW)" "$(RENDERER_URL)"
 
 providers: ## List render providers
 	sudo zmovie-ctl providers
