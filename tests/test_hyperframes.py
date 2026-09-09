@@ -29,10 +29,17 @@ class HyperframesTemplateTests(unittest.TestCase):
 
     def test_apply_template_adds_structure_and_safety_without_losing_brief(self):
         enhanced, template = apply_hyperframes_template("Launch zMovie", "showcase-clean")
-        self.assertTrue(enhanced.startswith("Launch zMovie"))
-        self.assertIn("Hyperframes template", enhanced)
+        self.assertIn("Operator brief: Launch zMovie", enhanced)
+        self.assertTrue(enhanced.startswith("Hyperframes template"))
         self.assertIn("Safety constraints", enhanced)
         self.assertEqual(template["id"], "showcase-clean")
+
+    def test_long_brief_cannot_truncate_template_safety_guidance(self):
+        enhanced, _ = apply_hyperframes_template("x" * 5000, "discount-safe")
+        self.assertLessEqual(len(enhanced), 5000)
+        self.assertIn("Safety constraints", enhanced)
+        self.assertIn("ห้ามสร้างความเร่งด่วนปลอม", enhanced)
+        self.assertIn("Operator brief:", enhanced)
 
     def test_unknown_template_fails_closed(self):
         with self.assertRaises(ValueError):
