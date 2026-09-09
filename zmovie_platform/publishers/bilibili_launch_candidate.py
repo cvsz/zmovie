@@ -26,6 +26,7 @@ DEFAULT_CONCEPT = (
 )
 DEFAULT_DURATION = 30
 DEFAULT_TTS_VOICE = "th-TH-PremwadeeNeural"
+DEFAULT_VOICE_START_SECONDS = 1.2
 DEFAULT_VOICEOVER = (
     "พบกับ ซีมูฟวี่ จาก ซีแซดเดฟ ระบบผลิตวิดีโอแบบเซลฟ์โฮสต์ "
     "ตั้งแต่ไอเดีย สตอรี่บอร์ด เรนเดอร์ ตรวจคุณภาพ และตัดต่อ "
@@ -212,6 +213,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
     duration = max(24, min(int(duration), 60))
     output.parent.mkdir(parents=True, exist_ok=True)
     font = _font_path()
+    voice_delay_ms = max(0, int(round(DEFAULT_VOICE_START_SECONDS * 1000)))
 
     vf = [
         "scale=1280:720",
@@ -274,7 +276,8 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
             (
                 "[2:a]aresample=48000,aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
                 "highpass=f=80,lowpass=f=12000,acompressor=threshold=0.12:ratio=3:attack=5:release=80,"
-                f"adelay=850|850,volume=1.75,apad=whole_dur={duration},atrim=duration={duration},asplit=2[voice_sc][voice_mix]"
+                f"adelay={voice_delay_ms}|{voice_delay_ms},volume=1.75,apad=whole_dur={duration},"
+                f"atrim=duration={duration},asplit=2[voice_sc][voice_mix]"
             ),
             "[music][voice_sc]sidechaincompress=threshold=0.012:ratio=14:attack=8:release=420[ducked]",
             "[ducked][voice_mix]amix=inputs=2:duration=longest:dropout_transition=2[mixed]",
@@ -331,6 +334,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
                 "voiceover_text": DEFAULT_VOICEOVER,
                 "tts_rate": "-15%",
                 "voice_first_mix": True,
+                "voice_start_seconds": DEFAULT_VOICE_START_SECONDS,
                 "music_gain": 0.055,
                 "voice_gain": 1.75,
                 "target_duration_seconds": duration,
