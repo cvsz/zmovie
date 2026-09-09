@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import random
-import re
 from typing import Any
 
 from .qc import director_notes, inspect_project
@@ -71,8 +70,8 @@ def build_content_blueprint(
             ("Hook", f"{hook}: {topic}. Make it relevant to {audience}."),
             ("Need", f"Show the real problem, desire, or friction the audience recognizes before the solution appears. The production goal is {goal}."),
             ("Reveal", f"Introduce {brand or 'the featured solution'} as the clear turning point, using concrete visual proof rather than abstract claims."),
-            ("Demonstration", f"Demonstrate the strongest benefit or transformation in action with visual continuity and a clear cause-and-effect progression."),
-            ("Proof", f"Reinforce credibility with a memorable result, detail, comparison, or payoff that supports the central promise."),
+            ("Demonstration", "Demonstrate the strongest benefit or transformation in action with visual continuity and a clear cause-and-effect progression."),
+            ("Proof", "Reinforce credibility with a memorable result, detail, comparison, or payoff that supports the central promise."),
             ("CTA", f"Resolve on a clean branded final image and direct next step: {call_to_action or 'invite the viewer to learn more or take the next relevant action'}."),
         ]
     else:
