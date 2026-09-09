@@ -8,10 +8,11 @@ DATA_DIR="${ZMOVIE_DATA_DIR:-/var/lib/zmovie}"
 CONFIG_DIR="${ZMOVIE_CONFIG_DIR:-/etc/zmovie}"
 ENV_FILE="${CONFIG_DIR}/zmovie.env"
 SERVICE_FILE="/etc/systemd/system/zmovie.service"
+CONTROL_BIN="${ZMOVIE_CONTROL_BIN:-/usr/local/bin/zmovie-ctl}"
 BACKUP_DIR="${ZMOVIE_BACKUP_DIR:-/var/backups/zmovie}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
 PORT="${ZMOVIE_PORT:-8080}"
-PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-http://zmovie.zeaz.dev}"
+PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-https://zmovie.zeaz.dev}"
 ACTION="${1:-install}"
 PLAYWRIGHT_DIR="${DATA_DIR}/playwright"
 INSTALL_TMP=""
@@ -80,7 +81,7 @@ status(){
 uninstall_service(){
   local purge="${2:-}"
   systemctl disable --now zmovie 2>/dev/null || true
-  rm -f "$SERVICE_FILE"
+  rm -f "$SERVICE_FILE" "$CONTROL_BIN"
   systemctl daemon-reload
   rm -rf "$INSTALL_DIR"
   rm -rf "$CONFIG_DIR"
@@ -97,7 +98,7 @@ install_or_upgrade(){
   export DEBIAN_FRONTEND=noninteractive
   log "installing OS dependencies"
   apt-get update -y
-  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync espeak-ng
+  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync espeak-ng make
 
   if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
@@ -220,6 +221,8 @@ ReadWritePaths=${DATA_DIR}
 WantedBy=multi-user.target
 EOF
 
+  install -m 0755 "$INSTALL_DIR/scripts/zmovie-ctl.sh" "$CONTROL_BIN"
+  chown root:root "$CONTROL_BIN"
   chown -R root:root "$INSTALL_DIR"
   chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR"
   systemctl daemon-reload
@@ -241,6 +244,8 @@ EOF
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
   log "installation healthy"
   log "Studio: ${PUBLIC_BASE_URL}/studio"
+  log "CLI control panel: sudo ${CONTROL_BIN}"
+  log "Makefile automation is installed at ${INSTALL_DIR}/Makefile"
   log "API docs: disabled by default; set ZMOVIE_ENABLE_DOCS=true to expose ${PUBLIC_BASE_URL}/docs"
   log "Bilibili Google login requires a one-time interactive browser session."
   log "On a GUI host/checkout run: python -m zmovie_platform.publishers.bilibili login"
