@@ -23,20 +23,24 @@ CONFIRM ?=
 help: ## Show Makefile commands
 	@awk 'BEGIN {FS = ":.*## "; printf "zMovie automation\n\nUsage:\n  make <target> [VAR=value]\n\nTargets:\n"} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: ## Native production install on Ubuntu/Debian (systemd + Playwright + FFmpeg + TTS)
+install: ## Native production install on Ubuntu/Debian (systemd + Playwright + FFmpeg + TTS + CLI)
 	sudo bash ./install.sh install
+	sudo install -m 0755 /opt/zmovie/scripts/zmovie-ctl.sh /usr/local/bin/zmovie-ctl
 
 full-stack: install ## Install the complete native zMovie application stack
 	@printf '\nInstallation complete. Next checks:\n  make status\n  make doctor\n  sudo zmovie-ctl\n'
 
-upgrade: ## Backup and upgrade the native production installation
+upgrade: ## Backup and upgrade the native production installation and CLI
 	sudo bash ./install.sh upgrade
+	sudo install -m 0755 /opt/zmovie/scripts/zmovie-ctl.sh /usr/local/bin/zmovie-ctl
 
 uninstall: ## Remove service/code/config but retain persistent data
 	sudo bash ./install.sh uninstall
+	sudo rm -f /usr/local/bin/zmovie-ctl
 
 purge: ## Remove service/code/config/data after taking a database backup
 	sudo bash ./install.sh uninstall --purge
+	sudo rm -f /usr/local/bin/zmovie-ctl
 
 backup: ## Create a SQLite backup
 	sudo bash ./install.sh backup
@@ -124,7 +128,7 @@ readiness: ## Show strict production readiness; PROJECT_ID=prj_...
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
 	sudo zmovie-ctl readiness "$(PROJECT_ID)"
 
-content: ## Generate content + storyboard; TOPIC='...' and optional duration/style fields in Studio
+content: ## Generate content + storyboard; TOPIC='...'
 	@test -n "$(TOPIC)" || { echo "TOPIC is required" >&2; exit 2; }
 	sudo zmovie-ctl content --topic "$(TOPIC)"
 
