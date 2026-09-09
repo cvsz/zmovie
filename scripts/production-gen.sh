@@ -68,7 +68,7 @@ fi
 
 log "profile: Thai neural voice + soft background music, exact 30-second output"
 log "timeline: 1.2s music intro, narration with ducked music, at least 1.5s music outro"
-log "voice: th-TH-PremwadeeNeural at -20%; local robotic fallback disabled"
+log "voice: th-TH-PremwadeeNeural at -19%; local robotic fallback disabled"
 log "music: soft background gain 0.04 with sidechain ducking under narration"
 log "idempotency: stale exact-match unapproved candidates are superseded only after a new candidate passes QC"
 log "protected publish states are preserved; no Bilibili upload, approval, or publication will be performed"
