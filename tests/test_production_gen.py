@@ -34,6 +34,8 @@ class ProductionGenTests(unittest.TestCase):
                 "audio_channels": 2,
                 "duration_locked": True,
                 "voice_start_seconds": 1.2,
+                "tts_rate": "-20%",
+                "music_gain": 0.04,
             },
         }
 
@@ -63,13 +65,14 @@ class ProductionGenTests(unittest.TestCase):
         self.assertIn("ซีมูฟวี่", production_gen.APPROVED_VOICEOVER)
         self.assertIn("เวิร์กโฟลว์เดียว", production_gen.APPROVED_VOICEOVER)
         profile = result["production_gen"]
-        self.assertEqual(profile["profile"], "thai-30s-voice-music-v2")
+        self.assertEqual(profile["profile"], "thai-30s-voice-music-v3")
         self.assertEqual(profile["target_duration_seconds"], 30)
         self.assertTrue(profile["combined_voice_and_music"])
         self.assertFalse(profile["bilibili_upload_performed"])
         self.assertFalse(profile["approval_performed"])
         self.assertEqual(profile["tts_voice"], "th-TH-PremwadeeNeural")
-        self.assertEqual(profile["tts_rate"], "-15%")
+        self.assertEqual(profile["tts_rate"], "-20%")
+        self.assertEqual(profile["music_gain"], 0.04)
         self.assertEqual(profile["voice_preflight_seconds"], 24.25)
         self.assertEqual(profile["voice_start_seconds"], 1.2)
         self.assertEqual(profile["supersede_cleanup"], cleanup)
@@ -92,6 +95,18 @@ class ProductionGenTests(unittest.TestCase):
         result = self.valid_result()
         result["media"]["voice_start_seconds"] = 0.85
         with self.assertRaisesRegex(RuntimeError, "voice-start mismatch"):
+            production_gen._validate_result(result)
+
+    def test_validate_result_rejects_wrong_tts_rate(self) -> None:
+        result = self.valid_result()
+        result["media"]["tts_rate"] = "-15%"
+        with self.assertRaisesRegex(RuntimeError, "TTS rate mismatch"):
+            production_gen._validate_result(result)
+
+    def test_validate_result_rejects_wrong_music_gain(self) -> None:
+        result = self.valid_result()
+        result["media"]["music_gain"] = 0.055
+        with self.assertRaisesRegex(RuntimeError, "music-gain mismatch"):
             production_gen._validate_result(result)
 
     def test_supersede_removes_only_unapproved_exact_match_candidate(self) -> None:
