@@ -19,10 +19,25 @@ BACKEND ?= auto
 WORKFLOW ?=
 ROLE ?= video
 RENDERER_URL ?= http://127.0.0.1:8188
+SDCPP_BACKEND ?= auto
+SDCPP_MODEL ?=
+SDCPP_DIFFUSION_MODEL ?=
+SDCPP_HIGH_NOISE_DIFFUSION_MODEL ?=
+SDCPP_VAE ?=
+SDCPP_AUDIO_VAE ?=
+SDCPP_T5XXL ?=
+SDCPP_LLM ?=
+SDCPP_CLIP_VISION ?=
+SDCPP_EMBEDDINGS_CONNECTORS ?=
+SDCPP_PARAMS_BACKEND ?=
+SDCPP_MAX_VRAM ?=
+SDCPP_FPS ?= 8
+SDCPP_OUTPUT_FORMAT ?= avi
 
 .PHONY: help install full-stack upgrade uninstall purge backup status health doctor logs restart start stop control ctl \
 	dev-setup dev test lint audit check compose-up compose-down compose-build compose-logs compose-ps \
-	renderer-install renderer-config renderer-smoke renderer-production providers projects hyperframes readiness content render assemble prepare export production run-status \
+	renderer-install renderer-config renderer-smoke renderer-production sdcpp-install sdcpp-config sdcpp-status \
+	providers projects hyperframes readiness content render assemble prepare export production run-status \
 	bili-session bili-status bili-approve bili-publish production-release
 
 help: ## Show Makefile commands
@@ -32,7 +47,7 @@ install: ## Native production install on Ubuntu/Debian (systemd + Playwright + F
 	sudo bash ./install.sh install
 	sudo install -m 0755 /opt/zmovie/scripts/zmovie-ctl.sh /usr/local/bin/zmovie-ctl
 
-full-stack: install ## Install zMovie + ComfyUI software stack; preserve existing renderer workflow
+full-stack: install ## Install zMovie + ComfyUI + stable-diffusion.cpp CPU/Vulkan engine; model weights remain operator-managed
 	@set -Eeuo pipefail; \
 	if systemctl is-active --quiet comfyui 2>/dev/null; then \
 		echo "ComfyUI service already active; preserving the existing renderer installation."; \
@@ -42,15 +57,22 @@ full-stack: install ## Install zMovie + ComfyUI software stack; preserve existin
 	fi; \
 	configured="$$(sudo sed -n 's/^ZMOVIE_COMFYUI_WORKFLOW=//p' /etc/zmovie/zmovie.env 2>/dev/null | tail -n1)"; \
 	if [[ -z "$$configured" ]]; then \
-		echo "No renderer workflow configured; installing the model-free smoke workflow for integration checks only."; \
+		echo "No ComfyUI workflow configured; installing the model-free smoke workflow for integration checks only."; \
 		sudo bash ./scripts/configure-comfyui.sh ./workflows/comfyui/smoke_api.json http://127.0.0.1:8188 smoke; \
 	else \
-		echo "Existing renderer workflow preserved: $$configured"; \
+		echo "Existing ComfyUI workflow preserved: $$configured"; \
+	fi; \
+	if command -v sd-cli >/dev/null 2>&1; then \
+		echo "stable-diffusion.cpp already installed; preserving the current engine. Use 'make sdcpp-install' to update it."; \
+	else \
+		echo "Installing stable-diffusion.cpp backend=$(SDCPP_BACKEND)..."; \
+		sudo bash ./scripts/install-sdcpp.sh "$(SDCPP_BACKEND)"; \
 	fi; \
 	echo; \
 	echo "Full software stack installed."; \
+	echo "No stable-diffusion.cpp model weights are downloaded automatically."; \
 	echo "Run: sudo zmovie-ctl doctor"; \
-	echo "Real AI-video production additionally requires production_video_ready=true (role=video + accelerator)."
+	echo "Configure sdcpp with 'make sdcpp-config ...' or a real ComfyUI video workflow before production."
 
 upgrade: ## Backup and upgrade the native production installation and CLI
 	sudo bash ./install.sh upgrade
@@ -73,7 +95,7 @@ status: ## Show service status and health
 health: ## Show health JSON
 	sudo zmovie-ctl health
 
-doctor: ## Check zMovie, FFmpeg, ComfyUI and production-render readiness
+doctor: ## Check zMovie, FFmpeg and all local/remote production renderer readiness
 	sudo zmovie-ctl doctor
 
 logs: ## Show recent service logs; use LINES=200 to change amount
@@ -149,6 +171,29 @@ renderer-production: ## Configure remote accelerated production video ComfyUI; W
 	@test "$(RENDERER_URL)" != "http://127.0.0.1:8188" || { echo "renderer-production requires the real remote/private GPU URL; for a local accelerated GPU use renderer-config ROLE=video" >&2; exit 2; }
 	sudo bash ./scripts/configure-remote-comfyui.sh "$(WORKFLOW)" "$(RENDERER_URL)"
 
+sdcpp-install: ## Install/update stable-diffusion.cpp; SDCPP_BACKEND=auto|vulkan|cpu
+	sudo bash ./scripts/install-sdcpp.sh "$(SDCPP_BACKEND)"
+
+sdcpp-config: ## Configure video model bundle; use SDCPP_DIFFUSION_MODEL=... and optional VAE/T5XXL/etc
+	@test -n "$(SDCPP_MODEL)$(SDCPP_DIFFUSION_MODEL)" || { echo "SDCPP_MODEL or SDCPP_DIFFUSION_MODEL is required" >&2; exit 2; }
+	@set -Eeuo pipefail; \
+	args=(--backend "$(SDCPP_BACKEND)" --fps "$(SDCPP_FPS)" --output-format "$(SDCPP_OUTPUT_FORMAT)"); \
+	[[ -z "$(SDCPP_MODEL)" ]] || args+=(--model "$(SDCPP_MODEL)"); \
+	[[ -z "$(SDCPP_DIFFUSION_MODEL)" ]] || args+=(--diffusion-model "$(SDCPP_DIFFUSION_MODEL)"); \
+	[[ -z "$(SDCPP_HIGH_NOISE_DIFFUSION_MODEL)" ]] || args+=(--high-noise-diffusion-model "$(SDCPP_HIGH_NOISE_DIFFUSION_MODEL)"); \
+	[[ -z "$(SDCPP_VAE)" ]] || args+=(--vae "$(SDCPP_VAE)"); \
+	[[ -z "$(SDCPP_AUDIO_VAE)" ]] || args+=(--audio-vae "$(SDCPP_AUDIO_VAE)"); \
+	[[ -z "$(SDCPP_T5XXL)" ]] || args+=(--t5xxl "$(SDCPP_T5XXL)"); \
+	[[ -z "$(SDCPP_LLM)" ]] || args+=(--llm "$(SDCPP_LLM)"); \
+	[[ -z "$(SDCPP_CLIP_VISION)" ]] || args+=(--clip-vision "$(SDCPP_CLIP_VISION)"); \
+	[[ -z "$(SDCPP_EMBEDDINGS_CONNECTORS)" ]] || args+=(--embeddings-connectors "$(SDCPP_EMBEDDINGS_CONNECTORS)"); \
+	[[ -z "$(SDCPP_PARAMS_BACKEND)" ]] || args+=(--params-backend "$(SDCPP_PARAMS_BACKEND)"); \
+	[[ -z "$(SDCPP_MAX_VRAM)" ]] || args+=(--max-vram "$(SDCPP_MAX_VRAM)"); \
+	sudo bash ./scripts/configure-sdcpp.sh "$${args[@]}"
+
+sdcpp-status: ## Show stable-diffusion.cpp device/model/video production readiness
+	sudo zmovie-ctl sdcpp-status
+
 providers: ## List render providers
 	sudo zmovie-ctl providers
 
@@ -166,7 +211,7 @@ content: ## Generate content + storyboard; TOPIC='...' optional TEMPLATE=showcas
 	@test -n "$(TOPIC)" || { echo "TOPIC is required" >&2; exit 2; }
 	@set -Eeuo pipefail; args=(--topic "$(TOPIC)"); if [[ -n "$(TEMPLATE)" ]]; then args+=(--template "$(TEMPLATE)"); fi; sudo zmovie-ctl content "$${args[@]}"
 
-render: ## Render every shot with a real provider; PROJECT_ID=... PROVIDER=comfyui
+render: ## Render every shot with a real provider; PROJECT_ID=... PROVIDER=comfyui|sdcpp|webhook
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
 	sudo zmovie-ctl render "$(PROJECT_ID)" "$(PROVIDER)"
 
