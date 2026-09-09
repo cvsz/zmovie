@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 from .providers import COMFYUI
+from .sdcpp_provider import SDCPP
 from .storage import DB_PATH, ensure_database
 
 
@@ -103,6 +104,24 @@ def _comfyui_status() -> dict[str, object]:
         return result
 
 
+def _sdcpp_status() -> dict[str, object]:
+    try:
+        return dict(SDCPP.runtime_status(probe_devices=True))
+    except Exception as exc:
+        return {
+            "configured": False,
+            "production_ready": False,
+            "cli_available": False,
+            "video_enabled": False,
+            "model_configured": False,
+            "model_files_valid": False,
+            "backend": os.getenv("ZMOVIE_SDCPP_BACKEND", "auto").strip() or "auto",
+            "vulkan_available": False,
+            "cpu_available": False,
+            "reasons": [f"runtime_probe_failed:{type(exc).__name__}"],
+        }
+
+
 def health_report() -> dict[str, object]:
     ensure_database()
     media_root = Path(os.getenv("ZMOVIE_MEDIA_ROOT", "data/media"))
@@ -111,12 +130,21 @@ def health_report() -> dict[str, object]:
     ffmpeg = bool(shutil.which("ffmpeg"))
     ffprobe = bool(shutil.which("ffprobe"))
     comfyui = _comfyui_status()
-    render_ready = bool(ffmpeg and ffprobe and comfyui.get("ready"))
-    production_video_ready = bool(
-        render_ready
+    sdcpp = _sdcpp_status()
+    comfy_render_ready = bool(ffmpeg and ffprobe and comfyui.get("ready"))
+    comfy_production_ready = bool(
+        comfy_render_ready
         and comfyui.get("accelerated")
         and comfyui.get("workflow_role") == "video"
     )
+    sdcpp_production_ready = bool(ffmpeg and ffprobe and sdcpp.get("production_ready"))
+    render_ready = bool(comfy_render_ready or sdcpp_production_ready)
+    production_video_ready = bool(comfy_production_ready or sdcpp_production_ready)
+    production_backends: list[str] = []
+    if comfy_production_ready:
+        production_backends.append("comfyui")
+    if sdcpp_production_ready:
+        production_backends.append("sdcpp")
     return {
         "status": "ok",
         "database": str(DB_PATH),
@@ -130,8 +158,10 @@ def health_report() -> dict[str, object]:
             "publish": _path_status(publish_root),
         },
         "comfyui": comfyui,
+        "sdcpp": sdcpp,
         "render_ready": render_ready,
         "production_video_ready": production_video_ready,
+        "production_backends": production_backends,
     }
 
 
@@ -153,6 +183,23 @@ def public_health_report(report: dict[str, object] | None = None) -> dict[str, o
         ):
             if key in raw_comfyui:
                 comfyui[key] = raw_comfyui[key]
+    raw_sdcpp = source.get("sdcpp")
+    sdcpp: dict[str, object] = {}
+    if isinstance(raw_sdcpp, dict):
+        for key in (
+            "configured",
+            "production_ready",
+            "cli_available",
+            "video_enabled",
+            "model_configured",
+            "model_files_valid",
+            "backend",
+            "vulkan_available",
+            "cpu_available",
+            "reasons",
+        ):
+            if key in raw_sdcpp:
+                sdcpp[key] = raw_sdcpp[key]
     return {
         "status": source.get("status", "unknown"),
         "service": "zmovie",
@@ -160,6 +207,8 @@ def public_health_report(report: dict[str, object] | None = None) -> dict[str, o
         "ffmpeg": bool(source.get("ffmpeg")),
         "ffprobe": bool(source.get("ffprobe")),
         "comfyui": comfyui,
+        "sdcpp": sdcpp,
         "render_ready": bool(source.get("render_ready")),
         "production_video_ready": bool(source.get("production_video_ready")),
+        "production_backends": list(source.get("production_backends") or []),
     }
