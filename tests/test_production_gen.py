@@ -34,7 +34,7 @@ class ProductionGenTests(unittest.TestCase):
                 "audio_channels": 2,
                 "duration_locked": True,
                 "voice_start_seconds": 1.2,
-                "tts_rate": "-20%",
+                "tts_rate": "-19%",
                 "music_gain": 0.04,
             },
         }
@@ -65,13 +65,13 @@ class ProductionGenTests(unittest.TestCase):
         self.assertIn("ซีมูฟวี่", production_gen.APPROVED_VOICEOVER)
         self.assertIn("เวิร์กโฟลว์เดียว", production_gen.APPROVED_VOICEOVER)
         profile = result["production_gen"]
-        self.assertEqual(profile["profile"], "thai-30s-voice-music-v3")
+        self.assertEqual(profile["profile"], "thai-30s-voice-music-v4")
         self.assertEqual(profile["target_duration_seconds"], 30)
         self.assertTrue(profile["combined_voice_and_music"])
         self.assertFalse(profile["bilibili_upload_performed"])
         self.assertFalse(profile["approval_performed"])
         self.assertEqual(profile["tts_voice"], "th-TH-PremwadeeNeural")
-        self.assertEqual(profile["tts_rate"], "-20%")
+        self.assertEqual(profile["tts_rate"], "-19%")
         self.assertEqual(profile["music_gain"], 0.04)
         self.assertEqual(profile["voice_preflight_seconds"], 24.25)
         self.assertEqual(profile["voice_start_seconds"], 1.2)
