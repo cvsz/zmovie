@@ -213,7 +213,7 @@ def _render_launch_video(output: Path, *, duration: int = DEFAULT_DURATION) -> d
     duration = max(24, min(int(duration), 60))
     output.parent.mkdir(parents=True, exist_ok=True)
     font = _font_path()
-    voice_delay_ms = max(0, int(round(DEFAULT_VOICE_START_SECONDS * 1000)))
+    voice_delay_ms = max(0, round(DEFAULT_VOICE_START_SECONDS * 1000))
 
     vf = [
         "scale=1280:720",
