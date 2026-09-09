@@ -18,6 +18,7 @@ from .production import (
     render_all_production,
     start_production_run,
 )
+from .sdcpp_provider import SDCPP
 from .providers import provider_specs
 from .publishers import bilibili_hardened, bilibili_preflight, bilibili_ui_compat
 from .repository import list_jobs, list_projects
@@ -61,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("providers", help="list render providers and configuration state")
     sub.add_parser("projects", help="list projects")
+    sub.add_parser("sdcpp-status", help="show stable-diffusion.cpp CPU/Vulkan production readiness")
 
     hyperframes = sub.add_parser("hyperframes", help="list Hyperframes creative templates")
     hyperframes.add_argument("--query", default="")
@@ -151,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
             result: Any = provider_specs()
         elif args.command == "projects":
             result = list_projects(limit=500)
+        elif args.command == "sdcpp-status":
+            result = SDCPP.runtime_status(probe_devices=True)
         elif args.command == "hyperframes":
             result = list_hyperframes_templates(query=args.query, category=args.category)
         elif args.command == "readiness":
