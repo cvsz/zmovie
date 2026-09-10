@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import os
 import urllib.error
 import urllib.request
 import uuid
@@ -38,12 +37,7 @@ class ZFlowI2VJob:
 
 
 class ZFlowComfyUIProvider(ComfyUIProvider):
-    """ComfyUI-compatible I2V provider with explicit source-image binding.
-
-    This deliberately sits above the existing zMovie provider abstraction so the
-    public job contract is not coupled to ComfyUI node IDs.  The workflow can use
-    ``{{INPUT_IMAGE}}`` or configured image node IDs.
-    """
+    """ComfyUI-compatible I2V provider with explicit source-image binding."""
 
     @staticmethod
     def _multipart_image(path: Path, boundary: str) -> bytes:
@@ -114,15 +108,12 @@ class ZFlowComfyUIProvider(ComfyUIProvider):
         node_ids = self._node_ids("ZMOVIE_COMFYUI_IMAGE_NODE_IDS")
         changed = self._set_input(workflow, node_ids, ("image",), image_name)
         changed += self._bind_image_fallback(workflow, image_name)
-        if changed == 0 and "{{INPUT_IMAGE}}" not in json.dumps(workflow):
-            # Placeholder replacement may have bound a workflow without a LoadImage
-            # node.  We accept explicit templates and otherwise fail closed.
-            serialized = json.dumps(workflow)
-            if image_name not in serialized:
-                raise RuntimeError(
-                    "source image was not bound to the ComfyUI workflow; add {{INPUT_IMAGE}} "
-                    "to a LoadImage node or set ZMOVIE_COMFYUI_IMAGE_NODE_IDS"
-                )
+        serialized = json.dumps(workflow)
+        if changed == 0 and image_name not in serialized:
+            raise RuntimeError(
+                "source image was not bound to the ComfyUI workflow; add {{INPUT_IMAGE}} "
+                "to a LoadImage node or set ZMOVIE_COMFYUI_IMAGE_NODE_IDS"
+            )
         values["INPUT_IMAGE"] = image_name
         return workflow, values
 
