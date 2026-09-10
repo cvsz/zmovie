@@ -96,12 +96,18 @@ def _public_run(run: dict[str, Any] | None) -> dict[str, Any] | None:
             "status",
             "stage",
             "publish_job_id",
-            "worker_job_id",
             "error",
             "created_at",
             "updated_at",
         )
     }
+
+
+def _worker_for_run(run_id: str) -> dict[str, Any] | None:
+    for job in list_worker_jobs(limit=1000):
+        if str(job.get("production_run_id") or "") == run_id:
+            return job
+    return None
 
 
 def _ensure_no_active_render(project_id: str) -> None:
@@ -303,19 +309,23 @@ def production_run(project_id: str, payload: ProductionRunRequest, actor: dict[s
         provider=payload.provider,
         payload={"max_workers": payload.max_workers},
     )
-    run["worker_job_id"] = str(job["id"])
-    from .production import save_production_run
-
-    save_production_run(run)
     increment("production.run.queued")
     audit("production.run.queue", actor=actor["username"], project_id=project_id, run_id=run["id"], worker_job_id=job["id"], provider=payload.provider)
-    return _public_run(run) or {}
+    response = _public_run(run) or {}
+    response["worker_job_id"] = str(job["id"])
+    return response
 
 
 @router.get("/projects/{project_id}/production/run", tags=["production"])
 def production_run_latest(project_id: str, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
-    return {"run": _public_run(latest_production_run(project_id))}
+    run = latest_production_run(project_id)
+    response = _public_run(run)
+    if response and run:
+        worker = _worker_for_run(str(run.get("id") or ""))
+        response["worker_job_id"] = str((worker or {}).get("id") or "")
+        response["worker"] = _public_worker(worker)
+    return {"run": response}
 
 
 @router.get("/projects/{project_id}/production/runs/{run_id}", tags=["production"])
@@ -325,7 +335,7 @@ def production_run_status(project_id: str, run_id: str, actor: dict[str, str] = 
     if run is None:
         raise HTTPException(status_code=404, detail="production run not found")
     response = _public_run(run) or {}
-    worker_job_id = str(run.get("worker_job_id") or "")
-    if worker_job_id:
-        response["worker"] = _public_worker(get_worker_job(worker_job_id))
+    worker = _worker_for_run(run_id)
+    response["worker_job_id"] = str((worker or {}).get("id") or "")
+    response["worker"] = _public_worker(worker)
     return response
