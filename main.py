@@ -12,6 +12,7 @@ from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
 from zmovie_platform.migrations import migrate
+from zmovie_platform.product_routes import router as product_router
 from zmovie_platform.production_routes import router as production_router
 from zmovie_platform.publisher_routes import router as publisher_router
 from zmovie_platform.security import SECURITY_HEADERS
@@ -22,6 +23,7 @@ app.include_router(v2_router)
 app.include_router(media_preview_router)
 app.include_router(publisher_router)
 app.include_router(production_router)
+app.include_router(product_router)
 
 if settings.cors_origins:
     app.add_middleware(
@@ -53,3 +55,8 @@ def studio() -> HTMLResponse:
         if hook not in html:
             html = html.replace("</body>", hook + "\n</body>")
     return HTMLResponse(html)
+
+
+@app.get("/product", include_in_schema=False)
+def product_studio() -> HTMLResponse:
+    return HTMLResponse(Path("static/product.html").read_text(encoding="utf-8"))

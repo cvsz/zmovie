@@ -13,8 +13,11 @@ button { cursor: pointer; }
 .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0 80px; }
 .hero { max-width: 860px; margin-bottom: 28px; }
 .hero h1 { margin: 8px 0 12px; font-size: clamp(2.4rem, 7vw, 5.8rem); line-height: .94; letter-spacing: -.055em; }
-.hero p:last-child { color: #b9c0ce; max-width: 760px; font-size: 1.05rem; line-height: 1.65; }
+.hero p:last-of-type { color: #b9c0ce; max-width: 760px; font-size: 1.05rem; line-height: 1.65; }
 .eyebrow { margin: 0; color: #8ea0ff; font-size: .76rem; font-weight: 800; letter-spacing: .18em; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.nav-link { display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border-radius: 12px; text-decoration: none; font-weight: 800; background: #f4f5f8; color: #090b10; }
+.secondary-link { color: #e7e9ee; background: #151a25; border: 1px solid #343c4f; }
 
 .panel { background: rgba(18, 22, 32, .88); border: 1px solid #2b3242; border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,.28); }
 .controls { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(100px, .6fr) auto auto auto; gap: 14px; align-items: end; padding: 18px; position: sticky; top: 12px; z-index: 5; backdrop-filter: blur(18px); }
@@ -41,7 +44,7 @@ button:disabled { opacity: .55; cursor: wait; }
 pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; background: #090d14; border: 1px solid #222a39; border-radius: 14px; padding: 16px; color: #e7eaf0; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; }
 .copy { min-height: 34px; padding: 0 11px; font-size: .78rem; background: #171d29; color: #d7deeb; border-color: #30394c; }
 .params { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.param { padding: 10px 12px; background: #0c1017; border: 1px solid #242b39; border-radius: 11px; color: #aeb8c9; font-size: .84rem; }
+.param { padding: 10px 12px; background: #0c1017; border: 1px solid #242b39; border-radius: 11px; padding: 10px 12px; color: #aeb8c9; font-size: .84rem; }
 .param strong { color: #eef1f5; }
 
 .history-panel { margin-top: 28px; padding: 20px; }

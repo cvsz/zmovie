@@ -5,7 +5,10 @@ PRODUCT_DURATION ?=
 PRODUCT_ASPECT_RATIO ?=
 PRODUCT_OUTPUT_DIR ?= data/zflow/products
 
-.PHONY: product-plan product-video product-video-1 product-video-3
+.PHONY: product-studio product-plan product-video product-video-1 product-video-3
+
+product-studio: ## Run the reusable product-video frontend at /product
+	$(PYTHON) -m uvicorn main:app --host $(HOST) --port $(PORT)
 
 product-plan: ## Assess any product JSON and generate a suitability/creative plan without rendering
 	@test -n "$(PRODUCT_JSON)" || { echo "PRODUCT_JSON=/path/to/product.json is required" >&2; exit 2; }
