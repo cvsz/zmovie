@@ -49,6 +49,8 @@ provider or publication workflow.
 - [GitHub environment clone](GITHUB_ENVIRONMENT_CLONE.md)
 - [YouTube roadmap](YOUTUBE_ROADMAP.md)
 - [Wan prompt generator](../prompts/WAN3_MASTER_ACTION_GENERATOR.md)
+- [Seedance 2.0 reference video prompt](../prompts/SEEDANCE_2_REFERENCE_VIDEO.md)
+- [Master execution prompt](MASTER-ZMOVIE-PROMPTS.md)
 
 ## Evidence and internal reference
 

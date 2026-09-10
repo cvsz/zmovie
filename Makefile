@@ -15,6 +15,10 @@ JOB_ID ?=
 TOPIC ?=
 TEMPLATE ?=
 CONFIRM ?=
+APPLY ?= false
+LIMIT ?= 100
+LINES ?= 100
+RUN_SMOKE ?= false
 BACKEND ?= auto
 WORKFLOW ?=
 ROLE ?= video
@@ -36,6 +40,8 @@ SDCPP_OUTPUT_FORMAT ?= avi
 
 .PHONY: help install full-stack upgrade uninstall purge backup status health doctor logs restart start stop control ctl \
 	dev-setup dev test lint audit check compose-up compose-down compose-build compose-logs compose-ps \
+	server-packages \
+	worker-job worker-pause worker-resume worker-restart worker-logs \
 	renderer-install renderer-config renderer-smoke renderer-production sdcpp-install sdcpp-config sdcpp-status \
 	providers projects hyperframes readiness content render assemble prepare export production run-status \
 	bili-session bili-status bili-approve bili-publish production-release
@@ -43,8 +49,11 @@ SDCPP_OUTPUT_FORMAT ?= avi
 help: ## Show Makefile commands
 	@awk 'BEGIN {FS = ":.*## "; printf "zMovie automation\n\nUsage:\n  make <target> [VAR=value]\n\nTargets:\n"} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-install: ## Native production install on Ubuntu/Debian (systemd + Playwright + FFmpeg + TTS + CLI)
-	sudo bash ./install.sh install
+server-packages: ## Install native zMovie, ComfyUI and stable-diffusion.cpp OS packages
+	sudo bash ./install.sh packages
+
+install: server-packages ## Native production install on Ubuntu/Debian (systemd + Playwright + FFmpeg + TTS + CLI)
+	sudo env ZMOVIE_SKIP_OS_DEPENDENCIES=true bash ./install.sh install
 	sudo install -m 0755 /opt/zmovie/scripts/zmovie-ctl.sh /usr/local/bin/zmovie-ctl
 
 full-stack: install ## Install zMovie + ComfyUI + stable-diffusion.cpp CPU/Vulkan engine; model weights remain operator-managed
@@ -114,6 +123,22 @@ control: ## Open the interactive CLI control panel
 	sudo zmovie-ctl
 
 ctl: control ## Alias for interactive CLI control panel
+
+worker-job: ## Show one durable worker job; JOB_ID=job_... is required
+	@test -n "$(JOB_ID)" || { echo "JOB_ID is required" >&2; exit 2; }
+	sudo zmovie-ctl worker-job "$(JOB_ID)"
+
+worker-pause: ## Pause new durable worker claims
+	sudo zmovie-ctl worker-pause
+
+worker-resume: ## Resume durable worker claims
+	sudo zmovie-ctl worker-resume
+
+worker-restart: ## Restart the durable worker service
+	sudo zmovie-ctl worker-restart
+
+worker-logs: ## Show durable worker logs; LINES=200 changes amount
+	sudo zmovie-ctl worker-logs "$(LINES)"
 
 dev-setup: ## Create local venv and install Python + Chromium dependencies
 	$(PYTHON) -m venv $(VENV)

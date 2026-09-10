@@ -16,6 +16,13 @@ PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-https://zmovie.zeaz.dev}"
 ACTION="${1:-install}"
 PLAYWRIGHT_DIR="${DATA_DIR}/playwright"
 INSTALL_TMP=""
+SERVER_PACKAGES=(
+  python3 python3-venv python3-pip python3-dev
+  git curl ca-certificates ffmpeg openssl rsync espeak-ng make
+  build-essential cmake pkg-config
+  libgl1 libglib2.0-0 libgomp1
+  libvulkan-dev glslc spirv-headers mesa-vulkan-drivers vulkan-tools
+)
 
 log(){ printf '[zMovie] %s\n' "$*"; }
 fail(){ printf '[zMovie] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -28,6 +35,13 @@ cleanup_install_tmp(){
   fi
 }
 trap cleanup_install_tmp EXIT
+
+install_server_packages(){
+  export DEBIAN_FRONTEND=noninteractive
+  log "installing native server and renderer packages"
+  apt-get update -y
+  apt-get install -y --no-install-recommends "${SERVER_PACKAGES[@]}"
+}
 
 backup_data(){
   mkdir -p "$BACKUP_DIR"
@@ -108,15 +122,16 @@ upgrade_readiness_if_available(){
   [[ -x "$INSTALL_DIR/.venv/bin/python" && -f "$INSTALL_DIR/zmovie_platform/runtime_ops.py" && -f "$ENV_FILE" ]] || return 0
   log "checking durable-worker upgrade readiness"
   runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c \
-    'set -a; source "$1"; set +a; cd "$2"; exec "$3" -m zmovie_platform.runtime_ops upgrade-readiness' \
+    'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; exec "$3" -m zmovie_platform.runtime_ops upgrade-readiness' \
     _ "$ENV_FILE" "$INSTALL_DIR" "$INSTALL_DIR/.venv/bin/python"
 }
 
 install_or_upgrade(){
-  export DEBIAN_FRONTEND=noninteractive
-  log "installing OS dependencies"
-  apt-get update -y
-  apt-get install -y --no-install-recommends python3 python3-venv python3-pip git curl ca-certificates ffmpeg openssl rsync espeak-ng make
+  if [[ "${ZMOVIE_SKIP_OS_DEPENDENCIES:-false}" == "true" ]]; then
+    log "OS/server packages already provisioned by the Makefile target"
+  else
+    install_server_packages
+  fi
 
   if ! id "$SERVICE_USER" >/dev/null 2>&1; then
     useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
@@ -125,6 +140,10 @@ install_or_upgrade(){
     "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$DATA_DIR/publish" \
     "$DATA_DIR/bilibili" "$DATA_DIR/models" "$DATA_DIR/evidence" "$PLAYWRIGHT_DIR" "$BACKUP_DIR"
   install -d -o root -g "$SERVICE_USER" -m 0750 "$CONFIG_DIR"
+  if [[ -f "$ENV_FILE" ]]; then
+    chown root:"$SERVICE_USER" "$ENV_FILE"
+    chmod 0640 "$ENV_FILE"
+  fi
 
   upgrade_readiness_if_available
   if [[ -d "$INSTALL_DIR" ]]; then
@@ -307,8 +326,9 @@ EOF
 need_root
 case "$ACTION" in
   install|--install|upgrade|--upgrade) install_or_upgrade ;;
+  packages|--packages) install_server_packages ;;
   backup|--backup) backup_data ;;
   status|--status) status ;;
   uninstall|--uninstall) uninstall_service "$@" ;;
-  *) fail "unknown action '$ACTION' (use install, upgrade, backup, status, uninstall [--purge])" ;;
+  *) fail "unknown action '$ACTION' (use packages, install, upgrade, backup, status, uninstall [--purge])" ;;
 esac
