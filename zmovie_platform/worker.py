@@ -6,7 +6,6 @@ import logging
 import os
 import signal
 import threading
-import time
 from typing import Any
 
 from .pipeline import render_shot
