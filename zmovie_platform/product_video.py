@@ -20,7 +20,7 @@ class ProductProfile:
     visual_notes: str = ""
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "ProductProfile":
+    def from_dict(cls, payload: dict[str, Any]) -> ProductProfile:
         name = str(payload.get("name", "")).strip()
         category = str(payload.get("category", "")).strip()
         if not name or not category:
@@ -31,7 +31,7 @@ class ProductProfile:
             if isinstance(value, str):
                 return (value.strip(),) if value.strip() else ()
             if not isinstance(value, list):
-                raise ValueError(f"{key} must be a string or list")
+                raise TypeError(f"{key} must be a string or list")
             return tuple(str(item).strip() for item in value if str(item).strip())
 
         def price(key: str) -> float | None:
