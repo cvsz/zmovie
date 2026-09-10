@@ -8,7 +8,9 @@ import shutil
 import socket
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+import urllib.error
+import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +23,11 @@ DATA_ROOT = Path(os.getenv("ZMOVIE_DATA_DIR", str(DB_PATH.parent)))
 BACKUP_ROOT = Path(os.getenv("ZMOVIE_BACKUP_DIR", "/var/backups/zmovie"))
 EVIDENCE_ROOT = Path(os.getenv("ZMOVIE_EVIDENCE_ROOT", str(DATA_ROOT / "evidence")))
 BACKUP_RETENTION = max(14, int(os.getenv("ZMOVIE_BACKUP_RETENTION", "14")))
+WATCHDOG_RESTART_COOLDOWN = max(60, int(os.getenv("ZMOVIE_WATCHDOG_RESTART_COOLDOWN", "600")))
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _json(value: Any) -> None:
@@ -34,6 +41,56 @@ def _run(argv: list[str], timeout: int = 15) -> dict[str, Any]:
         return {"available": False, "ok": False, "detail": type(exc).__name__}
     text = (proc.stdout or proc.stderr or "").strip()
     return {"available": True, "ok": proc.returncode == 0, "returncode": proc.returncode, "output": text[:4000]}
+
+
+def _api_health() -> dict[str, Any]:
+    port = os.getenv("ZMOVIE_PORT", "8080").strip() or "8080"
+    url = f"http://127.0.0.1:{port}/api/v2/health"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            body = response.read(4096).decode("utf-8", errors="replace")
+        return {"ok": 200 <= response.status < 300, "status": response.status, "body": body[:1000]}
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        return {"ok": False, "detail": type(exc).__name__}
+
+
+def _runtime_state(key: str) -> str:
+    with connect() as conn:
+        row = conn.execute("SELECT value FROM runtime_state WHERE key=?", (key,)).fetchone()
+    return str(row["value"]) if row else ""
+
+
+def _set_runtime_state(key: str, value: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO runtime_state(key,value,updated_at) VALUES(?,?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at",
+            (key, value, _now().isoformat()),
+        )
+
+
+def _restart_allowed(service: str) -> bool:
+    value = _runtime_state(f"watchdog_restart:{service}")
+    if not value:
+        return True
+    try:
+        last = datetime.fromisoformat(value)
+    except ValueError:
+        return True
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    return _now() - last >= timedelta(seconds=WATCHDOG_RESTART_COOLDOWN)
+
+
+def _restart_service(service: str) -> dict[str, Any]:
+    if os.geteuid() != 0:
+        return {"service": service, "restarted": False, "reason": "root_required"}
+    if not _restart_allowed(service):
+        return {"service": service, "restarted": False, "reason": "cooldown"}
+    result = _run(["systemctl", "restart", service], timeout=30)
+    if result.get("ok"):
+        _set_runtime_state(f"watchdog_restart:{service}", _now().isoformat())
+    return {"service": service, "restarted": bool(result.get("ok")), "result": result}
 
 
 def renderer_doctor() -> dict[str, Any]:
@@ -57,7 +114,7 @@ def backup_database() -> dict[str, Any]:
     if not DB_PATH.is_file():
         return {"status": "skipped", "reason": "database_missing", "database": DB_PATH.name}
     BACKUP_ROOT.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = _now().strftime("%Y%m%dT%H%M%SZ")
     target = BACKUP_ROOT / f"zmovie-{stamp}.db"
     temp = target.with_suffix(".tmp")
     temp.unlink(missing_ok=True)
@@ -106,33 +163,53 @@ def watchdog_status() -> dict[str, Any]:
         "data_writable": os.access(DATA_ROOT if DATA_ROOT.exists() else DB_PATH.parent, os.W_OK),
         "disk_free_bytes": disk.free,
         "queue": queue,
+        "api": _api_health(),
         "web_service": _run(["systemctl", "is-active", "zmovie"]),
         "worker_service": _run(["systemctl", "is-active", "zmovie-worker"]),
     }
 
 
-def watchdog_run() -> dict[str, Any]:
+def watchdog_run(*, repair: bool = False) -> dict[str, Any]:
     status = watchdog_status()
-    actions: list[str] = []
+    problems: list[str] = []
+    repairs: list[dict[str, Any]] = []
     if not status["database_ok"]:
-        actions.append("database_unhealthy")
+        problems.append("database_unhealthy")
     if not status["data_writable"]:
-        actions.append("data_not_writable")
+        problems.append("data_not_writable")
     if int(status["disk_free_bytes"]) < 512 * 1024 * 1024:
-        actions.append("disk_space_critical")
-    # Renderer/model readiness intentionally does not trigger restarts.
-    return {"healthy": not actions, "actions": actions, "status": status}
+        problems.append("disk_space_critical")
+    web_dead = not bool(status["web_service"].get("ok")) or not bool(status["api"].get("ok"))
+    worker_required = int(status["queue"].get("active", 0)) > 0
+    worker_dead = worker_required and not bool(status["worker_service"].get("ok"))
+    if web_dead:
+        problems.append("web_service_unhealthy")
+    if worker_dead:
+        problems.append("worker_service_unhealthy_with_active_jobs")
+    if repair and status["database_ok"] and status["data_writable"]:
+        if web_dead:
+            repairs.append(_restart_service("zmovie"))
+        if worker_dead:
+            repairs.append(_restart_service("zmovie-worker"))
+    # Renderer/model readiness intentionally never triggers restart storms.
+    return {"healthy": not problems, "problems": problems, "repairs": repairs, "status": status}
 
 
 def upgrade_readiness() -> dict[str, Any]:
     jobs = list_worker_jobs(limit=1000)
     active = [j for j in jobs if str(j.get("status")) in {"claimed", "running"}]
     ambiguous = [j for j in jobs if str(j.get("status")) == "recovery_required"]
+    with connect() as conn:
+        external_rows = conn.execute(
+            "SELECT id,status FROM publish_jobs WHERE status IN ('submitting','external_state_unknown','recovery_required') ORDER BY created_at DESC"
+        ).fetchall()
+    external = [{"id": str(row["id"]), "status": str(row["status"])} for row in external_rows]
     return {
-        "safe": not active and not ambiguous,
+        "safe": not active and not ambiguous and not external,
         "active_jobs": [{"id": j["id"], "type": j["job_type"], "status": j["status"]} for j in active],
         "recovery_required": [{"id": j["id"], "type": j["job_type"]} for j in ambiguous],
-        "policy": "refuse upgrade while active work or ambiguous external state exists",
+        "external_transition_unknown": external,
+        "policy": "refuse upgrade while active work or ambiguous external state exists; queued durable work is preserved",
     }
 
 
@@ -141,7 +218,7 @@ def sdcpp_evidence(run_smoke: bool = False) -> dict[str, Any]:
     report.update(
         {
             "schema": "zmovie.runtime-evidence/v1",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": _now().isoformat(),
             "hostname": socket.gethostname(),
             "ffmpeg": _run(["ffmpeg", "-version"]),
             "ffprobe": _run(["ffprobe", "-version"]),
@@ -151,9 +228,12 @@ def sdcpp_evidence(run_smoke: bool = False) -> dict[str, Any]:
         }
     )
     if run_smoke:
-        report["smoke"] = {"status": "blocked", "reason": "explicit model-specific smoke is not auto-inferred; configure a video-capable model and invoke the maintained renderer command"}
+        report["smoke"] = {
+            "status": "blocked",
+            "reason": "explicit model-specific smoke is not auto-inferred; configure a video-capable model and invoke the maintained renderer command",
+        }
     EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
-    name = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-sdcpp-runtime.json")
+    name = _now().strftime("%Y%m%dT%H%M%SZ-sdcpp-runtime.json")
     target = EVIDENCE_ROOT / name
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
@@ -180,7 +260,8 @@ def main() -> int:
     sub.add_parser("backups")
     sub.add_parser("backup-status")
     sub.add_parser("watchdog-status")
-    sub.add_parser("watchdog-run")
+    watchdog = sub.add_parser("watchdog-run")
+    watchdog.add_argument("--repair", action="store_true")
     sub.add_parser("upgrade-readiness")
     evidence = sub.add_parser("sdcpp-evidence")
     evidence.add_argument("--run-smoke", action="store_true")
@@ -215,9 +296,9 @@ def main() -> int:
     elif command == "watchdog-status":
         _json(watchdog_status())
     elif command == "watchdog-run":
-        report = watchdog_run()
+        report = watchdog_run(repair=args.repair)
         _json(report)
-        return 0 if report["healthy"] else 1
+        return 0 if report["healthy"] or report["repairs"] else 1
     elif command == "upgrade-readiness":
         report = upgrade_readiness()
         _json(report)
