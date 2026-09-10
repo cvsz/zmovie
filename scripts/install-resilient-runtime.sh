@@ -65,6 +65,9 @@ ReadWritePaths=${DATA_DIR} ${BACKUP_DIR}
 WantedBy=multi-user.target
 EOF
 
+# The watchdog is the only root one-shot unit. It needs systemctl authority to repair
+# a demonstrably dead web/worker service. The Python watchdog rate-limits repairs
+# and never restarts services merely because a renderer/model is unavailable.
 cat >/etc/systemd/system/zmovie-watchdog.service <<EOF
 [Unit]
 Description=zMovie Health Watchdog
@@ -72,17 +75,23 @@ After=zmovie.service zmovie-worker.service
 
 [Service]
 Type=oneshot
-User=${SERVICE_USER}
-Group=${SERVICE_USER}
+User=root
+Group=root
 WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${ENV_FILE}
 Environment=ZMOVIE_DATA_DIR=${DATA_DIR}
-ExecStart=${PYTHON_BIN} -m zmovie_platform.runtime_ops watchdog-run
-NoNewPrivileges=true
+ExecStart=${PYTHON_BIN} -m zmovie_platform.runtime_ops watchdog-run --repair
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=${DATA_DIR}
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=${DATA_DIR} /run/systemd
 EOF
 
 cat >/etc/systemd/system/zmovie-watchdog.timer <<'EOF'
