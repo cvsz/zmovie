@@ -32,14 +32,19 @@ def _execute(job: dict[str, Any]) -> dict[str, Any]:
         run_id = str(job.get("production_run_id") or payload.get("run_id") or "")
         if not project_id or not run_id:
             raise ValueError("production_run job requires project_id and production_run_id")
-        return execute_production_run(project_id, run_id)
-    if job_type == "production_render":
+        result = execute_production_run(project_id, run_id)
+    elif job_type == "production_render":
         provider = str(job.get("provider") or payload.get("provider") or "")
         max_workers = int(payload.get("max_workers") or 2)
         if not project_id or not provider:
             raise ValueError("production_render job requires project_id and provider")
-        return render_all_production(project_id, provider, max_workers)
-    raise ValueError(f"unsupported worker job type: {job_type}")
+        result = render_all_production(project_id, provider, max_workers)
+    else:
+        raise ValueError(f"unsupported worker job type: {job_type}")
+    if str(result.get("status") or "") in {"failed", "blocked"}:
+        reason = str(result.get("error") or result.get("reason") or result.get("status") or "production execution failed")
+        raise RuntimeError(reason)
+    return result
 
 
 def run_once(worker_id: str, *, lease_seconds: int = 120) -> bool:
