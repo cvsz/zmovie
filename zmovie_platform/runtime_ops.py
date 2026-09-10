@@ -95,15 +95,23 @@ def _restart_service(service: str) -> dict[str, Any]:
 
 def renderer_doctor() -> dict[str, Any]:
     dri = Path("/dev/dri")
-    render_nodes = sorted(str(path) for path in dri.glob("renderD*")) if dri.is_dir() else []
+    render_paths = sorted(dri.glob("renderD*")) if dri.is_dir() else []
     groups: dict[str, Any] = {}
     for name in ("render", "video"):
         result = _run(["getent", "group", name])
         groups[name] = {"exists": bool(result.get("ok"))}
     return {
         "hostname": socket.gethostname(),
+        "identity": _run(["id"]),
         "dri_exists": dri.is_dir(),
-        "render_nodes": [Path(item).name for item in render_nodes],
+        "render_nodes": [
+            {
+                "name": path.name,
+                "readable": os.access(path, os.R_OK),
+                "writable": os.access(path, os.W_OK),
+            }
+            for path in render_paths
+        ],
         "groups": groups,
         "vulkaninfo": _run(["vulkaninfo", "--summary"]),
         "sd_cli_devices": _run([os.getenv("ZMOVIE_SDCPP_BIN", "sd-cli"), "--list-devices"]),
@@ -298,7 +306,8 @@ def main() -> int:
     elif command == "watchdog-run":
         report = watchdog_run(repair=args.repair)
         _json(report)
-        return 0 if report["healthy"] or report["repairs"] else 1
+        repaired = any(bool(item.get("restarted")) for item in report["repairs"])
+        return 0 if report["healthy"] or repaired else 1
     elif command == "upgrade-readiness":
         report = upgrade_readiness()
         _json(report)
