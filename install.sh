@@ -67,6 +67,9 @@ PY
 
 status(){
   systemctl --no-pager --full status zmovie || true
+  systemctl --no-pager --full status zmovie-worker || true
+  systemctl --no-pager --full status zmovie-backup.timer || true
+  systemctl --no-pager --full status zmovie-watchdog.timer || true
   if command -v curl >/dev/null 2>&1; then
     local health_port="$PORT"
     if [[ -f "$ENV_FILE" ]]; then
@@ -80,8 +83,14 @@ status(){
 
 uninstall_service(){
   local purge="${2:-}"
-  systemctl disable --now zmovie 2>/dev/null || true
-  rm -f "$SERVICE_FILE" "$CONTROL_BIN"
+  systemctl disable --now zmovie-backup.timer zmovie-watchdog.timer zmovie-worker zmovie 2>/dev/null || true
+  rm -f "$SERVICE_FILE" \
+    /etc/systemd/system/zmovie-worker.service \
+    /etc/systemd/system/zmovie-watchdog.service \
+    /etc/systemd/system/zmovie-watchdog.timer \
+    /etc/systemd/system/zmovie-backup.service \
+    /etc/systemd/system/zmovie-backup.timer \
+    "$CONTROL_BIN"
   systemctl daemon-reload
   rm -rf "$INSTALL_DIR"
   rm -rf "$CONFIG_DIR"
@@ -94,6 +103,15 @@ uninstall_service(){
   fi
 }
 
+upgrade_readiness_if_available(){
+  [[ "$ACTION" == "upgrade" || "$ACTION" == "--upgrade" ]] || return 0
+  [[ -x "$INSTALL_DIR/.venv/bin/python" && -f "$INSTALL_DIR/zmovie_platform/runtime_ops.py" && -f "$ENV_FILE" ]] || return 0
+  log "checking durable-worker upgrade readiness"
+  runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c \
+    'set -a; source "$1"; set +a; cd "$2"; exec "$3" -m zmovie_platform.runtime_ops upgrade-readiness' \
+    _ "$ENV_FILE" "$INSTALL_DIR" "$INSTALL_DIR/.venv/bin/python"
+}
+
 install_or_upgrade(){
   export DEBIAN_FRONTEND=noninteractive
   log "installing OS dependencies"
@@ -104,9 +122,11 @@ install_or_upgrade(){
     useradd --system --home "$DATA_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
   fi
   install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 \
-    "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$DATA_DIR/publish" "$DATA_DIR/bilibili" "$PLAYWRIGHT_DIR" "$BACKUP_DIR"
+    "$DATA_DIR" "$DATA_DIR/media" "$DATA_DIR/exports" "$DATA_DIR/objects" "$DATA_DIR/publish" \
+    "$DATA_DIR/bilibili" "$DATA_DIR/models" "$DATA_DIR/evidence" "$PLAYWRIGHT_DIR" "$BACKUP_DIR"
   install -d -o root -g "$SERVICE_USER" -m 0750 "$CONFIG_DIR"
 
+  upgrade_readiness_if_available
   if [[ -d "$INSTALL_DIR" ]]; then
     backup_data
   fi
@@ -140,6 +160,13 @@ ZMOVIE_EXPORT_ROOT=${DATA_DIR}/exports
 ZMOVIE_PUBLISH_ROOT=${DATA_DIR}/publish
 ZMOVIE_OBJECT_ROOT=${DATA_DIR}/objects
 ZMOVIE_AUDIT_PATH=${DATA_DIR}/audit.jsonl
+ZMOVIE_DATA_DIR=${DATA_DIR}
+ZMOVIE_BACKUP_DIR=${BACKUP_DIR}
+ZMOVIE_EVIDENCE_ROOT=${DATA_DIR}/evidence
+ZMOVIE_BACKUP_RETENTION=${ZMOVIE_BACKUP_RETENTION:-14}
+ZMOVIE_WORKER_LEASE_SECONDS=${ZMOVIE_WORKER_LEASE_SECONDS:-120}
+ZMOVIE_WORKER_POLL_SECONDS=${ZMOVIE_WORKER_POLL_SECONDS:-2}
+ZMOVIE_WORKER_RETRY_DELAY=${ZMOVIE_WORKER_RETRY_DELAY:-30}
 ZMOVIE_AUTH_ENABLED=${ZMOVIE_AUTH_ENABLED:-true}
 ZMOVIE_ENABLE_DOCS=${ZMOVIE_ENABLE_DOCS:-false}
 ZMOVIE_SECRET_KEY=${secret}
@@ -182,6 +209,13 @@ EOF
     grep -q '^ZMOVIE_BILIBILI_HEADLESS=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_HEADLESS=true\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_BILIBILI_AUTO_PUBLISH=' "$ENV_FILE" || printf 'ZMOVIE_BILIBILI_AUTO_PUBLISH=false\n' >>"$ENV_FILE"
     grep -q '^PLAYWRIGHT_BROWSERS_PATH=' "$ENV_FILE" || printf 'PLAYWRIGHT_BROWSERS_PATH=%s\n' "$PLAYWRIGHT_DIR" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_DATA_DIR=' "$ENV_FILE" || printf 'ZMOVIE_DATA_DIR=%s\n' "$DATA_DIR" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BACKUP_DIR=' "$ENV_FILE" || printf 'ZMOVIE_BACKUP_DIR=%s\n' "$BACKUP_DIR" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_EVIDENCE_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_EVIDENCE_ROOT=%s/evidence\n' "$DATA_DIR" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BACKUP_RETENTION=' "$ENV_FILE" || printf 'ZMOVIE_BACKUP_RETENTION=14\n' >>"$ENV_FILE"
+    grep -q '^ZMOVIE_WORKER_LEASE_SECONDS=' "$ENV_FILE" || printf 'ZMOVIE_WORKER_LEASE_SECONDS=120\n' >>"$ENV_FILE"
+    grep -q '^ZMOVIE_WORKER_POLL_SECONDS=' "$ENV_FILE" || printf 'ZMOVIE_WORKER_POLL_SECONDS=2\n' >>"$ENV_FILE"
+    grep -q '^ZMOVIE_WORKER_RETRY_DELAY=' "$ENV_FILE" || printf 'ZMOVIE_WORKER_RETRY_DELAY=30\n' >>"$ENV_FILE"
   fi
 
   cat >"$SERVICE_FILE" <<EOF
@@ -224,10 +258,19 @@ EOF
   install -m 0755 "$INSTALL_DIR/scripts/zmovie-ctl.sh" "$CONTROL_BIN"
   chown root:root "$CONTROL_BIN"
   chown -R root:root "$INSTALL_DIR"
-  chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR"
+  chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR" "$BACKUP_DIR"
   systemctl daemon-reload
   systemctl enable --now zmovie
   systemctl restart zmovie
+
+  log "installing resilient worker/watchdog/backup runtime"
+  ZMOVIE_INSTALL_DIR="$INSTALL_DIR" \
+  ZMOVIE_DATA_DIR="$DATA_DIR" \
+  ZMOVIE_CONFIG_DIR="$CONFIG_DIR" \
+  ZMOVIE_ENV="$ENV_FILE" \
+  ZMOVIE_SERVICE_USER="$SERVICE_USER" \
+  ZMOVIE_BACKUP_DIR="$BACKUP_DIR" \
+    bash "$INSTALL_DIR/scripts/install-resilient-runtime.sh"
 
   log "waiting for health check"
   local ok=0
@@ -240,10 +283,14 @@ EOF
     journalctl -u zmovie -n 100 --no-pager || true
     fail "service failed health validation"
   fi
+  systemctl is-active --quiet zmovie-worker || fail "worker service failed validation"
+  systemctl is-active --quiet zmovie-backup.timer || fail "backup timer failed validation"
+  systemctl is-active --quiet zmovie-watchdog.timer || fail "watchdog timer failed validation"
 
   PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
   log "installation healthy"
   log "Studio: ${PUBLIC_BASE_URL}/studio"
+  log "Product Studio: ${PUBLIC_BASE_URL}/product"
   log "CLI control panel: sudo ${CONTROL_BIN}"
   log "Makefile automation is installed at ${INSTALL_DIR}/Makefile"
   log "API docs: disabled by default; set ZMOVIE_ENABLE_DOCS=true to expose ${PUBLIC_BASE_URL}/docs"

@@ -91,12 +91,45 @@ CREATE TABLE IF NOT EXISTS publish_jobs (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS worker_jobs (
+  id TEXT PRIMARY KEY,
+  job_type TEXT NOT NULL,
+  project_id TEXT NOT NULL DEFAULT '',
+  production_run_id TEXT NOT NULL DEFAULT '',
+  provider TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL,
+  priority INTEGER NOT NULL DEFAULT 100,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 3,
+  worker_id TEXT NOT NULL DEFAULT '',
+  claimed_at TEXT NOT NULL DEFAULT '',
+  heartbeat_at TEXT NOT NULL DEFAULT '',
+  lease_expires_at TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL DEFAULT '',
+  next_attempt_at TEXT NOT NULL DEFAULT '',
+  completed_at TEXT NOT NULL DEFAULT '',
+  failed_at TEXT NOT NULL DEFAULT '',
+  result_json TEXT NOT NULL DEFAULT '{}',
+  error_code TEXT NOT NULL DEFAULT '',
+  error_message TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS runtime_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_scenes_project ON scenes(project_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_shots_project ON shots(project_id, scene_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_jobs_project ON render_jobs(project_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project_id, kind);
 CREATE INDEX IF NOT EXISTS idx_publish_project ON publish_jobs(project_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_publish_status ON publish_jobs(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_worker_jobs_claim ON worker_jobs(status, priority, next_attempt_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_worker_jobs_project ON worker_jobs(project_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_worker_jobs_lease ON worker_jobs(status, lease_expires_at);
 """
 
 
@@ -110,9 +143,10 @@ def ensure_database() -> None:
 @contextmanager
 def connect() -> Iterator[sqlite3.Connection]:
     ensure_database()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=30000")
     try:
         yield conn
         conn.commit()

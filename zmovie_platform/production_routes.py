@@ -11,20 +11,20 @@ from .api_schemas import BilibiliPrepareRequest
 from .audit import write as audit
 from .content_storyboard import create_content_storyboard
 from .hyperframes import get_hyperframes_template, list_hyperframes_templates
-from .jobs import submit
 from .metrics import increment
 from .production import (
     assemble_production,
-    execute_production_run,
     export_production_package,
     get_production_run,
     latest_production_run,
     prepare_bilibili_production,
     production_readiness,
-    render_all_production,
     start_production_run,
 )
 from .repository import list_jobs
+from .worker_queue import ACTIVE_STATES, enqueue, queue_status
+from .worker_queue import get as get_worker_job
+from .worker_queue import list_jobs as list_worker_jobs
 
 router = APIRouter(prefix="/api/v2")
 
@@ -60,6 +60,31 @@ class ProductionRunRequest(ProductionRenderRequest):
     schedule_at: str = Field(default="", max_length=80)
 
 
+def _public_worker(job: dict[str, Any] | None) -> dict[str, Any] | None:
+    if job is None:
+        return None
+    return {
+        key: job.get(key)
+        for key in (
+            "id",
+            "job_type",
+            "project_id",
+            "production_run_id",
+            "provider",
+            "status",
+            "priority",
+            "attempts",
+            "max_attempts",
+            "worker_id",
+            "heartbeat_at",
+            "created_at",
+            "updated_at",
+            "error_code",
+            "error_message",
+        )
+    }
+
+
 def _public_run(run: dict[str, Any] | None) -> dict[str, Any] | None:
     if run is None:
         return None
@@ -80,9 +105,18 @@ def _public_run(run: dict[str, Any] | None) -> dict[str, Any] | None:
     }
 
 
+def _worker_for_run(run_id: str) -> dict[str, Any] | None:
+    for job in list_worker_jobs(limit=1000):
+        if str(job.get("production_run_id") or "") == run_id:
+            return job
+    return None
+
+
 def _ensure_no_active_render(project_id: str) -> None:
     if any(str(job.get("status")) in {"queued", "running"} for job in list_jobs(project_id, limit=5000)):
         raise HTTPException(status_code=409, detail="project already has active render jobs")
+    if any(str(job.get("project_id")) == project_id and str(job.get("status")) in ACTIVE_STATES for job in list_worker_jobs(limit=1000)):
+        raise HTTPException(status_code=409, detail="project already has active durable production work")
 
 
 def _require_ready_provider_from_state(state: dict[str, Any], provider_id: str) -> None:
@@ -110,11 +144,7 @@ def _require_ready_provider_from_state(state: dict[str, Any], provider_id: str) 
 
 
 @router.get("/hyperframes/templates", tags=["production"])
-def hyperframes_templates(
-    query: str = "",
-    category: str = "",
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def hyperframes_templates(query: str = "", category: str = "", actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     del actor
     try:
         items = list_hyperframes_templates(query=query, category=category)
@@ -124,10 +154,7 @@ def hyperframes_templates(
 
 
 @router.get("/hyperframes/templates/{template_id}", tags=["production"])
-def hyperframes_template(
-    template_id: str,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def hyperframes_template(template_id: str, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     del actor
     item = get_hyperframes_template(template_id)
     if item is None:
@@ -136,10 +163,7 @@ def hyperframes_template(
 
 
 @router.post("/content/storyboard", tags=["production"])
-def one_click_content_storyboard(
-    payload: ContentStoryboardRequest,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def one_click_content_storyboard(payload: ContentStoryboardRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     try:
         result = create_content_storyboard(
             topic=payload.topic,
@@ -162,13 +186,23 @@ def one_click_content_storyboard(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     project_id = str(result["project"]["id"])
     increment("content.storyboard.generated")
-    audit(
-        "content.storyboard.generate",
-        actor=actor["username"],
-        project_id=project_id,
-        hyperframes_template=payload.template_id,
-    )
+    audit("content.storyboard.generate", actor=actor["username"], project_id=project_id, hyperframes_template=payload.template_id)
     return result
+
+
+@router.get("/worker/status", tags=["production"])
+def worker_status(actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
+    del actor
+    return queue_status()
+
+
+@router.get("/worker/jobs/{job_id}", tags=["production"])
+def worker_job(job_id: str, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
+    del actor
+    job = get_worker_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="worker job not found")
+    return _public_worker(job) or {}
 
 
 @router.get("/projects/{project_id}/production/readiness", tags=["production"])
@@ -181,21 +215,22 @@ def readiness(project_id: str, actor: dict[str, str] = Depends(current_actor)) -
 
 
 @router.post("/projects/{project_id}/production/render", tags=["production"])
-def production_render(
-    project_id: str,
-    payload: ProductionRenderRequest,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def production_render(project_id: str, payload: ProductionRenderRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
     state = production_readiness(project_id)
     _require_ready_provider_from_state(state, payload.provider)
     if not state["qc"]["passed"]:
         raise HTTPException(status_code=409, detail={"message": "project failed QC", "qc": state["qc"]})
     _ensure_no_active_render(project_id)
-    submit(render_all_production, project_id, payload.provider, payload.max_workers)
+    job = enqueue(
+        "production_render",
+        project_id=project_id,
+        provider=payload.provider,
+        payload={"max_workers": payload.max_workers},
+    )
     increment("production.render.queued")
-    audit("production.render.queue", actor=actor["username"], project_id=project_id, provider=payload.provider)
-    return {"status": "queued", "project_id": project_id, "provider": payload.provider, "production": True}
+    audit("production.render.queue", actor=actor["username"], project_id=project_id, provider=payload.provider, worker_job_id=job["id"])
+    return {"status": "queued", "project_id": project_id, "provider": payload.provider, "production": True, "worker_job_id": job["id"]}
 
 
 @router.post("/projects/{project_id}/production/assemble", tags=["production"])
@@ -211,11 +246,7 @@ def production_assemble(project_id: str, actor: dict[str, str] = Depends(current
 
 
 @router.post("/projects/{project_id}/production/publish/bilibili/prepare", tags=["production", "publish"])
-def production_prepare_bilibili(
-    project_id: str,
-    payload: BilibiliPrepareRequest,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def production_prepare_bilibili(project_id: str, payload: BilibiliPrepareRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
     try:
         job = prepare_bilibili_production(
@@ -234,21 +265,8 @@ def production_prepare_bilibili(
     return {
         key: job[key]
         for key in (
-            "id",
-            "project_id",
-            "platform",
-            "status",
-            "title",
-            "description",
-            "tags",
-            "playlist",
-            "content_type",
-            "schedule_at",
-            "published_url",
-            "error",
-            "metadata",
-            "created_at",
-            "updated_at",
+            "id", "project_id", "platform", "status", "title", "description", "tags", "playlist", "content_type",
+            "schedule_at", "published_url", "error", "metadata", "created_at", "updated_at",
         )
         if key in job
     }
@@ -267,11 +285,7 @@ def production_export(project_id: str, actor: dict[str, str] = Depends(current_a
 
 
 @router.post("/projects/{project_id}/production/run", tags=["production"])
-def production_run(
-    project_id: str,
-    payload: ProductionRunRequest,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def production_run(project_id: str, payload: ProductionRunRequest, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
     _ensure_no_active_render(project_id)
     try:
@@ -290,26 +304,40 @@ def production_run(
         )
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-    submit(execute_production_run, project_id, str(run["id"]))
+    job = enqueue(
+        "production_run",
+        project_id=project_id,
+        production_run_id=str(run["id"]),
+        provider=payload.provider,
+        payload={"max_workers": payload.max_workers},
+    )
     increment("production.run.queued")
-    audit("production.run.queue", actor=actor["username"], project_id=project_id, run_id=run["id"], provider=payload.provider)
-    return _public_run(run) or {}
+    audit("production.run.queue", actor=actor["username"], project_id=project_id, run_id=run["id"], worker_job_id=job["id"], provider=payload.provider)
+    response = _public_run(run) or {}
+    response["worker_job_id"] = str(job["id"])
+    return response
 
 
 @router.get("/projects/{project_id}/production/run", tags=["production"])
 def production_run_latest(project_id: str, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
-    return {"run": _public_run(latest_production_run(project_id))}
+    run = latest_production_run(project_id)
+    response = _public_run(run)
+    if response and run:
+        worker = _worker_for_run(str(run.get("id") or ""))
+        response["worker_job_id"] = str((worker or {}).get("id") or "")
+        response["worker"] = _public_worker(worker)
+    return {"run": response}
 
 
 @router.get("/projects/{project_id}/production/runs/{run_id}", tags=["production"])
-def production_run_status(
-    project_id: str,
-    run_id: str,
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+def production_run_status(project_id: str, run_id: str, actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     require_project(project_id, actor)
     run = get_production_run(project_id, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="production run not found")
-    return _public_run(run) or {}
+    response = _public_run(run) or {}
+    worker = _worker_for_run(run_id)
+    response["worker_job_id"] = str((worker or {}).get("id") or "")
+    response["worker"] = _public_worker(worker)
+    return response

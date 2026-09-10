@@ -96,12 +96,7 @@ class GenericWebhookProvider:
 
 
 class ComfyUIProvider:
-    """Native self-hosted ComfyUI provider using its API-format workflow contract.
-
-    The workflow must be exported from ComfyUI using the API-format export and
-    stored on the zMovie host. String placeholders such as ``{{PROMPT}}`` are
-    substituted recursively before the workflow is queued.
-    """
+    """Native ComfyUI provider with durable prompt-id reconciliation."""
 
     spec = ProviderSpec(
         id="comfyui",
@@ -109,7 +104,7 @@ class ComfyUIProvider:
         modes=("text-to-video", "image-to-video"),
         durations=(5, 10, 20),
         aspect_ratios=("16:9", "9:16", "1:1", "21:9"),
-        description="Queues an API-format workflow on a self-hosted ComfyUI server, waits for execution history, downloads generated outputs, and registers the primary result in zMovie.",
+        description="Queues an API-format workflow on a self-hosted ComfyUI server, reconciles an existing prompt after worker recovery, downloads generated outputs, and registers the primary result in zMovie.",
     )
 
     VIDEO_EXTENSIONS = (".mp4", ".webm", ".mov", ".mkv", ".avi", ".gif", ".webp")
@@ -238,7 +233,6 @@ class ComfyUIProvider:
             raise RuntimeError("ComfyUI workflow must be valid API-format JSON") from exc
         if not isinstance(workflow, dict) or not workflow:
             raise RuntimeError("ComfyUI API workflow must be a non-empty JSON object")
-
         duration = max(1, int(metadata.get("duration_seconds", 5)))
         aspect = str(metadata.get("aspect_ratio", "16:9"))
         fps = max(1, int(os.getenv("ZMOVIE_COMFYUI_FPS", "16")))
@@ -248,22 +242,11 @@ class ComfyUIProvider:
         prefix = os.getenv("ZMOVIE_COMFYUI_FILENAME_PREFIX", "zmovie").strip() or "zmovie"
         prefix = f"{prefix}_{metadata['job_id']}"
         values: dict[str, Any] = {
-            "PROMPT": prompt,
-            "NEGATIVE_PROMPT": negative_prompt,
-            "SEED": seed,
-            "WIDTH": width,
-            "HEIGHT": height,
-            "FRAMES": frames,
-            "FPS": fps,
-            "DURATION_SECONDS": duration,
-            "ASPECT_RATIO": aspect,
-            "PREFIX": prefix,
-            "JOB_ID": str(metadata["job_id"]),
-            "PROJECT_ID": str(metadata.get("project_id", "")),
-            "SHOT_ID": str(metadata.get("shot_id", "")),
+            "PROMPT": prompt, "NEGATIVE_PROMPT": negative_prompt, "SEED": seed, "WIDTH": width, "HEIGHT": height,
+            "FRAMES": frames, "FPS": fps, "DURATION_SECONDS": duration, "ASPECT_RATIO": aspect, "PREFIX": prefix,
+            "JOB_ID": str(metadata["job_id"]), "PROJECT_ID": str(metadata.get("project_id", "")), "SHOT_ID": str(metadata.get("shot_id", "")),
         }
         workflow = self._replace_placeholders(workflow, values)
-
         self._set_input(workflow, self._node_ids("ZMOVIE_COMFYUI_POSITIVE_NODE_IDS"), ("text",), prompt)
         self._set_input(workflow, self._node_ids("ZMOVIE_COMFYUI_NEGATIVE_NODE_IDS"), ("text",), negative_prompt)
         self._set_input(workflow, self._node_ids("ZMOVIE_COMFYUI_SEED_NODE_IDS"), ("seed", "noise_seed"), seed)
@@ -273,8 +256,6 @@ class ComfyUIProvider:
             node = workflow.get(node_id)
             if isinstance(node, dict) and isinstance(node.get("inputs"), dict):
                 node["inputs"]["height"] = height
-
-        # Safe convenience fallback: prompt nodes explicitly titled Positive/Negative.
         for node in workflow.values():
             if not isinstance(node, dict) or not isinstance(node.get("inputs"), dict):
                 continue
@@ -284,7 +265,6 @@ class ComfyUIProvider:
                 inputs["text"] = prompt
             elif "text" in inputs and "negative" in title:
                 inputs["text"] = negative_prompt
-
         return workflow, values
 
     @staticmethod
@@ -338,11 +318,7 @@ class ComfyUIProvider:
     def _collect_output_refs(value: Any, found: list[dict[str, str]]) -> None:
         if isinstance(value, dict):
             if isinstance(value.get("filename"), str):
-                found.append({
-                    "filename": value["filename"],
-                    "subfolder": str(value.get("subfolder", "")),
-                    "type": str(value.get("type", "output")),
-                })
+                found.append({"filename": value["filename"], "subfolder": str(value.get("subfolder", "")), "type": str(value.get("type", "output"))})
             for nested in value.values():
                 ComfyUIProvider._collect_output_refs(nested, found)
         elif isinstance(value, list):
@@ -353,9 +329,8 @@ class ComfyUIProvider:
         query = urllib.parse.urlencode(ref)
         request = urllib.request.Request(self._base_url() + "/view?" + query, headers=self._headers(), method="GET")
         try:
-            with urllib.request.urlopen(request, timeout=300) as response:
-                with target.open("wb") as handle:
-                    shutil.copyfileobj(response, handle)
+            with urllib.request.urlopen(request, timeout=300) as response, target.open("wb") as handle:
+                shutil.copyfileobj(response, handle)
         except (urllib.error.HTTPError, urllib.error.URLError) as exc:
             raise RuntimeError(f"failed to download ComfyUI output {ref['filename']}: {exc}") from exc
 
@@ -371,7 +346,6 @@ class ComfyUIProvider:
                 unique.append(ref)
         if not unique:
             raise RuntimeError("ComfyUI completed but no downloadable output files were reported")
-
         job_dir = output_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
         paths: list[str] = []
@@ -394,14 +368,33 @@ class ComfyUIProvider:
             primary = Path(paths[0])
         return paths, str(primary), primary_kind
 
+    @staticmethod
+    def _checkpoint_remote_prompt(metadata: dict[str, Any], prompt_id: str, client_id: str) -> None:
+        """Persist remote identity immediately so worker recovery never blindly resubmits."""
+        job_id = str(metadata.get("job_id") or "")
+        if not job_id:
+            return
+        from .repository import get_job, save_job
+
+        job = get_job(job_id)
+        if job is None:
+            return
+        job.metadata.update({"comfyui_prompt_id": prompt_id, "comfyui_client_id": client_id})
+        save_job(job)
+
     def submit(self, *, prompt: str, negative_prompt: str, output_dir: Path, metadata: dict[str, Any]) -> dict[str, Any]:
         output_dir.mkdir(parents=True, exist_ok=True)
         workflow, resolved = self._load_workflow(prompt, negative_prompt, metadata)
-        client_id = str(uuid.uuid4())
-        response = self._request_json("POST", "/prompt", {"prompt": workflow, "client_id": client_id}, timeout=60)
-        if not isinstance(response, dict) or not response.get("prompt_id"):
-            raise RuntimeError(f"ComfyUI did not return prompt_id: {json.dumps(response, ensure_ascii=False)[:1200]}")
-        prompt_id = str(response["prompt_id"])
+        prompt_id = str(metadata.get("comfyui_prompt_id") or "").strip()
+        client_id = str(metadata.get("comfyui_client_id") or "").strip()
+        reconciled = bool(prompt_id)
+        if not prompt_id:
+            client_id = str(uuid.uuid4())
+            response = self._request_json("POST", "/prompt", {"prompt": workflow, "client_id": client_id}, timeout=60)
+            if not isinstance(response, dict) or not response.get("prompt_id"):
+                raise RuntimeError(f"ComfyUI did not return prompt_id: {json.dumps(response, ensure_ascii=False)[:1200]}")
+            prompt_id = str(response["prompt_id"])
+            self._checkpoint_remote_prompt(metadata, prompt_id, client_id)
         entry = self._wait_for_history(prompt_id)
         outputs, primary, kind = self._download_outputs(entry, output_dir, str(metadata["job_id"]))
         return {
@@ -411,7 +404,7 @@ class ComfyUIProvider:
             "outputs": outputs,
             "comfyui_prompt_id": prompt_id,
             "comfyui_client_id": client_id,
-            "comfyui_url": self._base_url(),
+            "comfyui_reconciled": reconciled,
             "render_parameters": {k.lower(): v for k, v in resolved.items() if k in {"SEED", "WIDTH", "HEIGHT", "FRAMES", "FPS", "DURATION_SECONDS", "ASPECT_RATIO"}},
         }
 

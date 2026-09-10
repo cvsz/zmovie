@@ -1,27 +1,33 @@
 # zMovie operations guide
 
 This guide covers the safe lifecycle of a native or Docker deployment. It
-separates service health, renderer readiness, production media validation, and
-external publication evidence.
+separates service health, durable worker state, renderer readiness, production
+media validation, and external publication evidence.
 
 ## Native installation and upgrade
 
-From a reviewed repository checkout, the installer provisions the service,
-runtime dependencies, FFmpeg/ffprobe, Playwright when configured, persistent
-data, and the operator CLI. The public one-command installer is documented in
-the [README](../README.md#one-command-native-install).
+From a reviewed repository checkout, the installer provisions the hardened web
+service, dedicated production worker, watchdog/backup timers, runtime
+dependencies, FFmpeg/ffprobe, Playwright when configured, persistent data, and
+the operator CLI. The public one-command installer is documented in the
+[README](../README.md#one-command-native-install).
 
-For an existing native installation:
+For an existing native installation, check the durable upgrade gate first:
 
 ```bash
+sudo zmovie-ctl upgrade-readiness
 sudo bash /opt/zmovie/install.sh upgrade
 sudo systemctl status zmovie
-sudo bash /opt/zmovie/scripts/doctor.sh
+sudo systemctl status zmovie-worker
+sudo systemctl status zmovie-watchdog.timer
+sudo systemctl status zmovie-backup.timer
+sudo zmovie-ctl doctor
 ```
 
 The upgrade path creates a consistent SQLite backup and preserves persistent
-configuration and data. Review the output and service state before declaring
-the upgrade successful.
+configuration, queue state, media, exports, publication packages, model storage
+and evidence. It refuses an unsafe upgrade while a worker lease is executing or
+an external publication transition requires reconciliation.
 
 ## Health, logs, and control
 
@@ -29,13 +35,56 @@ the upgrade successful.
 sudo zmovie-ctl status
 sudo zmovie-ctl health
 sudo zmovie-ctl doctor
+sudo zmovie-ctl worker-status
+sudo zmovie-ctl watchdog-status
+sudo zmovie-ctl backup-status
 sudo journalctl -u zmovie -f
+sudo zmovie-ctl worker-logs 200
 ```
 
 The public health response is intentionally redacted. Use the operator CLI and
-service logs for detailed paths and diagnostics, then redact them before
-sharing. The [Makefile and CLI guide](MAKEFILE_CLI_CONTROL.md) contains the
-complete command catalog.
+service logs for detailed diagnostics, then redact host-specific information
+before sharing. The [Makefile and CLI guide](MAKEFILE_CLI_CONTROL.md) contains
+the broader command catalog.
+
+## Durable production worker
+
+Long AI execution is not owned by uvicorn. Production requests create durable
+SQLite jobs and return; `zmovie-worker.service` claims the jobs, heartbeats its
+lease, retries bounded failures and reconciles stale work after restart.
+
+```bash
+sudo zmovie-ctl worker-status
+sudo zmovie-ctl worker-jobs
+sudo zmovie-ctl worker-job wrk_EXAMPLE
+sudo zmovie-ctl worker-recover --dry-run
+sudo zmovie-ctl worker-recover --apply
+sudo zmovie-ctl worker-pause
+sudo zmovie-ctl worker-resume
+sudo zmovie-ctl worker-restart
+```
+
+Pause stops new claims; it does not terminate a currently running renderer.
+Recovery of a stale ComfyUI render uses the checkpointed remote `prompt_id`
+before any new submission. External publishing ambiguity is fail-closed and
+must be reconciled instead of retried.
+
+## Watchdog
+
+`zmovie-watchdog.timer` runs periodically. It checks API liveness, SQLite,
+data-root writability, free disk, web service state and worker state when active
+work requires the worker. Renderer/model readiness is informational and never
+causes restart loops.
+
+```bash
+sudo zmovie-ctl watchdog-status
+sudo zmovie-ctl watchdog-run
+systemctl list-timers zmovie-watchdog.timer
+```
+
+The systemd watchdog invocation may perform rate-limited repair of a
+demonstrably unhealthy web service or required worker. Manual status commands
+do not weaken renderer or publication safety gates.
 
 ## Docker operations
 
@@ -58,28 +107,42 @@ Check providers and strict readiness before production:
 ```bash
 sudo zmovie-ctl providers
 sudo zmovie-ctl doctor
+sudo zmovie-ctl renderer-doctor
+sudo zmovie-ctl vulkan-status
 sudo zmovie-ctl sdcpp-status
 sudo zmovie-ctl readiness prj_EXAMPLE
 ```
 
-The bundled ComfyUI smoke workflow proves API queue/history/output integration,
-not accelerated AI-video throughput. stable-diffusion.cpp CPU/Vulkan is a
-functional fallback whose production status still depends on compatible,
-operator-supplied model files and valid output media.
+The native web service remains isolated from `/dev/dri`. GPU/Vulkan access
+belongs to the worker. The bundled ComfyUI smoke workflow proves API
+queue/history/output integration, not accelerated AI-video throughput.
+stable-diffusion.cpp CPU/Vulkan can be a real provider only when compatible,
+operator-supplied model files generate valid video media.
 
 ## Production pipeline
 
 The guarded sequence is:
 
 ```text
-content/storyboard -> render every shot -> validate media -> assemble -> validate final movie
-  -> prepare package -> human review/approval -> fail-closed preflight -> external submission
+content/storyboard
+  -> durable queue
+  -> render every shot
+  -> validate real media
+  -> assemble
+  -> validate final movie
+  -> prepare package
+  -> export
+  -> approval_required
+  -> human exact-package approval
+  -> fail-closed preflight
+  -> one external submission attempt
   -> public URL confirmation
 ```
 
 Use a real configured provider for production. The mock provider is limited to
 dry runs and tests. A failed shot, invalid video, missing model, or unavailable
-renderer stops the pipeline before assembly or publication.
+renderer stops the pipeline before assembly or publication. Product Studio
+creates a normal project and hands it to this same production path.
 
 ## Bilibili safety sequence
 
@@ -97,22 +160,36 @@ See the [real-publication runbook](BILIBILI_REAL_PUBLISH_RUNBOOK.md).
 
 ## Backup and restore
 
-Use the native backup command before upgrades, resets, or other operations that
-can alter project state:
+A verified SQLite backup timer runs daily by default. Backups use SQLite's
+online backup API, validate `PRAGMA quick_check` and `PRAGMA foreign_key_check`,
+and atomically promote only a successful candidate. At least 14 recent backups
+are retained by default.
 
 ```bash
 sudo zmovie-ctl backup
+sudo zmovie-ctl backups
+sudo zmovie-ctl backup-status
+systemctl list-timers zmovie-backup.timer
 ```
 
 Restore only after identifying the exact backup and target data root. Stop the
-service, preserve the current data for rollback, validate the restored database
-and media paths, and run health/doctor checks before resuming operations. See
-[backup](../zmovie_platform/README_BACKUP.md) and
-[restore](../zmovie_platform/README_RESTORE.md) for implementation details.
+services, preserve the current data for rollback, validate the restored
+database and media paths, and run health/doctor checks before resuming
+operations. See [Backup and recovery](BACKUP_AND_RECOVERY.md).
+
+## Runtime evidence
+
+```bash
+sudo zmovie-ctl sdcpp-evidence
+```
+
+This records factual runtime inspection only. Real-model verification requires
+an operator-supplied video-capable model to generate an actual FFprobe-valid
+video. See [Runtime evidence](RUNTIME_EVIDENCE.md).
 
 ## Operational safety
 
 Never publish, delete projects, purge volumes, expose renderer APIs, or replace
 browser state as a side effect of a health check. Keep authentication enabled,
-use TLS or a controlled tunnel for public access, and retain the human approval
-gate for external publication.
+use TLS or a controlled tunnel for public access, retain web/worker privilege
+separation, and retain the human approval gate for external publication.

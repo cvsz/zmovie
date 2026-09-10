@@ -1,4 +1,5 @@
 const $ = (id) => document.getElementById(id);
+let latestPlan = null;
 
 function lines(value) {
   return value.split("\n").map((item) => item.trim()).filter(Boolean);
@@ -33,21 +34,21 @@ function setStatus(message, kind = "") {
 }
 
 function renderPlan(data) {
-  const plan = data.plan;
+  latestPlan = data;
   $("empty-state").hidden = true;
   $("plan").hidden = false;
-  $("score").textContent = `${plan.score}/100`;
-  $("verdict").textContent = plan.verdict.toUpperCase();
-  $("verdict").dataset.level = plan.verdict;
-  $("aspect").textContent = plan.aspect_ratio;
-  $("duration").textContent = `${plan.duration_seconds}s`;
-  $("pacing").textContent = plan.pacing;
-  $("style").textContent = plan.creative_style;
-  $("prompt").textContent = plan.prompt;
-  $("negative").textContent = plan.negative_prompt;
+  $("score").textContent = `${data.plan.score}/100`;
+  $("verdict").textContent = data.plan.verdict.toUpperCase();
+  $("verdict").dataset.level = data.plan.verdict;
+  $("aspect").textContent = data.plan.aspect_ratio;
+  $("duration").textContent = `${data.plan.duration_seconds}s`;
+  $("pacing").textContent = data.plan.pacing;
+  $("style").textContent = data.plan.creative_style;
+  $("prompt").textContent = data.plan.prompt;
+  $("negative").textContent = data.plan.negative_prompt;
 
   const emphasis = $("emphasis");
-  emphasis.replaceChildren(...plan.emphasis.map((item) => {
+  emphasis.replaceChildren(...data.plan.emphasis.map((item) => {
     const span = document.createElement("span");
     span.className = "chip";
     span.textContent = item;
@@ -55,7 +56,7 @@ function renderPlan(data) {
   }));
 
   const reasons = $("reasons");
-  reasons.replaceChildren(...plan.reasons.map((item) => {
+  reasons.replaceChildren(...data.plan.reasons.map((item) => {
     const li = document.createElement("li");
     li.textContent = item;
     return li;
@@ -72,11 +73,9 @@ async function analyze(event) {
       body: JSON.stringify(productPayload()),
     });
     const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.detail || `HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(data.detail || `HTTP ${response.status}`);
     renderPlan(data);
-    setStatus("วิเคราะห์สำเร็จ พร้อมนำ prompt ไป render", "success");
+    setStatus("วิเคราะห์สำเร็จ พร้อมสร้าง storyboard หรือใช้ prompt ไป render", "success");
   } catch (error) {
     setStatus(`วิเคราะห์ไม่สำเร็จ: ${error.message}`, "error");
   }
@@ -107,15 +106,67 @@ async function copyText(text, successMessage) {
   }
 }
 
+async function createProject() {
+  if (!latestPlan) {
+    $("project-status").textContent = "กรุณา Analyze product ก่อน";
+    return;
+  }
+  const token = localStorage.getItem("zmovie_token") || "";
+  if (!token) {
+    $("project-status").textContent = "ต้องเข้าสู่ระบบใน Main Studio ก่อนสร้าง production project";
+    return;
+  }
+  const product = latestPlan.product;
+  const plan = latestPlan.plan;
+  $("project-status").textContent = "กำลังสร้าง storyboard/project…";
+  try {
+    const response = await fetch("/api/v2/content/storyboard", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        topic: plan.prompt,
+        name: `${product.brand ? product.brand + " " : ""}${product.name}`,
+        audience: product.audience || "general consumers",
+        goal: "product conversion with claim-safe factual presentation",
+        tone: plan.creative_style,
+        brand: product.brand || "",
+        call_to_action: product.cta || "",
+        genre: "commercial",
+        visual_style: plan.creative_style,
+        aspect_ratio: plan.aspect_ratio || "9:16",
+        target_duration_seconds: Math.max(10, Number(plan.duration_seconds || 12)),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data));
+    const projectId = data.project && data.project.id ? String(data.project.id) : "";
+    if (!projectId) throw new Error("server did not return a project id");
+    localStorage.setItem("zmovie_product_project_id", projectId);
+    const open = $("open-project");
+    open.href = `/studio?project=${encodeURIComponent(projectId)}`;
+    open.hidden = false;
+    $("project-status").textContent = `สร้าง project ${projectId} แล้ว — production render จะเข้าคิว durable worker เดียวกับ Main Studio`;
+  } catch (error) {
+    $("project-status").textContent = `สร้าง project ไม่สำเร็จ: ${error.message}`;
+  }
+}
+
 $("product-form").addEventListener("submit", analyze);
 $("load-example").addEventListener("click", loadExample);
 $("copy-json").addEventListener("click", () => copyText(JSON.stringify(productPayload(), null, 2), "คัดลอก Product JSON แล้ว"));
 $("copy-prompt").addEventListener("click", () => copyText($("prompt").textContent, "คัดลอก prompt แล้ว"));
+$("create-project").addEventListener("click", createProject);
 $("reset-form").addEventListener("click", () => {
   $("product-form").reset();
   $("currency").value = "THB";
   $("cta").value = "สั่งซื้อเลย";
   $("plan").hidden = true;
   $("empty-state").hidden = false;
+  $("open-project").hidden = true;
+  $("project-status").textContent = "";
+  latestPlan = null;
   setStatus("");
 });

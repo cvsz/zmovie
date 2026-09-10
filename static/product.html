@@ -21,10 +21,7 @@
     <section class="workspace">
       <form id="product-form" class="panel form-panel">
         <div class="section-head">
-          <div>
-            <p class="eyebrow">PRODUCT INPUT</p>
-            <h2>ข้อมูลสินค้า</h2>
-          </div>
+          <div><p class="eyebrow">PRODUCT INPUT</p><h2>ข้อมูลสินค้า</h2></div>
           <button type="button" id="load-example" class="ghost">Load example</button>
         </div>
 
@@ -58,16 +55,10 @@
 
       <aside class="panel result-panel">
         <p class="eyebrow">AI VIDEO PLAN</p>
-        <div id="empty-state" class="empty-state">
-          <strong>พร้อมวิเคราะห์สินค้า</strong>
-          <span>กรอกข้อมูลแล้วกด Analyze product</span>
-        </div>
+        <div id="empty-state" class="empty-state"><strong>พร้อมวิเคราะห์สินค้า</strong><span>กรอกข้อมูลแล้วกด Analyze product</span></div>
         <div id="plan" hidden>
           <div class="score-row">
-            <div>
-              <span class="muted">Suitability score</span>
-              <strong id="score" class="score">—</strong>
-            </div>
+            <div><span class="muted">Suitability score</span><strong id="score" class="score">—</strong></div>
             <span id="verdict" class="badge">—</span>
           </div>
 
@@ -82,6 +73,15 @@
           <div class="result-block"><h3>Why this treatment</h3><ul id="reasons"></ul></div>
           <div class="result-block"><h3>Generated prompt</h3><pre id="prompt"></pre><button type="button" class="ghost" id="copy-prompt">Copy prompt</button></div>
           <div class="result-block"><h3>Negative prompt</h3><pre id="negative"></pre></div>
+          <div class="result-block">
+            <h3>Production handoff</h3>
+            <p class="muted">สร้าง storyboard/project จากแผนนี้ แล้วเปิดใน Production Studio ระบบ render จริงจะใช้ durable queue และ safety gates เดียวกัน</p>
+            <div class="actions">
+              <button type="button" class="primary" id="create-project">Generate storyboard/project</button>
+              <a class="link-button" id="open-project" href="/studio" hidden>Open production studio</a>
+            </div>
+            <p id="project-status" class="status" aria-live="polite"></p>
+          </div>
         </div>
       </aside>
     </section>

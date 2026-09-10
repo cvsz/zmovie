@@ -40,6 +40,23 @@ The current repository evidence supports these statements:
 - The UI is currently English-only. The rules for future localization are
   specified in [I18N](I18N.md), not represented as an implemented feature.
 
+## Resilient long-running production boundary
+
+The repository now implements a durable SQLite worker queue, a separate
+`zmovie-worker.service`, lease/heartbeat recovery, ComfyUI remote prompt
+reconciliation, watchdog/backup timers, Product Studio production handoff and
+worker-side Vulkan diagnostics. See [Long-running render worker](LONG_RUNNING_RENDER_WORKER.md),
+[Vulkan renderer](VULKAN_RENDERER.md), [Backup and recovery](BACKUP_AND_RECOVERY.md),
+and [Runtime evidence](RUNTIME_EVIDENCE.md).
+
+These implementation and CI states must remain separate from host evidence:
+
+- CI passing queue/recovery tests means **CI verified**, not production-host reboot verified.
+- `vulkaninfo` or `/dev/dri` assumptions in code mean **implemented diagnostics**, not Vulkan runtime verified.
+- A configured stable-diffusion.cpp path means **configured**, not real-model verified.
+- Only a real video-capable model producing FFprobe-valid media can establish real-model evidence.
+- Bilibili remains pending until its existing exact-package approval, explicit submission confirmation, and genuine public-URL remote confirmation gates are satisfied.
+
 ## Evidence rule
 
 Every status claim should identify its scope, date or commit when relevant,

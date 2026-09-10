@@ -38,12 +38,15 @@ jobs:
           python -m zmovie_platform.control_cli --help | grep -q 'production control plane'
           python -m zmovie_platform.control_cli hyperframes | python -m json.tool >/dev/null
           python -m zmovie_platform.control_cli sdcpp-status | python -m json.tool >/dev/null
+          python -m zmovie_platform.runtime_ops --help | grep -q 'resilient runtime operations'
+          python -m zmovie_platform.worker --help | grep -q 'render worker'
 
       - name: Validate Studio JavaScript and Hyperframes assets
         run: |
           node --check static/app.js
           node --check static/studio-preview.js
           node --check static/hyperframes-studio.js
+          node --check static/durable-worker.js
           node --check static/product.js
           test -f static/product.html
           test -f static/product.css
@@ -54,7 +57,16 @@ jobs:
           test -f static/images/hyperframes/template-social-short-cut.svg
 
       - name: Validate installers and operations scripts
-        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/configure-sdcpp.sh scripts/install-comfyui.sh scripts/install-sdcpp.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/reset-production-projects.sh scripts/production-gen.sh scripts/production-release.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/copy-github-environment.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh scripts/zmovie-ctl.sh
+        run: bash -n install.sh install-docker.sh scripts/configure-comfyui.sh scripts/configure-remote-comfyui.sh scripts/configure-sdcpp.sh scripts/install-comfyui.sh scripts/install-sdcpp.sh scripts/install-resilient-runtime.sh scripts/install-bilibili-session.sh scripts/verify-bilibili-session.sh scripts/list-bilibili-publish-candidates.sh scripts/create-bilibili-launch-candidate.sh scripts/reset-production-projects.sh scripts/production-gen.sh scripts/production-release.sh scripts/preflight-bilibili-publish.sh scripts/confirm-bilibili-publication.sh scripts/copy-github-environment.sh scripts/smoke-zmovie-comfyui.sh scripts/smoke-production-video.sh scripts/smoke-project-assembly.sh scripts/smoke-bilibili-package.sh scripts/doctor.sh scripts/zmovie-ctl.sh
+
+      - name: Smoke durable runtime CLI
+        run: |
+          db_file="$(mktemp -u)"
+          backup_dir="$(mktemp -d)"
+          ZMOVIE_DB_PATH="$db_file" ZMOVIE_BACKUP_DIR="$backup_dir" python -m zmovie_platform.runtime_ops worker-status | python -m json.tool >/dev/null
+          ZMOVIE_DB_PATH="$db_file" ZMOVIE_BACKUP_DIR="$backup_dir" python -m zmovie_platform.runtime_ops backup | python -m json.tool >/dev/null
+          rm -f "$db_file"
+          rm -rf "$backup_dir"
 
       - name: Smoke project reset guard
         run: |
@@ -148,4 +160,5 @@ jobs:
           node --check static/app.js
           node --check static/studio-preview.js
           node --check static/hyperframes-studio.js
+          node --check static/durable-worker.js
           node --check static/product.js

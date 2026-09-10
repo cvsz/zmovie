@@ -86,6 +86,33 @@ class ComfyUIProviderTestCase(unittest.TestCase):
         self.assertEqual(refs[0]["filename"], "movie.mp4")
         self.assertEqual(refs[0]["subfolder"], "zmovie")
 
+    def test_existing_prompt_id_is_reconciled_without_resubmission(self):
+        env = {"ZMOVIE_COMFYUI_WORKFLOW": str(self.workflow)}
+        metadata = {
+            "job_id": "job_resume",
+            "duration_seconds": 5,
+            "aspect_ratio": "16:9",
+            "comfyui_prompt_id": "prompt-existing",
+            "comfyui_client_id": "client-existing",
+        }
+        entry = {"outputs": {"9": {"gifs": [{"filename": "movie.mp4", "subfolder": "", "type": "output"}]}}}
+        with (
+            mock.patch.dict(os.environ, env, clear=False),
+            mock.patch.object(self.provider, "_request_json") as request_json,
+            mock.patch.object(self.provider, "_wait_for_history", return_value=entry) as wait_history,
+            mock.patch.object(self.provider, "_download_outputs", return_value=(["movie.mp4"], "movie.mp4", "video")),
+        ):
+            result = self.provider.submit(
+                prompt="product hero",
+                negative_prompt="bad",
+                output_dir=self.root / "out",
+                metadata=metadata,
+            )
+        request_json.assert_not_called()
+        wait_history.assert_called_once_with("prompt-existing")
+        self.assertTrue(result["comfyui_reconciled"])
+        self.assertEqual(result["comfyui_prompt_id"], "prompt-existing")
+
 
 if __name__ == "__main__":
     unittest.main()
