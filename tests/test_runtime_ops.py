@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from zmovie_platform import runtime_ops, storage
 
@@ -42,9 +43,27 @@ class RuntimeOpsTests(unittest.TestCase):
         report = runtime_ops.watchdog_run()
         self.assertIn("database_ok", report["status"])
         self.assertTrue(report["status"]["database_ok"])
-        self.assertNotIn("renderer_unready", report["actions"])
+        self.assertNotIn("renderer_unready", report["problems"])
 
-    def test_upgrade_readiness_blocks_active_job(self) -> None:
+    def test_watchdog_repair_is_rate_limited(self) -> None:
+        unhealthy = {
+            "database_ok": True,
+            "data_writable": True,
+            "disk_free_bytes": 2 * 1024 * 1024 * 1024,
+            "queue": {"active": 0},
+            "api": {"ok": False},
+            "web_service": {"ok": False},
+            "worker_service": {"ok": True},
+        }
+        with (
+            mock.patch.object(runtime_ops, "watchdog_status", return_value=unhealthy),
+            mock.patch.object(runtime_ops, "_restart_service", return_value={"service": "zmovie", "restarted": True}) as restart,
+        ):
+            report = runtime_ops.watchdog_run(repair=True)
+        restart.assert_called_once_with("zmovie")
+        self.assertEqual(report["repairs"][0]["restarted"], True)
+
+    def test_upgrade_readiness_allows_queued_job(self) -> None:
         from zmovie_platform.worker_queue import enqueue
 
         enqueue("production_render", project_id="prj_test")
