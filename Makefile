@@ -254,3 +254,5 @@ bili-publish: ## ONE real external submission; JOB_ID=pub_... CONFIRM=CONFIRM-PU
 
 production-release: ## Build the maintained ZeaZDev/Bilibili release candidate and stop at human approval
 	sudo bash ./scripts/production-release.sh
+
+include make/product.mk
