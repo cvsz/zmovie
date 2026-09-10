@@ -1,0 +1,27 @@
+{
+  "name": "LOQ 15ARP10E",
+  "brand": "Lenovo",
+  "category": "gaming laptop electronics",
+  "description": "15.6-inch gaming laptop for gaming, creator and everyday performance use.",
+  "features": [
+    "AMD Ryzen 7 170 8C/16T",
+    "NVIDIA GeForce RTX 4050 6GB",
+    "16GB DDR5-4800",
+    "512GB PCIe 4.0 NVMe",
+    "15.6-inch FHD IPS 144Hz 100% sRGB",
+    "Wi-Fi 6",
+    "HDMI 2.1",
+    "USB-C PD",
+    "2Y Premium Care Onsite"
+  ],
+  "benefits": [
+    "high-refresh display for smoother motion",
+    "dedicated GPU for gaming and creator workloads"
+  ],
+  "regular_price": 34990,
+  "sale_price": 31491,
+  "currency": "THB",
+  "audience": "Thai gamers, students and creators looking for a mid-range performance laptop",
+  "cta": "สั่งซื้อเลย",
+  "visual_notes": "Use the supplied real product image as identity reference. Preserve Lenovo logo, chassis geometry, keyboard, ports and display proportions."
+}
