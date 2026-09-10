@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zMovie Product Studio</title>
+  <meta name="description" content="วิเคราะห์ความเหมาะสมของสินค้าและสร้างแผนวิดีโอ AI แบบ reusable ด้วย ZeaZFlow">
+  <link rel="stylesheet" href="/static/product.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">ZEAzDEV / zMovie / ZeaZFlow</p>
+        <h1>Product Video Studio</h1>
+        <p class="lede">ใส่ข้อมูลสินค้าอะไรก็ได้ ระบบจะวิเคราะห์ความเหมาะสม เลือก creative direction และสร้าง prompt ที่ไม่แต่ง claim เกินข้อมูลจริง</p>
+      </div>
+      <a class="link-button" href="/studio">Open main studio</a>
+    </header>
+
+    <section class="workspace">
+      <form id="product-form" class="panel form-panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">PRODUCT INPUT</p>
+            <h2>ข้อมูลสินค้า</h2>
+          </div>
+          <button type="button" id="load-example" class="ghost">Load example</button>
+        </div>
+
+        <div class="grid two">
+          <label>ชื่อสินค้า<input id="name" required placeholder="Lenovo LOQ 15ARP10E"></label>
+          <label>แบรนด์<input id="brand" placeholder="Lenovo"></label>
+          <label>หมวดสินค้า<input id="category" required placeholder="laptop / fashion / food"></label>
+          <label>กลุ่มเป้าหมาย<input id="audience" placeholder="gamers and creators"></label>
+        </div>
+
+        <label>คำอธิบาย<textarea id="description" rows="3" placeholder="รายละเอียดสินค้าโดยย่อ"></textarea></label>
+        <label>Features <span>หนึ่งรายการต่อบรรทัด</span><textarea id="features" rows="6" placeholder="RTX 4050 6GB\n144Hz FHD IPS\n16GB DDR5"></textarea></label>
+        <label>Benefits <span>หนึ่งรายการต่อบรรทัด</span><textarea id="benefits" rows="4" placeholder="เหมาะกับงานเกมและครีเอทีฟ\nจอสีตรง 100% sRGB"></textarea></label>
+
+        <div class="grid three">
+          <label>ราคาปกติ<input id="regular-price" type="number" min="0" step="0.01" placeholder="34990"></label>
+          <label>ราคาขาย<input id="sale-price" type="number" min="0" step="0.01" placeholder="31491"></label>
+          <label>สกุลเงิน<input id="currency" value="THB"></label>
+        </div>
+
+        <label>CTA<input id="cta" value="สั่งซื้อเลย"></label>
+        <label>Visual notes<textarea id="visual-notes" rows="3" placeholder="รักษารูปร่าง โลโก้ สี วัสดุ และสัดส่วนของสินค้าจริง"></textarea></label>
+
+        <div class="actions">
+          <button class="primary" type="submit">Analyze product</button>
+          <button class="secondary" type="button" id="copy-json">Copy JSON</button>
+          <button class="secondary" type="button" id="reset-form">Reset</button>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </form>
+
+      <aside class="panel result-panel">
+        <p class="eyebrow">AI VIDEO PLAN</p>
+        <div id="empty-state" class="empty-state">
+          <strong>พร้อมวิเคราะห์สินค้า</strong>
+          <span>กรอกข้อมูลแล้วกด Analyze product</span>
+        </div>
+        <div id="plan" hidden>
+          <div class="score-row">
+            <div>
+              <span class="muted">Suitability score</span>
+              <strong id="score" class="score">—</strong>
+            </div>
+            <span id="verdict" class="badge">—</span>
+          </div>
+
+          <div class="metric-grid">
+            <div><span>Aspect</span><strong id="aspect">—</strong></div>
+            <div><span>Duration</span><strong id="duration">—</strong></div>
+            <div><span>Pacing</span><strong id="pacing">—</strong></div>
+          </div>
+
+          <div class="result-block"><h3>Creative style</h3><p id="style"></p></div>
+          <div class="result-block"><h3>Emphasis</h3><div id="emphasis" class="chips"></div></div>
+          <div class="result-block"><h3>Why this treatment</h3><ul id="reasons"></ul></div>
+          <div class="result-block"><h3>Generated prompt</h3><pre id="prompt"></pre><button type="button" class="ghost" id="copy-prompt">Copy prompt</button></div>
+          <div class="result-block"><h3>Negative prompt</h3><pre id="negative"></pre></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script src="/static/product.js" defer></script>
+</body>
+</html>
