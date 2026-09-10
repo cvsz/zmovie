@@ -50,6 +50,7 @@ def studio() -> HTMLResponse:
     hooks = (
         '<script src="/static/studio-preview.js"></script>',
         '<script src="/static/hyperframes-studio.js"></script>',
+        '<script src="/static/durable-worker.js"></script>',
     )
     for hook in hooks:
         if hook not in html:
