@@ -1,0 +1,84 @@
+# ESXi VM configuration for zMovie on Dell PowerEdge T30
+# Create a new VM in the vSphere Client, then add these advanced config options.
+# CPU: 4 vCPU (1 socket x 4 cores)
+# RAM: 24576 MB
+# Disk: 64GB thin provisioned SSD
+# Network: VMXNET3 on production port group
+# Guest OS: Ubuntu 26.04 (64-bit)
+
+# CPU
+numvcpu = "4"
+cpuid.coresPerSocket = "4"
+sched.cpu.max = "4"
+sched.cpu.shares = "normal"
+sched.cpu.limit = "2400"
+
+# Memory
+memsize = "24576"
+sched.mem.max = "24576"
+sched.mem.shares = "normal"
+sched.mem.limit = "24576"
+
+# CPU reservation/max
+cpu_reservation = "1200"
+cpu_limit = "2400"
+
+# Memory reservation
+mem_reservation = "16384"
+
+# Hypervisor features
+hypervisor.cpuid.v0 = "FALSE"
+vhv.enable = "TRUE"
+
+# Network
+ethernet0.present = "TRUE"
+ethernet0.virtualDev = "vmxnet3"
+ethernet0.networkName = "production"
+ethernet0.addressType = "generated"
+ethernet0.wakeOnPktRx.enable = "TRUE"
+
+# Disk
+scsi0.present = "TRUE"
+scsi0.virtualDev = "paravirtual"
+sda.present = "TRUE"
+sda.fileName = "zmovie-ubuntu26.vmdk"
+sda.deviceType = "disk"
+sda.diskMode = "persistent"
+sda.writeThrough = "FALSE"
+sda.capacity = "64GB"
+
+# CD/DVD
+cdrom0.present = "TRUE"
+cdrom0.startConnected = "TRUE"
+cdrom0.fileName = "[datastore] ISO/ubuntu-26.04-live-server-amd64.iso"
+
+# Display
+svga.vramSize = "16777216"
+svga.autodetect = "TRUE"
+mks.enable3d = "FALSE"
+
+# Hardware virtualization
+vhv.enable = "TRUE"
+
+# Power management
+powerType.powerOff = "soft"
+powerType.reset = "soft"
+powerType.suspend = "soft"
+powerType.default = "soft"
+
+# Guest customization
+guestinfo.cust.sysprep.debug = "FALSE"
+guestinfo.cust.waitForCustomization = "TRUE"
+
+# Tools
+tools.syncTime = "TRUE"
+tools.upgrade.policy = "upgrade"
+
+# Boot order
+bootOrder = "cdrom,disk,net"
+
+# UUID
+uuid.bios = "56 4d 15 9c 04 5e 4c 3a-5c 4a 6e 8f 01 23 45 67"
+
+# Notes
+annotation = "zMovie production VM - Ubuntu 26.04 - Dell T30 ESXi host"
