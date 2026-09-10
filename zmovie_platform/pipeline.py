@@ -8,10 +8,22 @@ from typing import Any
 from .media import assemble_project
 from .providers import get_provider
 from .qc import inspect_project
-from .repository import add_asset, find_shot, get_project, list_jobs, new_job, save_job
+from .repository import add_asset, find_shot, get_job, get_project, list_jobs, new_job, save_job
 from .storyboard import create_storyboard, production_manifest
 
 MEDIA_ROOT = Path(os.getenv("ZMOVIE_MEDIA_ROOT", "data/media"))
+
+
+def _resumable_render_job(project_id: str, shot_id: str, provider_id: str):
+    if provider_id != "comfyui":
+        return None
+    for item in list_jobs(project_id, limit=5000):
+        if str(item.get("shot_id") or "") != shot_id or str(item.get("provider") or "") != provider_id:
+            continue
+        metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+        if str(metadata.get("comfyui_prompt_id") or "").strip() and str(item.get("status") or "") in {"running", "failed"}:
+            return get_job(str(item["id"]))
+    return None
 
 
 def render_shot(project_id: str, shot_id: str, provider_id: str = "mock") -> dict[str, Any]:
@@ -23,15 +35,33 @@ def render_shot(project_id: str, shot_id: str, provider_id: str = "mock") -> dic
         raise ValueError("shot not found")
     _, shot = match
     provider = get_provider(provider_id)
-    job = new_job(project_id, shot_id, provider_id, {"duration_seconds": shot.duration_seconds})
+    job = _resumable_render_job(project_id, shot_id, provider_id) or new_job(
+        project_id,
+        shot_id,
+        provider_id,
+        {"duration_seconds": shot.duration_seconds},
+    )
+    if job is None:
+        raise RuntimeError("failed to create or resume render job")
     job.status = "running"
+    job.error = ""
     save_job(job)
     try:
+        metadata = dict(job.metadata)
+        metadata.update(
+            {
+                "job_id": job.id,
+                "project_id": project.id,
+                "shot_id": shot.id,
+                "duration_seconds": shot.duration_seconds,
+                "aspect_ratio": project.aspect_ratio,
+            }
+        )
         result = provider.submit(
             prompt=shot.prompt,
             negative_prompt=shot.negative_prompt,
             output_dir=MEDIA_ROOT / project.id / "renders",
-            metadata={"job_id": job.id, "project_id": project.id, "shot_id": shot.id, "duration_seconds": shot.duration_seconds, "aspect_ratio": project.aspect_ratio},
+            metadata=metadata,
         )
         job.status = str(result.get("status", "completed"))
         job.output_path = str(result.get("output_path", ""))
@@ -69,7 +99,6 @@ def assemble_from_jobs(project_id: str) -> dict[str, Any]:
     if project is None:
         raise ValueError("project not found")
     jobs = [item for item in list_jobs(project_id, limit=1000) if item["status"] == "completed" and item.get("output_path")]
-    # Preserve storyboard order, selecting the newest completed output for each shot.
     by_shot: dict[str, str] = {}
     for job in jobs:
         by_shot.setdefault(job["shot_id"], job["output_path"])
