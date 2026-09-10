@@ -44,6 +44,9 @@ jobs:
           node --check static/app.js
           node --check static/studio-preview.js
           node --check static/hyperframes-studio.js
+          node --check static/product.js
+          test -f static/product.html
+          test -f static/product.css
           test -f static/images/hyperframes/template-product-showcase.svg
           test -f static/images/hyperframes/template-discount-alert.svg
           test -f static/images/hyperframes/template-comparison.svg
@@ -145,3 +148,4 @@ jobs:
           node --check static/app.js
           node --check static/studio-preview.js
           node --check static/hyperframes-studio.js
+          node --check static/product.js
