@@ -6,6 +6,7 @@ DATA_DIR="${ZMOVIE_DATA_DIR:-/var/lib/zmovie}"
 ENV_FILE="${ZMOVIE_ENV:-/etc/zmovie/zmovie.env}"
 SERVICE_USER="${ZMOVIE_SERVICE_USER:-zmovie}"
 SERVICE_NAME="${ZMOVIE_SERVICE_NAME:-zmovie}"
+WORKER_SERVICE_NAME="${ZMOVIE_WORKER_SERVICE_NAME:-zmovie-worker}"
 PYTHON_BIN="${INSTALL_DIR}/.venv/bin/python"
 PUBLIC_BASE_URL="${ZMOVIE_PUBLIC_BASE_URL:-https://zmovie.zeaz.dev}"
 COMMAND="${1:-menu}"
@@ -38,6 +39,7 @@ as_service(){
 }
 
 app(){ as_service "$PYTHON_BIN" -m zmovie_platform.control_cli "$@"; }
+runtime(){ as_service "$PYTHON_BIN" -m zmovie_platform.runtime_ops "$@"; }
 
 port(){
   local value
@@ -52,14 +54,17 @@ health(){
 
 status(){
   systemctl --no-pager --full status "$SERVICE_NAME" || true
+  printf '\n--- worker ---\n'
+  systemctl --no-pager --full status "$WORKER_SERVICE_NAME" || true
   printf '\n--- health ---\n'
   health || true
 }
 
 logs(){
+  local service="$1"
   local lines="${2:-100}"
   [[ "$lines" =~ ^[0-9]+$ ]] || fail "logs line count must be numeric"
-  journalctl -u "$SERVICE_NAME" -n "$lines" --no-pager
+  journalctl -u "$service" -n "$lines" --no-pager
 }
 
 config_redacted(){
@@ -101,35 +106,53 @@ Service / installation:
   status                       systemd status + health
   health                       health JSON
   doctor                       zMovie + renderer production doctor
-  logs [LINES]                 service logs (default 100)
-  start | stop | restart       manage systemd service (root)
-  backup                       SQLite backup (root)
+  logs [LINES]                 web service logs (default 100)
+  start | stop | restart       manage web service (root)
+  backup                       verified SQLite backup
+  backups                      list verified backups
+  backup-status                backup retention/status
+  upgrade-readiness            fail-closed long-job upgrade gate
   upgrade                      upgrade from configured repository/ref (root)
   config                       print redacted runtime configuration
   studio                       print Studio URL
+
+Durable worker:
+  worker-status                queue summary + pause state
+  worker-jobs                  list durable jobs
+  worker-job ID                show one durable job
+  worker-recover --dry-run     inspect stale leases
+  worker-recover --apply       recover stale leases
+  worker-pause                 pause new claims
+  worker-resume                resume claims
+  worker-restart               restart worker service (root)
+  worker-logs [LINES]          worker journal
+
+24/7 operations:
+  watchdog-status              inspect health/watchdog inputs
+  watchdog-run                 run conservative watchdog check
+  renderer-doctor              /dev/dri + Vulkan + sd-cli diagnostics
+  vulkan-status                same worker-side device diagnostic
 
 Local stable-diffusion.cpp:
   sdcpp-status                 CPU/Vulkan engine + model production readiness
   sdcpp-install [BACKEND]      install/update engine; auto|vulkan|cpu (root)
   sdcpp-config OPTIONS...      configure video model bundle (root)
-                               see: zmovie-ctl sdcpp-config --help
+  sdcpp-evidence [--run-smoke] record factual runtime evidence
 
 Production data plane:
   providers                    list configured render providers
   projects                     list projects
   hyperframes [--query TEXT] [--category CATEGORY]
-                               list copied Hyperframes creative templates
   readiness PROJECT_ID         strict production readiness
   content --topic TEXT [--template TEMPLATE_ID] [...]
-                               one-click content + Hyperframes storyboard generator
-  render PROJECT_ID PROVIDER   real production render; mock is rejected
+  render PROJECT_ID PROVIDER   enqueue real production render; mock rejected
   assemble PROJECT_ID          strict final assembly
   prepare PROJECT_ID           prepare Bilibili package from validated final
   export PROJECT_ID            build production ZIP + checksums
   production PROJECT_ID PROVIDER
-                               render -> validate -> assemble -> prepare -> export
+                               enqueue render -> validate -> assemble -> prepare -> export
                                and STOP at human approval gate
-  run-status PROJECT_ID [RUN]  production run status
+  run-status PROJECT_ID [RUN]  production run + worker status
 
 Bilibili control gates:
   bili-session                 live Bilibili session check
@@ -157,14 +180,21 @@ menu(){
  6) Run one-click production package
  7) Bilibili session
  8) Bilibili job status
- 9) Service logs
+ 9) Web service logs
 10) Backup database
-11) Restart service
+11) Restart web service
 12) Upgrade full stack
 13) Show redacted config
 14) Hyperframes templates
 15) stable-diffusion.cpp status
 16) Install/update stable-diffusion.cpp (auto CPU/Vulkan)
+17) Worker status
+18) Worker jobs
+19) Worker logs
+20) Renderer/Vulkan doctor
+21) Watchdog status
+22) Backup status
+23) Upgrade readiness
  0) Exit
 EOF
     read -r -p 'Select: ' choice
@@ -173,28 +203,25 @@ EOF
       2) doctor ;;
       3) app providers ;;
       4) app projects ;;
-      5)
-        read -r -p 'Project ID: ' project_id
-        app readiness "$project_id"
-        ;;
-      6)
-        read -r -p 'Project ID: ' project_id
-        read -r -p 'Provider (comfyui/sdcpp/webhook): ' provider_id
-        app production "$project_id" --provider "$provider_id"
-        ;;
+      5) read -r -p 'Project ID: ' project_id; app readiness "$project_id" ;;
+      6) read -r -p 'Project ID: ' project_id; read -r -p 'Provider (comfyui/sdcpp/webhook): ' provider_id; app production "$project_id" --provider "$provider_id" ;;
       7) app bili-session ;;
-      8)
-        read -r -p 'Publish job ID: ' job_id
-        app bili-status "$job_id"
-        ;;
-      9) logs logs 100 ;;
-      10) need_root; bash "$INSTALL_DIR/install.sh" backup ;;
+      8) read -r -p 'Publish job ID: ' job_id; app bili-status "$job_id" ;;
+      9) logs "$SERVICE_NAME" 100 ;;
+      10) runtime backup ;;
       11) need_root; systemctl restart "$SERVICE_NAME"; status ;;
-      12) need_root; bash "$INSTALL_DIR/install.sh" upgrade ;;
+      12) need_root; runtime upgrade-readiness; bash "$INSTALL_DIR/install.sh" upgrade ;;
       13) config_redacted ;;
       14) app hyperframes ;;
       15) app sdcpp-status ;;
       16) need_root; bash "$INSTALL_DIR/scripts/install-sdcpp.sh" auto ;;
+      17) runtime worker-status ;;
+      18) runtime worker-jobs ;;
+      19) logs "$WORKER_SERVICE_NAME" 100 ;;
+      20) runtime renderer-doctor ;;
+      21) runtime watchdog-status ;;
+      22) runtime backup-status ;;
+      23) runtime upgrade-readiness ;;
       0) return ;;
       *) log "unknown selection" ;;
     esac
@@ -208,14 +235,32 @@ case "$COMMAND" in
   status) status ;;
   health) health ;;
   doctor) doctor ;;
-  logs) logs logs "${1:-100}" ;;
+  logs) logs "$SERVICE_NAME" "${1:-100}" ;;
   start) need_root; systemctl start "$SERVICE_NAME" ;;
   stop) need_root; systemctl stop "$SERVICE_NAME" ;;
   restart) need_root; systemctl restart "$SERVICE_NAME"; status ;;
-  backup) need_root; require_install; bash "$INSTALL_DIR/install.sh" backup ;;
-  upgrade) need_root; require_install; bash "$INSTALL_DIR/install.sh" upgrade ;;
+  backup) runtime backup ;;
+  backups) runtime backups ;;
+  backup-status) runtime backup-status ;;
+  upgrade-readiness) runtime upgrade-readiness ;;
+  upgrade) need_root; require_install; runtime upgrade-readiness; bash "$INSTALL_DIR/install.sh" upgrade ;;
   config) config_redacted ;;
   studio) printf '%s/studio\n' "${PUBLIC_BASE_URL%/}" ;;
+  worker-status) runtime worker-status ;;
+  worker-jobs) runtime worker-jobs "$@" ;;
+  worker-job) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl worker-job ID"; runtime worker-job "$1" ;;
+  worker-recover)
+    if [[ "${1:-}" == "--apply" ]]; then runtime worker-recover --apply; else runtime worker-recover; fi
+    ;;
+  worker-pause) runtime worker-pause ;;
+  worker-resume) runtime worker-resume ;;
+  worker-restart) need_root; systemctl restart "$WORKER_SERVICE_NAME"; runtime worker-status ;;
+  worker-logs) logs "$WORKER_SERVICE_NAME" "${1:-100}" ;;
+  watchdog-status) runtime watchdog-status ;;
+  watchdog-run) runtime watchdog-run ;;
+  renderer-doctor) runtime renderer-doctor ;;
+  vulkan-status) runtime vulkan-status ;;
+  sdcpp-evidence) runtime sdcpp-evidence "$@" ;;
   sdcpp-status) app sdcpp-status ;;
   sdcpp-install)
     need_root
@@ -224,55 +269,24 @@ case "$COMMAND" in
     [[ "$backend" =~ ^(auto|vulkan|cpu)$ ]] || fail "usage: zmovie-ctl sdcpp-install [auto|vulkan|cpu]"
     bash "$INSTALL_DIR/scripts/install-sdcpp.sh" "$backend"
     ;;
-  sdcpp-config)
-    need_root
-    require_install
-    bash "$INSTALL_DIR/scripts/configure-sdcpp.sh" "$@"
-    ;;
+  sdcpp-config) need_root; require_install; bash "$INSTALL_DIR/scripts/configure-sdcpp.sh" "$@" ;;
   providers) app providers ;;
   projects) app projects ;;
   hyperframes) app hyperframes "$@" ;;
-  readiness)
-    [[ $# -eq 1 ]] || fail "usage: zmovie-ctl readiness PROJECT_ID"
-    app readiness "$1"
-    ;;
+  readiness) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl readiness PROJECT_ID"; app readiness "$1" ;;
   content) app content "$@" ;;
-  render)
-    [[ $# -eq 2 ]] || fail "usage: zmovie-ctl render PROJECT_ID PROVIDER"
-    app render "$1" --provider "$2"
-    ;;
-  assemble)
-    [[ $# -eq 1 ]] || fail "usage: zmovie-ctl assemble PROJECT_ID"
-    app assemble "$1"
-    ;;
-  prepare)
-    [[ $# -eq 1 ]] || fail "usage: zmovie-ctl prepare PROJECT_ID"
-    app prepare-bilibili "$1"
-    ;;
-  export)
-    [[ $# -eq 1 ]] || fail "usage: zmovie-ctl export PROJECT_ID"
-    app export "$1"
-    ;;
-  production)
-    [[ $# -eq 2 ]] || fail "usage: zmovie-ctl production PROJECT_ID PROVIDER"
-    app production "$1" --provider "$2"
-    ;;
+  render) [[ $# -eq 2 ]] || fail "usage: zmovie-ctl render PROJECT_ID PROVIDER"; app render "$1" --provider "$2" ;;
+  assemble) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl assemble PROJECT_ID"; app assemble "$1" ;;
+  prepare) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl prepare PROJECT_ID"; app prepare-bilibili "$1" ;;
+  export) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl export PROJECT_ID"; app export "$1" ;;
+  production) [[ $# -eq 2 ]] || fail "usage: zmovie-ctl production PROJECT_ID PROVIDER"; app production "$1" --provider "$2" ;;
   run-status)
     [[ $# -ge 1 && $# -le 2 ]] || fail "usage: zmovie-ctl run-status PROJECT_ID [RUN_ID]"
     if [[ $# -eq 2 ]]; then app run-status "$1" --run-id "$2"; else app run-status "$1"; fi
     ;;
   bili-session) app bili-session ;;
-  bili-status)
-    [[ $# -eq 1 ]] || fail "usage: zmovie-ctl bili-status JOB_ID"
-    app bili-status "$1"
-    ;;
-  bili-approve)
-    [[ $# -eq 2 && "$2" == "APPROVE" ]] || fail "usage: zmovie-ctl bili-approve JOB_ID APPROVE"
-    app bili-approve "$1" --confirm "$2"
-    ;;
-  bili-publish)
-    [[ $# -eq 2 && "$2" == "CONFIRM-PUBLISH" ]] || fail "usage: zmovie-ctl bili-publish JOB_ID CONFIRM-PUBLISH"
-    app bili-publish "$1" --confirm "$2"
-    ;;
+  bili-status) [[ $# -eq 1 ]] || fail "usage: zmovie-ctl bili-status JOB_ID"; app bili-status "$1" ;;
+  bili-approve) [[ $# -eq 2 && "$2" == "APPROVE" ]] || fail "usage: zmovie-ctl bili-approve JOB_ID APPROVE"; app bili-approve "$1" --confirm "$2" ;;
+  bili-publish) [[ $# -eq 2 && "$2" == "CONFIRM-PUBLISH" ]] || fail "usage: zmovie-ctl bili-publish JOB_ID CONFIRM-PUBLISH"; app bili-publish "$1" --confirm "$2" ;;
   *) fail "unknown command: $COMMAND (run 'zmovie-ctl help')" ;;
 esac
