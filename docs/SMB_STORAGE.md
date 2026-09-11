@@ -14,7 +14,7 @@ The DBC production host keeps active zMovie runtime data on the Ubuntu local dis
 
 Create a dedicated Windows share such as `zmovie` on the HDD storage pool and grant a dedicated service account read/write access. Do not put the SMB password in `/etc/fstab` or the repository.
 
-Ubuntu example credential file `/root/.smb-zmovie`:
+Ubuntu example credential file `/etc/zmovie/smb.credentials`:
 
 ```ini
 username=YOUR_WINDOWS_SMB_USER
@@ -25,7 +25,8 @@ domain=WORKGROUP
 Protect it:
 
 ```bash
-sudo chmod 600 /root/.smb-zmovie
+sudo install -d -m 700 /etc/zmovie
+sudo chmod 600 /etc/zmovie/smb.credentials
 sudo apt-get update && sudo apt-get install -y cifs-utils rsync
 sudo mkdir -p /mnt/zmovie-storage
 ```
@@ -33,7 +34,7 @@ sudo mkdir -p /mnt/zmovie-storage
 Example `/etc/fstab` entry (replace the server address/share):
 
 ```fstab
-//WINDOWS-IP/zmovie /mnt/zmovie-storage cifs credentials=/root/.smb-zmovie,vers=3.1.1,iocharset=utf8,_netdev,nofail,x-systemd.automount,x-systemd.device-timeout=10s,file_mode=0660,dir_mode=0770 0 0
+//WINDOWS-IP/zmovie /mnt/zmovie-storage cifs credentials=/etc/zmovie/smb.credentials,vers=3.1.1,iocharset=utf8,_netdev,nofail,x-systemd.automount,x-systemd.device-timeout=10s,file_mode=0660,dir_mode=0770 0 0
 ```
 
 Then:
@@ -44,28 +45,31 @@ sudo mount /mnt/zmovie-storage
 findmnt /mnt/zmovie-storage
 ```
 
-## One-click five-gate closeout + SMB evidence
+## Canonical one-click production command
+
+`make production` is the canonical entry point. In `SMB_MODE=auto` it detects a real CIFS/SMB3 mount and automatically switches to the DBC five-gate SMB closeout. If SMB is not mounted it falls back to the local production pipeline. For the DBC production server, use `SMB_MODE=required` so missing Windows storage fails closed.
 
 ```bash
-cd ~/zmovie
 git pull --ff-only
-sudo ZMOVIE_SMB_MOUNT=/mnt/zmovie-storage \
-  ./scripts/runtime-closeout-smb.sh \
-  --project prj_YOUR_REAL_PROJECT \
-  --provider auto
+make production \
+  PROJECT_ID=prj_YOUR_REAL_PROJECT \
+  PROVIDER=auto \
+  SMB_MODE=required \
+  SMB_MOUNT=/mnt/zmovie-storage
 ```
 
 For controlled reboot recovery evidence:
 
 ```bash
-sudo ZMOVIE_SMB_MOUNT=/mnt/zmovie-storage \
-  ./scripts/runtime-closeout-smb.sh \
-  --project prj_YOUR_REAL_PROJECT \
-  --provider auto \
-  --reboot
+make production \
+  PROJECT_ID=prj_YOUR_REAL_PROJECT \
+  PROVIDER=auto \
+  SMB_MODE=required \
+  SMB_MOUNT=/mnt/zmovie-storage \
+  REBOOT=true
 ```
 
-The wrapper first verifies that the target is a real `cifs`/`smb3` mount, performs a write/read/delete probe, checks Linux free space, invokes all five existing runtime closeout gates, copies the resulting evidence to SMB, and verifies all copied evidence with SHA-256.
+The Make target verifies that the configured SMB path is a real `cifs`/`smb3` mount before invoking `scripts/runtime-closeout-smb.sh`. The wrapper performs a write/read/delete probe, checks Linux free space, invokes all five runtime closeout gates, copies the resulting evidence to SMB, and verifies all copied evidence with SHA-256.
 
 Default local-space policy is warning below 60 GB and block below 30 GB. Override with `ZMOVIE_WARN_LOCAL_GB` and `ZMOVIE_MIN_LOCAL_GB` only after capacity planning.
 
