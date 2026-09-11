@@ -6,7 +6,7 @@ set -Eeuo pipefail
 
 SHARE="${1:-}"
 MOUNT="${2:-/mnt/zmovie-storage}"
-CRED="${ZMOVIE_SMB_CREDENTIALS:-/root/.smb-zmovie}"
+CRED="${ZMOVIE_SMB_CREDENTIALS:-/etc/zmovie/smb.credentials}"
 [[ ${EUID} -eq 0 ]] || { echo "ERROR: run as root" >&2; exit 2; }
 [[ "$SHARE" == //*/* ]] || { echo "Usage: sudo $0 //WINDOWS-IP/zmovie [/mnt/zmovie-storage]" >&2; exit 2; }
 [[ -f "$CRED" ]] || { echo "ERROR: create $CRED first (username/password/domain) and chmod 600" >&2; exit 3; }
