@@ -23,6 +23,9 @@ BACKEND ?= auto
 WORKFLOW ?=
 ROLE ?= video
 RENDERER_URL ?= http://127.0.0.1:8188
+SMB_MOUNT ?= /mnt/zmovie-storage
+SMB_MODE ?= auto
+REBOOT ?= false
 SDCPP_BACKEND ?= auto
 SDCPP_MODEL ?=
 SDCPP_DIFFUSION_MODEL ?=
@@ -175,7 +178,7 @@ compose-up: ## Start Docker stack
 compose-down: ## Stop Docker stack
 	$(COMPOSE) down
 
-compose-logs: ## Follow Docker stack logs
+compose-logs: ## Follow Docker stack logs; use LINES=200 to change amount
 	$(COMPOSE) logs -f --tail=$${LINES:-100}
 
 compose-ps: ## Show Docker stack state
@@ -252,9 +255,24 @@ export: ## Build production ZIP + checksums; PROJECT_ID=prj_...
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
 	sudo zmovie-ctl export "$(PROJECT_ID)"
 
-production: ## One-click render->validate->assemble->prepare->export; stops at approval gate
+production: ## One-click production; auto-uses SMB closeout when mounted, local pipeline otherwise
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
-	sudo zmovie-ctl production "$(PROJECT_ID)" "$(PROVIDER)"
+	@set -Eeuo pipefail; \
+	mode="$(SMB_MODE)"; \
+	[[ "$$mode" =~ ^(auto|required|off)$$ ]] || { echo "SMB_MODE must be auto|required|off" >&2; exit 2; }; \
+	fstype="$$(findmnt -T "$(SMB_MOUNT)" -n -o FSTYPE 2>/dev/null || true)"; \
+	if [[ "$$mode" != "off" && ( "$$fstype" == "cifs" || "$$fstype" == "smb3" ) ]]; then \
+		args=(--project "$(PROJECT_ID)" --provider "$(PROVIDER)"); \
+		[[ "$(REBOOT)" == "true" ]] && args+=(--reboot); \
+		echo "Production mode: DBC five-gate closeout + Windows SMB storage ($(SMB_MOUNT))"; \
+		sudo env ZMOVIE_SMB_MOUNT="$(SMB_MOUNT)" bash ./scripts/runtime-closeout-smb.sh "$${args[@]}"; \
+	elif [[ "$$mode" == "required" ]]; then \
+		echo "SMB_MODE=required but $(SMB_MOUNT) is not a cifs/smb3 mount" >&2; \
+		exit 3; \
+	else \
+		echo "Production mode: local render->validate->assemble->prepare->export (SMB not active)"; \
+		sudo zmovie-ctl production "$(PROJECT_ID)" "$(PROVIDER)"; \
+	fi
 
 run-status: ## Production run status; PROJECT_ID=... optional RUN_ID=prod_...
 	@test -n "$(PROJECT_ID)" || { echo "PROJECT_ID is required" >&2; exit 2; }
