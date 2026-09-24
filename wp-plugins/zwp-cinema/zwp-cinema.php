@@ -212,7 +212,8 @@ add_action('admin_post_zwpc_submit', function() {
     $title = sanitize_text_field(wp_unslash($_POST['zwpc_title'] ?? ''));
     $description = sanitize_textarea_field(wp_unslash($_POST['zwpc_description'] ?? ''));
     $video = zwpc_valid_video_url(wp_unslash($_POST['zwpc_url'] ?? ''));
-    if (!$video || !$title || mb_strlen($title) > 180 || mb_strlen($description) > 4000) {
+    if (!$video || !$title || (function_exists('mb_strlen') ? mb_strlen($title) : strlen($title)) > 180 ||
+        (function_exists('mb_strlen') ? mb_strlen($description) : strlen($description)) > 4000) {
         wp_die(esc_html__('Invalid film submission.', 'zwp-cinema'), '', array('response' => 400));
     }
     $id = wp_insert_post(array(
