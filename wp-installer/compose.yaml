@@ -1,0 +1,90 @@
+name: zeaz-cinema-staging
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${WP_DB_ROOT_PASSWORD:?Generate the local .env first}
+      MARIADB_DATABASE: ${WP_DB_NAME:-zeaz_cinema}
+      MARIADB_USER: ${WP_DB_USER:-zeaz_wp}
+      MARIADB_PASSWORD: ${WP_DB_PASSWORD:?Generate the local .env first}
+    volumes:
+      - wp_database:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 25s
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    networks: [cinema_internal]
+
+  volume-init:
+    image: busybox:1.36
+    profiles: [installer]
+    user: "0:0"
+    entrypoint: ["sh", "-c"]
+    command:
+      - "mkdir -p /var/www/html/wp-content/plugins /var/www/html/wp-content/themes && chown -R 33:33 /var/www/html"
+    volumes:
+      - wp_html:/var/www/html
+    networks: [cinema_internal]
+
+  wpcli:
+    image: wordpress:cli-php8.3
+    profiles: [installer]
+    user: "33:33"
+    working_dir: /var/www/html
+    entrypoint: ["sh", "/opt/zeaz/bootstrap.sh"]
+    environment:
+      WP_VERSION: ${WP_VERSION:-latest}
+      WP_LOCALE: ${WP_LOCALE:-en_US}
+      WP_SITE_URL: ${WP_SITE_URL:?Set WP_SITE_URL in wp-installer/.env}
+      WP_SITE_TITLE: ${WP_SITE_TITLE:-ZeaZ Cinema Staging}
+      WP_ADMIN_USER: ${WP_ADMIN_USER:-cinema_owner}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.invalid}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:?Generate the local .env first}
+      WP_DB_NAME: ${WP_DB_NAME:-zeaz_cinema}
+      WP_DB_USER: ${WP_DB_USER:-zeaz_wp}
+      WP_DB_PASSWORD: ${WP_DB_PASSWORD:?Generate the local .env first}
+      WP_DB_PREFIX: ${WP_DB_PREFIX:-zwp_}
+    volumes:
+      - wp_html:/var/www/html
+      - ../wp-plugins/zwp-cinema:/var/www/html/wp-content/plugins/zwp-cinema:ro
+      - ../themes/zwp-cinema:/var/www/html/wp-content/themes/zwp-cinema:ro
+      - ./scripts/bootstrap.sh:/opt/zeaz/bootstrap.sh:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [cinema_internal]
+
+  wordpress:
+    image: wordpress:php8.3-apache
+    restart: unless-stopped
+    ports:
+      - "${WP_BIND_IP:-127.0.0.1}:${WP_PORT:-8090}:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${WP_DB_NAME:-zeaz_cinema}
+      WORDPRESS_DB_USER: ${WP_DB_USER:-zeaz_wp}
+      WORDPRESS_DB_PASSWORD: ${WP_DB_PASSWORD:?Generate the local .env first}
+    volumes:
+      - wp_html:/var/www/html
+      - ../wp-plugins/zwp-cinema:/var/www/html/wp-content/plugins/zwp-cinema:ro
+      - ../themes/zwp-cinema:/var/www/html/wp-content/themes/zwp-cinema:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r '$$s = @fsockopen(\"127.0.0.1\", 80); exit($$s ? 0 : 1);'"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [cinema_internal]
+
+networks:
+  cinema_internal:
+
+volumes:
+  wp_html:
+  wp_database:
