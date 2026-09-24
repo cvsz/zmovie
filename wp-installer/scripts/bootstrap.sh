@@ -64,9 +64,13 @@ wp core verify-checksums --path="$WP_PATH" --locale=en_US
 
 if [ ! -f "$WP_PATH/wp-config.php" ]; then
     printf '%s\n' 'Creating wp-config.php (database password passed through standard input)...'
-    printf '%s\n' "$WP_DB_PASSWORD" | wp config create \
+    if ! printf '%s\n' "$WP_DB_PASSWORD" | wp config create \
         --path="$WP_PATH" --dbname="$WP_DB_NAME" --dbuser="$WP_DB_USER" \
-        --dbhost=db:3306 --dbprefix="$WP_DB_PREFIX" --prompt=dbpass --skip-check
+        --dbhost=db:3306 --dbprefix="$WP_DB_PREFIX" --prompt=dbpass --skip-check >/dev/null 2>&1; then
+        printf '%s\n' 'Creating wp-config.php failed; sensitive WP-CLI prompt output was withheld.' >&2
+        exit 1
+    fi
+    printf '%s\n' 'wp-config.php created successfully.'
     wp config set DISALLOW_FILE_EDIT true --raw --path="$WP_PATH"
     if [ "${WP_SITE_URL#https://}" != "$WP_SITE_URL" ]; then
         wp config set FORCE_SSL_ADMIN true --raw --path="$WP_PATH"
@@ -78,10 +82,14 @@ fi
 fresh_install=0
 if ! wp core is-installed --path="$WP_PATH" >/dev/null 2>&1; then
     printf '%s\n' 'Installing WordPress database and first administrator...'
-    printf '%s\n' "$WP_ADMIN_PASSWORD" | wp core install \
+    if ! printf '%s\n' "$WP_ADMIN_PASSWORD" | wp core install \
         --path="$WP_PATH" --url="$WP_SITE_URL" --title="$WP_SITE_TITLE" \
         --admin_user="$WP_ADMIN_USER" --admin_email="$WP_ADMIN_EMAIL" \
-        --prompt=admin_password --skip-email
+        --prompt=admin_password --skip-email >/dev/null 2>&1; then
+        printf '%s\n' 'Installing WordPress failed; sensitive WP-CLI prompt output was withheld.' >&2
+        exit 1
+    fi
+    printf '%s\n' 'WordPress database initialized successfully.'
     fresh_install=1
 else
     existing_url="$(wp option get home --path="$WP_PATH")"
