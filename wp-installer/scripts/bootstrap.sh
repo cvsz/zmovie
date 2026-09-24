@@ -6,7 +6,7 @@ cd "$WP_PATH"
 
 required="WP_SITE_URL WP_SITE_TITLE WP_ADMIN_USER WP_ADMIN_EMAIL WP_ADMIN_PASSWORD WP_DB_NAME WP_DB_USER WP_DB_PASSWORD WP_DB_PREFIX"
 for name in $required; do
-    eval 'value=${' "$name" '-}'
+    eval "value=\${$name-}"
     if [ -z "$value" ]; then
         printf 'Missing required setting: %s\n' "$name" >&2
         exit 2
