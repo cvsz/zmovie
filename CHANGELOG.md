@@ -8,6 +8,18 @@ or external publication confirmation.
 
 ### Added
 
+- First-party License Server, versioned (`services/license-server/`):
+  Ed25519 short leases, rate limiting, admin-gated revoke/expire/features,
+  env-driven keys, systemd template, key backup/restore docs, contract tests;
+- Membership HTTP boundary + sandbox UI (`commerce_routes.py`,
+  `/membership`): plans, subscription, checkout/confirm, change/cancel,
+  refunds, signed webhooks, ledger receipts; card data rejected at boundary;
+- Media pipeline (`media_pipeline.py`, upload endpoint): validated uploads,
+  FFprobe gate, real transcoding/poster evidence, hardened object paths;
+- Versioned migration ledger + PostgreSQL readiness harness (env-gated);
+- Isolated staging workflow (`scripts/deploy-staging.sh`): pinned-commit
+  worktrees, readiness + CRUD smoke, auto-rollback, production interlocks;
+- DR snapshots (`scripts/backup-dr.sh`), disk alerts, wired monitor crons;
 - Explicit Studio-to-Cinema import boundary (`zmovie_platform/studio_cinema.py`,
   `cinema_import_routes.py`): QC, rights confirmation, human approval,
   idempotent imports, audit trail; render success never auto-publishes;

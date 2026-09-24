@@ -215,12 +215,10 @@
 | Activation endpoint | **VERIFIED** | POST /v1/activate returns signed lease |
 | Public key endpoint | **VERIFIED** | GET /v1/public-key returns base64url key |
 | License key | **VERIFIED** | Key matches wp-config.php |
-| wp-config.php | **UPDATED** | ZEAZ_LICENSE_API = http://127.0.0.1:8085 |
+| wp-config.php | **UPDATED** | ZEAZ_LICENSE_API = https://license.zeaz.dev (via PHP-FPM env, no literals) |
 | DB credential rotation | **COMPLETED** | Password rotated, WordPress connected |
 
 ## 14. P2 Execution Round (2026-09-24)
-
-Implemented, tested and committed (all GPG-signed on `main`):
 
 - **Phase 7 — Studio→Cinema boundary:** `zmovie_platform/studio_cinema.py` +
   `cinema_import_routes.py` wired in `main.py` + `migrations.py`; 7 tests.
@@ -244,8 +242,54 @@ Implemented, tested and committed (all GPG-signed on `main`):
 Deliverables index: `docs/production/CURRENT_STATE.md`,
 `FEATURE_MATRIX.md`, `TEST_EVIDENCE.md`, `DEPLOYMENT_RUNBOOK.md`,
 `BACKUP_RESTORE_EVIDENCE.md`, `ROLLBACK_EVIDENCE.md`,
+`A11Y_PERF_EVIDENCE.md`,
 `docs/security/LICENSE_KEY_MANAGEMENT.md`, `docs/security/THREAT_MODEL.md`,
 `docs/cinema/ARCHITECTURE_ADR.md`.
+
+## 15. P3 Execution Round (2026-09-24)
+
+Real environment + remaining gates, all GPG-signed on `main`:
+
+- **Phase 0 — Discovery:** mapped real env consumers (`/etc/zmovie/zmovie.env`,
+  installer env, `wp-config.php`, PHP-FPM pool, nohup license service);
+  found prod runs from `/opt/zmovie` snapshot, license on loopback, no
+  `license.zeaz.dev` DNS, PHP-FPM `clear_env` blocking `getenv()`.
+- **Phase 1 — Real .env updates:** `/etc/zmovie/zmovie.env` +4 secrets
+  (independent), explicit CORS, atomic replace, restart + health 200;
+  installer deferred credentials + quoting/`/cinema` fixes, password-free
+  repeat run EXIT=0; PHP-FPM pool env delivery (4/4 SET in FPM context),
+  `wp-config.php` literal-free; backups in `~/.config-backups/` (700/600).
+- **Phase 2 — License HTTPS:** hardened server (rate limit 20/min,
+  admin token gate, revoke/expire/features endpoints, canonical
+  `cinema.creator`), `zeaz-license.service` systemd unit, Nginx vhost with
+  edge-deny on admin/leases, Terraform DNS + ingress (1 add, 1 change,
+  0 destroy), `https://license.zeaz.dev` 5/5 200, 8-case matrix all PASS,
+  WP E2E `claims=ARRAY` + `entitlement=true` over real HTTPS.
+- **Phase 3 — Versioned source:** `services/license-server/` sanitized
+  (env-driven keys, no secrets), requirements, systemd template, README
+  with key backup/restore, 7 contract tests; deployed live + E2E re-verified.
+- **Phase 4 — Reconcile:** branch `fix/security-production-secrets`
+  pushed (25a6402); post-apply `plan`: No changes. PR to `main` left for
+  operator (`gh` token invalid) — exact spec in §10-equivalent report.
+- **Phase 5 — Baseline green:** root-caused `edge_tts` absence; manifest
+  venv 163/163 OK; CI-like venv 178/178 OK; pinned cryptography/httpx/
+  psycopg/python-multipart; `verify_docs` 168 files pass; pip-audit clean.
+- **Phase 6 — Staging:** isolated env/DB/ports/creds/license seed key,
+  worktree pinned deploys, CRUD smoke, rollback verified, loopback-only.
+- **Phase 7 — Gates:** WP E2E 9/9 (full cleanup), membership API+UI,
+  media pipeline (real ffmpeg), migration ledger + PG harness (live PG
+  BLOCKED: no credentials), axe 0 violations, perf baselines + draft SLOs,
+  supply chain (pip-audit/freeze; CycloneDX/scan pending).
+- **Phase 8 — DR:** backup mechanism proven healthy (manual run OK);
+  root cause of 03:15 failure = disk 99% (no unilateral deletes);
+  `backup-dr.sh` snapshots verified, key-restore dry-run (pubkey match),
+  alert crons wired (log-based, no MTA), `upgrade-readiness: safe true`.
+- **Phase 9 — 14 checks:** all PASS (recorded in final report §9).
+
+Known live alerts: disk 99% (operator cleanup required), off-host backup
+copies + at-rest encryption gaps, `zmovie-backup.service` last failure
+explained, stale `/opt/zmovie` snapshot predates new modules (production
+rollout needs explicit approval + staging gate).
 
 ## Conclusion
 
@@ -260,9 +304,11 @@ The zMovie + ZeaZ Cinema platform has been deployed with all infrastructure comp
 **Production readiness: IMPLEMENTED** — P0 gates verified in sandbox scope
 (License Server live, routing fixed, credential rotated, restore + rollback
 drills passed, commerce/ticketing sandbox tested, security regression green).
-Live money, live ticket sales and public auto-publish stay explicitly BLOCKED
-pending payment/refund/legal/operational acceptance. Full E2E, accessibility
-audit and load SLOs need a staging environment and operator approval.
+P3 closed the real-environment gaps: HTTPS licensing end-to-end, versioned
+license source, staging with rollback, green baselines, DR snapshots with
+alerts. Live money, live ticket sales and public auto-publish stay explicitly
+BLOCKED pending payment/refund/legal/operational acceptance. Disk cleanup,
+off-host copies and production code rollout need operator decisions.
 
 ---
 
