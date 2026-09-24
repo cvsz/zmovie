@@ -228,3 +228,30 @@ add_action('admin_post_zwpc_submit', function() {
     wp_safe_redirect(add_query_arg('zwpc_status', 'received', $return), 303);
     exit;
 });
+
+/** Render a dedicated per-user saved films page via [zwpc_favorites]. */
+function zwpc_favorites_shortcode() {
+    if (!is_user_logged_in()) {
+        return '<p><a href="' . esc_url(wp_login_url(get_permalink())) . '">' .
+            esc_html__('Sign in to view your saved films.', 'zwp-cinema') . '</a></p>';
+    }
+    $ids = array_slice(array_values(array_unique(array_map('absint',
+        (array) get_user_meta(get_current_user_id(), 'zwpc_favorites', true)))), 0, 500);
+    $markup = '<ul class="zwpc-favorites">';
+    $count = 0;
+    foreach ($ids as $id) {
+        $item = zwpc_film_data($id);
+        if (!$item) {
+            continue;
+        }
+        $markup .= '<li><a href="' . esc_url($item['url']) . '">';
+        if ($item['poster']) {
+            $markup .= '<img src="' . esc_url($item['poster']) . '" alt="" loading="lazy">';
+        }
+        $markup .= '<span>' . esc_html($item['title']) . '</span></a></li>';
+        $count++;
+    }
+    $markup .= '</ul>';
+    return $count ? $markup : '<p>' . esc_html__('You have no saved films yet.', 'zwp-cinema') . '</p>';
+}
+add_shortcode('zwpc_favorites', 'zwpc_favorites_shortcode');
