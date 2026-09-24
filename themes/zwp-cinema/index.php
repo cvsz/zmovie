@@ -30,7 +30,7 @@
         }
         $films = new WP_Query($args);
         ?>
-        <div id="zwpc-feed" class="zwpc-feed" role="feed" aria-label="<?php esc_attr_e('Cinema film feed', 'zwp-cinema'); ?>"
+        <div id="zwpc-feed" class="zwpc-feed"<?php if ((int) $films->post_count > 0) : ?> role="feed"<?php else : ?> role="region"<?php endif; ?> aria-label="<?php esc_attr_e('Cinema film feed', 'zwp-cinema'); ?>"
             data-next-page="2" data-has-more="<?php echo $films->max_num_pages > 1 ? '1' : '0'; ?>">
             <?php while ($films->have_posts()) : $films->the_post();
                 $item = function_exists('zwpc_film_data') ? zwpc_film_data(get_the_ID()) : null;
