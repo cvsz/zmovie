@@ -1,0 +1,40 @@
+# Sanitized staging unit template (NO secrets).
+# Install: copy to /etc/systemd/system/zmovie-staging.service, then
+#   systemctl daemon-reload && systemctl enable --now zmovie-staging
+# Secrets live in /etc/zmovie/zmovie-staging.env (0640, root:zmovie).
+# Dependencies come from the production venv (read-only); code comes
+# from the pinned worktree at /opt/zmovie-staging. Loopback only.
+[Unit]
+Description=zMovie staging (isolated, loopback only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zmovie
+Group=zmovie
+WorkingDirectory=/opt/zmovie-staging
+EnvironmentFile=/etc/zmovie/zmovie-staging.env
+ExecStart=/bin/sh -c 'exec /opt/zmovie/.venv/bin/uvicorn main:app --host 127.0.0.1 --port "$ZMOVIE_PORT" --workers 1 --proxy-headers'
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=30
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/zmovie-staging
+
+[Install]
+WantedBy=multi-user.target
