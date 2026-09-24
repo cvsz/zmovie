@@ -119,6 +119,8 @@ STEPS
         compose run --rm volume-init
         printf '%s\n' 'Starting local MariaDB...'
         compose up -d --wait db
+        printf '%s\n' 'Checking installer PHP memory limit...'
+        compose run --rm --entrypoint php wpcli -r 'if (ini_get("memory_limit") !== "512M") { fwrite(STDERR, "Installer PHP requires memory_limit=512M\n"); exit(1); } echo "WP-CLI PHP memory_limit=512M\n";'
         printf '%s\n' 'Downloading/configuring WordPress via WP-CLI...'
         compose run --rm wpcli
         printf '%s\n' 'Starting WordPress...'
