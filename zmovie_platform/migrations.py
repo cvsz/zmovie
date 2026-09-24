@@ -3,6 +3,7 @@ from __future__ import annotations
 from .commerce.store import ensure_tables as ensure_commerce_tables
 from .storage import ensure_database
 from .studio_cinema import ensure_tables as ensure_cinema_import_tables
+from .ticketing.store import ensure_tables as ensure_ticketing_tables
 
 
 def migrate() -> None:
@@ -14,3 +15,4 @@ def migrate() -> None:
     ensure_database()
     ensure_cinema_import_tables()
     ensure_commerce_tables()
+    ensure_ticketing_tables()
