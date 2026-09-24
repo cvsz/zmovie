@@ -110,7 +110,7 @@
     try {
       const url = new URL(raw);
       if (url.protocol !== 'https:') return '';
-      if (video && !/\\.(mp4|webm)$/i.test(url.pathname)) return '';
+      if (video && !/\.(mp4|webm)$/i.test(url.pathname)) return '';
       return url.href;
     } catch { return ''; }
   }
@@ -130,7 +130,7 @@
       if (poster) video.poster = poster;
       const source = element('source');
       source.src = videoUrl;
-      source.type = /\\.webm(?:\\?|$)/i.test(videoUrl) ? 'video/webm' : 'video/mp4';
+      source.type = /\.webm(?:\\?|$)/i.test(videoUrl) ? 'video/webm' : 'video/mp4';
       video.append(source);
       media.append(video);
     } else if (poster) {
