@@ -19,15 +19,15 @@ in English. Follow each repository's AGENTS.md instructions.
 REPOSITORIES
 
 zMovie:
-  /home/cvsz/zmovie
+  ~/zmovie
   https://github.com/cvsz/zmovie
 
 WordPress working installation:
-  /home/cvsz/zmovie-wp-setup
+  ~/zmovie-wp-setup
 
 zWorkforce and Cloudflare:
-  /home/cvsz/platforms/zworkforce
-  /home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+  ~/platforms/zworkforce
+  ~/platforms/zworkforce/infrastructure/terraform/cloudflare
   https://github.com/cvsz/zworkforce
 
 PRODUCTION URLS

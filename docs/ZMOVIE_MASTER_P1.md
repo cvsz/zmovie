@@ -27,8 +27,8 @@ https://github.com/cvsz/zmovie
 Expected local paths:
 
 ```text
-/home/cvsz/zmovie
-/home/cvsz/zmovie-wp-setup
+~/zmovie
+~/zmovie-wp-setup
 ```
 
 The repository currently contains:
@@ -75,7 +75,7 @@ HTTP 200
 Reported installation is under:
 
 ```text
-/home/cvsz/zmovie-wp-setup
+~/zmovie-wp-setup
 ```
 
 Determine the actual WordPress document root before changing configuration.
@@ -156,7 +156,7 @@ If serving WordPress under `/cinema`, implement it correctly rather than only pr
 Infrastructure directory:
 
 ```text
-/home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+~/platforms/zworkforce/infrastructure/terraform/cloudflare
 ```
 
 Reported current Terraform values include:
@@ -334,7 +334,7 @@ Before making changes, collect evidence.
 Run:
 
 ```bash
-cd /home/cvsz/zmovie
+cd ~/zmovie
 
 git status --short
 git branch --show-current
@@ -457,7 +457,7 @@ Include:
 Work in:
 
 ```bash
-cd /home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+cd ~/platforms/zworkforce/infrastructure/terraform/cloudflare
 ```
 
 First:
@@ -1900,8 +1900,8 @@ For the first run, do NOT start by editing Terraform.
 
 Start with these tasks in this exact order:
 
-1. Audit `/home/cvsz/zmovie`.
-2. Audit `/home/cvsz/zmovie-wp-setup`.
+1. Audit `~/zmovie`.
+2. Audit `~/zmovie-wp-setup`.
 3. Determine actual WordPress document root.
 4. Inspect `wp-plugins/zwp-cinema/includes/license.php`.
 5. Locate actual ZeaZ License Server source/process.
