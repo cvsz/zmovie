@@ -46,26 +46,44 @@ need rsync
 need mktemp
 
 WP_CLI_BIN="${WP_CLI_BIN:-}"
+WP_CLI_MODE=exec
 if [[ -z "$WP_CLI_BIN" ]]; then
   if command -v wp >/dev/null 2>&1; then
     WP_CLI_BIN="$(command -v wp)"
   else
     WP_CLI_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/zmovie-wp-installer"
     WP_CLI_BIN="$WP_CLI_DIR/wp-cli.phar"
+    WP_CLI_MODE=phar
     mkdir -p "$WP_CLI_DIR"
     if [[ ! -s "$WP_CLI_BIN" ]]; then
       log "downloading WP-CLI official Phar"
-      curl --fail --location --proto '=https' --tlsv1.2         https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar         --output "$WP_CLI_BIN"
-      chmod 0755 "$WP_CLI_BIN"
+      tmp_wpcli="$(mktemp "$WP_CLI_DIR/wp-cli.phar.XXXXXX")"
+      trap 'rm -f "${tmp_wpcli:-}"' EXIT
+      curl --fail --location --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar --output "$tmp_wpcli"
+      php "$tmp_wpcli" --info >/dev/null || die "downloaded WP-CLI Phar failed validation"
+      chmod 0755 "$tmp_wpcli"
+      mv "$tmp_wpcli" "$WP_CLI_BIN"
+      tmp_wpcli=
+      trap - EXIT
     fi
   fi
+elif [[ "$WP_CLI_BIN" == *.phar ]]; then
+  WP_CLI_MODE=phar
 fi
 
-wp() {
-  php "$WP_CLI_BIN" --path="$WP_PATH" --allow-root "$@"
+wp_raw() {
+  if [[ "$WP_CLI_MODE" == "phar" ]]; then
+    php "$WP_CLI_BIN" "$@"
+  else
+    "$WP_CLI_BIN" "$@"
+  fi
 }
 
-php "$WP_CLI_BIN" --info >/dev/null || die "WP-CLI bootstrap failed"
+wp() {
+  wp_raw --path="$WP_PATH" --allow-root "$@"
+}
+
+wp_raw --info >/dev/null || die "WP-CLI bootstrap failed"
 
 if [[ "$DB_AUTO_CREATE" == "true" ]]; then
   need mysql
