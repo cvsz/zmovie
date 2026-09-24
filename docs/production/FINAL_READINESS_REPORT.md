@@ -93,7 +93,7 @@
 | DISABLE_WP_CRON | true | `wp-config.php` |
 | System cron | Active | `crontab -l` |
 | DB user | `zmovie_cinema` | Local only (127.0.0.1:3306) |
-| DB password | `zeaz-cinema-2026` | `wp-config.php` |
+| DB password | `***REDACTED***` | `wp-config.php` (managed via secret env) |
 
 ---
 
