@@ -8,3 +8,5 @@ data/
 
 # Large operator-managed reference media
 docs/AI-Seedance-2.0-ref.mp4
+.playwright-cli/
+.superpowers/
