@@ -37,6 +37,12 @@ EOF
 
 [[ ${EUID} -eq 0 ]] || { echo "ERROR: run with sudo/root" >&2; exit 2; }
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then usage; exit 0; fi
+for arg in "$@"; do
+  if [[ "$arg" == "--reboot" ]]; then
+    echo "BLOCKED: reboot-level SMB closeout requires a post-boot archive resume unit; run the normal SMB closeout without --reboot and perform a separately evidenced reboot drill." >&2
+    exit 25
+  fi
+done
 
 for c in findmnt df sha256sum rsync python3; do
   command -v "$c" >/dev/null || { echo "ERROR: required command missing: $c" >&2; exit 2; }
@@ -50,7 +56,7 @@ mkdir -p "$PRE"
 # directory at the SMB path because that could silently fill the Linux disk.
 if ! findmnt -T "$SMB_MOUNT" -n -o FSTYPE,SOURCE,TARGET >"$PRE/findmnt.txt" 2>&1; then
   echo "BLOCKED: SMB mount is unavailable at $SMB_MOUNT" >&2
-  [[ "$SMB_REQUIRED" == "1" ]] && exit 20
+  exit 20
 else
   fstype="$(awk '{print $1}' "$PRE/findmnt.txt")"
   case "$fstype" in cifs|smb3) ;; *) echo "BLOCKED: $SMB_MOUNT is mounted as $fstype, expected cifs/smb3" >&2; exit 21;; esac
@@ -60,7 +66,7 @@ fi
 probe="$SMB_MOUNT/.zmovie-write-probe-$STAMP"
 printf 'zmovie-smb-probe %s\n' "$STAMP" > "$probe"
 sync "$probe" 2>/dev/null || true
-[[ -s "$probe" ]] || { echo "BLOCKED: SMB write/read probe failed" >&2; exit 22; }
+grep -qx "zmovie-smb-probe $STAMP" "$probe" || { echo "BLOCKED: SMB write/read probe failed" >&2; exit 22; }
 rm -f "$probe"
 
 avail_kb="$(df -Pk "$DATA_DIR" | awk 'NR==2{print $4}')"
@@ -76,10 +82,11 @@ fi
 
 # Execute the existing five evidence gates. Its reports remain local until
 # successfully archived and verified below.
-"$REPO_DIR/scripts/runtime-closeout.sh" "$@"
-rc=$?
+: > "$PRE/run.started"
+rc=0
+"$REPO_DIR/scripts/runtime-closeout.sh" "$@" || rc=$?
 
-latest="$(find "$DATA_DIR/evidence/runtime-closeout" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
+latest="$(find "$DATA_DIR/evidence/runtime-closeout" -mindepth 1 -maxdepth 1 -type d -newer "$PRE/run.started" -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
 [[ -n "$latest" && -d "$latest" ]] || { echo "ERROR: runtime closeout report not found" >&2; exit 24; }
 
 archive="$SMB_MOUNT/evidence/runtime-closeout/$(basename "$latest")"
@@ -123,7 +130,11 @@ if [[ "$DO_CLEANUP" == "1" ]]; then
   echo "cleanup_requested=true; no active runtime data removed" > "$archive/CLEANUP.txt"
 fi
 
-echo "SMB closeout PASS"
+if [[ "$rc" -eq 0 ]]; then
+  echo "SMB evidence archived and verified; runtime closeout PASS"
+else
+  echo "SMB evidence archived and verified; runtime closeout still BLOCKED (exit=$rc)"
+fi
 echo "Local report: $latest"
 echo "SMB verified archive: $archive"
 exit "$rc"

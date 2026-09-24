@@ -58,16 +58,7 @@ make production \
   SMB_MOUNT=/mnt/zmovie-storage
 ```
 
-For controlled reboot recovery evidence:
-
-```bash
-make production \
-  PROJECT_ID=prj_YOUR_REAL_PROJECT \
-  PROVIDER=auto \
-  SMB_MODE=required \
-  SMB_MOUNT=/mnt/zmovie-storage \
-  REBOOT=true
-```
+Reboot-level evidence is a separate operator acceptance gate. The SMB wrapper intentionally rejects `--reboot` until a post-boot archival resume unit has been implemented and tested; do not claim the pre-reboot invocation has archived evidence. Perform a separately evidenced reboot drill after normal SMB closeout and verify the share is mounted again before copying any new evidence.
 
 The Make target verifies that the configured SMB path is a real `cifs`/`smb3` mount before invoking `scripts/runtime-closeout-smb.sh`. The wrapper performs a write/read/delete probe, checks Linux free space, invokes all five runtime closeout gates, copies the resulting evidence to SMB, and verifies all copied evidence with SHA-256.
 

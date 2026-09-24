@@ -299,3 +299,4 @@ production-release: ## Build the maintained ZeaZDev/Bilibili release candidate a
 	sudo bash ./scripts/production-release.sh
 
 include make/product.mk
+include make/smb.mk
