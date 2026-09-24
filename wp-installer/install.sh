@@ -46,14 +46,14 @@ need rsync
 need mktemp
 
 WP_CLI_BIN="${WP_CLI_BIN:-}"
-WP_CLI_MODE=exec
+WP_CLI_MODE="exec"
 if [[ -z "$WP_CLI_BIN" ]]; then
   if command -v wp >/dev/null 2>&1; then
     WP_CLI_BIN="$(command -v wp)"
   else
     WP_CLI_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/zmovie-wp-installer"
     WP_CLI_BIN="$WP_CLI_DIR/wp-cli.phar"
-    WP_CLI_MODE=phar
+    WP_CLI_MODE="phar"
     mkdir -p "$WP_CLI_DIR"
     if [[ ! -s "$WP_CLI_BIN" ]]; then
       log "downloading WP-CLI official Phar"
