@@ -16,11 +16,13 @@ case "$1 $2" in
     'core install')
         IFS= read -r password
         test "$password" = "$WP_ADMIN_PASSWORD"
+        printf "WP-CLI echo simulation: --admin_password='%s'\n" "$password"
         touch "$WP_PATH/.wp-installed"
         ;;
     'config create')
         IFS= read -r password
         test "$password" = "$WP_DB_PASSWORD"
+        printf "WP-CLI echo simulation: --dbpass='%s'\n" "$password"
         touch "$WP_PATH/wp-config.php"
         ;;
     'plugin is-active') test -f "$WP_PATH/.plugin-active" ;;
@@ -55,6 +57,8 @@ grep -q 'core download https://wordpress.org/latest.zip' "$WP_TEST_LOG"
 grep -q 'core verify-checksums' "$WP_TEST_LOG"
 grep -q 'theme activate zwp-cinema' "$WP_TEST_LOG"
 ! grep -Eq 'test-only-(admin|db)-secret' "$WP_TEST_LOG"
+! grep -Fq "$WP_ADMIN_PASSWORD" "$tmp/first.log"
+! grep -Fq "$WP_DB_PASSWORD" "$tmp/first.log"
 cp "$WP_TEST_LOG" "$tmp/first-commands.log"
 
 bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/second.log"
