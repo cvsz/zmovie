@@ -32,19 +32,35 @@ if ! printf '%s' "$WP_DB_PREFIX" | grep -Eq '^[a-zA-Z_][a-zA-Z0-9_]*$'; then
     exit 2
 fi
 
+# The explicit WordPress.org ZIP avoids WP-CLI PharData truncating TAR paths >100 bytes.
+if [ "${WP_VERSION:-latest}" = latest ]; then
+    WP_ZIP_URL="https://wordpress.org/latest.zip"
+else
+    WP_ZIP_URL="https://wordpress.org/wordpress-${WP_VERSION}.zip"
+fi
+
+download_wordpress_core() {
+    wp core download "$WP_ZIP_URL" --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale=en_US --force
+}
+
 if [ ! -f "$WP_PATH/wp-settings.php" ]; then
-    printf '%s\n' 'Downloading official WordPress core using WP-CLI...'
-    wp core download --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale="${WP_LOCALE:-en_US}" --force
+    printf '%s\n' 'Downloading official WordPress ZIP via WP-CLI...'
+    download_wordpress_core
 elif [ ! -f "$WP_PATH/wp-config.php" ] &&
-     ! wp core verify-checksums --path="$WP_PATH" --locale="${WP_LOCALE:-en_US}" >/dev/null 2>&1; then
-    printf '%s\n' 'An unfinished first-install download was detected; safely re-downloading WordPress core...'
-    wp core download --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale="${WP_LOCALE:-en_US}" --force
+     ! wp core verify-checksums --path="$WP_PATH" --locale=en_US >/dev/null 2>&1; then
+    printf '%s\n' 'Recovering a partial first-install WordPress core from official ZIP...'
+    # Only an unconfigured WordPress may have its broken core AI library replaced.
+    # Leave wp-content, persistent volumes, and all configured installations intact.
+    if [ -d "$WP_PATH/wp-includes/php-ai-client" ]; then
+        rm -rf -- "$WP_PATH/wp-includes/php-ai-client"
+    fi
+    download_wordpress_core
 else
     printf '%s\n' 'WordPress core already present; preserving installed files.'
 fi
 
-printf '%s\n' 'Verifying WordPress.org core checksums...'
-wp core verify-checksums --path="$WP_PATH" --locale="${WP_LOCALE:-en_US}"
+printf '%s\n' 'Verifying WordPress.org core checksums (en_US ZIP)...'
+wp core verify-checksums --path="$WP_PATH" --locale=en_US
 
 if [ ! -f "$WP_PATH/wp-config.php" ]; then
     printf '%s\n' 'Creating wp-config.php (database password passed through standard input)...'
@@ -86,6 +102,9 @@ if [ "$fresh_install" -eq 1 ]; then
     wp theme activate zwp-cinema --path="$WP_PATH"
     wp rewrite structure '/%postname%/' --path="$WP_PATH"
     wp rewrite flush --path="$WP_PATH"
+    if [ "${WP_LOCALE:-en_US}" != en_US ]; then
+        wp language core install "$WP_LOCALE" --activate --path="$WP_PATH"
+    fi
 else
     printf '%s\n' 'Existing active theme and permalink configuration preserved.'
 fi
