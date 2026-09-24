@@ -1,0 +1,36 @@
+name: WordPress Cinema static checks
+on:
+  pull_request:
+    paths:
+      - 'wp-plugins/zwp-cinema/**'
+      - 'themes/zwp-cinema/**'
+      - '.github/workflows/wordpress-cinema.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'wp-plugins/zwp-cinema/**'
+      - 'themes/zwp-cinema/**'
+      - '.github/workflows/wordpress-cinema.yml'
+permissions:
+  contents: read
+jobs:
+  php-and-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP CLI and sodium
+        run: sudo apt-get update && sudo apt-get install -y php-cli php-sodium
+      - name: PHP syntax for plugin and theme
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find wp-plugins/zwp-cinema themes/zwp-cinema -name '*.php' -type f -print0)
+          test "${#files[@]}" -ge 5
+          for file in "${files[@]}"; do php -l "$file"; done
+      - name: JavaScript parse check
+        run: node --check themes/zwp-cinema/assets/js/reels.js
+      - name: Required WordPress theme files
+        run: |
+          test -s themes/zwp-cinema/style.css
+          test -s themes/zwp-cinema/index.php
+          test -s wp-plugins/zwp-cinema/zwp-cinema.php
