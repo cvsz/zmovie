@@ -108,8 +108,12 @@ fi
 
 if [ "$fresh_install" -eq 1 ]; then
     wp theme activate zwp-cinema --path="$WP_PATH"
-    wp rewrite structure '/%postname%/' --path="$WP_PATH"
-    wp rewrite flush --path="$WP_PATH"
+    wp rewrite structure '/%postname%/' --hard --path="$WP_PATH"
+    wp rewrite flush --hard --path="$WP_PATH"
+    if [ ! -s "$WP_PATH/.htaccess" ]; then
+        printf '%s\n' 'Apache rewrite rules were not generated; refusing incomplete installation.' >&2
+        exit 1
+    fi
     if [ "${WP_LOCALE:-en_US}" != en_US ]; then
         wp language core install "$WP_LOCALE" --activate --path="$WP_PATH"
     fi
