@@ -63,7 +63,7 @@
                 </article>
             <?php endwhile; wp_reset_postdata(); ?>
         </div>
-        <p id="zwpc-status" class="zwpc-status" role="status" aria-live="polite"><?php if (!$films->have_posts()) {
+        <p id="zwpc-status" class="zwpc-status" role="status" aria-live="polite"><?php if ((int) $films->post_count === 0) {
             esc_html_e('No films yet. Publish your first film from Cinema Films in WordPress.', 'zwp-cinema');
         } ?></p>
         <div id="zwpc-sentinel" aria-hidden="true"></div>
