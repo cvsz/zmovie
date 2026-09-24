@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install PHP CLI and sodium
-        run: sudo apt-get update && sudo apt-get install -y php-cli php-sodium
+      - name: Install PHP CLI
+        run: sudo apt-get update && sudo apt-get install -y php-cli
       - name: PHP syntax for plugin and theme
         shell: bash
         run: |
