@@ -8,7 +8,6 @@ set -Eeuo pipefail
 REPO_DIR="${ZMOVIE_REPO_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 DATA_DIR="${ZMOVIE_DATA_DIR:-/var/lib/zmovie}"
 SMB_MOUNT="${ZMOVIE_SMB_MOUNT:-/mnt/zmovie-storage}"
-SMB_REQUIRED="${ZMOVIE_SMB_REQUIRED:-1}"
 MIN_LOCAL_GB="${ZMOVIE_MIN_LOCAL_GB:-30}"
 WARN_LOCAL_GB="${ZMOVIE_WARN_LOCAL_GB:-60}"
 DO_CLEANUP="${ZMOVIE_SMB_CLEANUP_LOCAL:-0}"
@@ -23,7 +22,6 @@ scripts/runtime-closeout.sh.
 
 Environment:
   ZMOVIE_SMB_MOUNT=/mnt/zmovie-storage
-  ZMOVIE_SMB_REQUIRED=1
   ZMOVIE_MIN_LOCAL_GB=30
   ZMOVIE_WARN_LOCAL_GB=60
   ZMOVIE_SMB_CLEANUP_LOCAL=0
