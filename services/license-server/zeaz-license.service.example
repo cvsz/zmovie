@@ -1,0 +1,24 @@
+# Sanitized systemd template for zeaz-license.service (NO secrets).
+# Install: copy to /etc/systemd/system/zeaz-license.service, then
+#   systemctl daemon-reload && systemctl enable --now zeaz-license
+# Secrets live in the EnvironmentFiles below (0600, root-owned), never here.
+[Unit]
+Description=ZeaZ License Server (Ed25519, loopback only)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cvsz/services/license-server
+EnvironmentFile=/etc/zmovie-cinema/license-admin.env
+EnvironmentFile=/etc/zmovie-cinema/license-server.env
+ExecStart=/usr/bin/python3 server.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/cvsz/.config/zeaz /tmp
+
+[Install]
+WantedBy=multi-user.target
