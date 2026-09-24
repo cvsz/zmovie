@@ -1,0 +1,13 @@
+# Example cloudflared ingress for zmovie.zeaz.dev (placeholders only).
+#
+# Real tunnel ID, credentials and DNS live in the zworkforce Terraform
+# source of truth — never commit tunnel tokens here.
+# This file documents the intended ingress shape only.
+
+tunnel: TUNNEL_ID_PLACEHOLDER
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: zmovie.zeaz.dev
+    service: http://127.0.0.1:80
+  - service: http_status:404
