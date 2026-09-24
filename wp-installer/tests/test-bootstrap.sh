@@ -10,8 +10,8 @@ cat > "$tmp/bin/wp" <<'MOCK'
 set -Eeuo pipefail
 printf '%s\n' "$*" >> "$WP_TEST_LOG"
 case "$1 $2" in
-    'core download') touch "$WP_PATH/wp-settings.php" ;;
-    'core verify-checksums') : ;;
+    'core download') touch "$WP_PATH/wp-settings.php" "$WP_PATH/.core-complete" ;;
+    'core verify-checksums') test -f "$WP_PATH/.core-complete" ;;
     'core is-installed') test -f "$WP_PATH/.wp-installed" ;;
     'core install')
         IFS= read -r password
@@ -44,6 +44,7 @@ export WP_DB_PASSWORD='test-only-db-secret'
 export WP_DB_PREFIX=zwp_
 export WP_LOCALE=en_US
 export WP_VERSION=latest
+export WP_CLI_CACHE_DIR="$tmp/wp-cli-cache"
 
 bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/first.log"
 for marker in wp-settings.php wp-config.php .wp-installed .plugin-active; do
@@ -60,6 +61,32 @@ bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/second.log"
 ! grep -q 'core install' <(tail -n +"$(($(wc -l < "$tmp/first-commands.log") + 1))" "$WP_TEST_LOG")
 ! grep -q 'theme activate' <(tail -n +"$(($(wc -l < "$tmp/first-commands.log") + 1))" "$WP_TEST_LOG")
 
+# Resume an interrupted first-time extraction without destroying a real installation.
+original_wp_path="$WP_PATH"
+mkdir -p "$tmp/partial"
+touch "$tmp/partial/wp-settings.php"
+export WP_PATH="$tmp/partial"
+before_resume="$(wc -l < "$WP_TEST_LOG")"
+bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/recovery.log"
+grep -q 'unfinished first-install download' "$tmp/recovery.log"
+test -f "$tmp/partial/.core-complete"
+test -f "$tmp/partial/.wp-installed"
+tail -n +"$((before_resume + 1))" "$WP_TEST_LOG" | grep -q 'core download'
+export WP_PATH="$original_wp_path"
+
+# Never automatically overwrite installed WordPress core with invalid checksums.
+rm -f "$WP_PATH/.core-complete"
+before_corruption="$(wc -l < "$WP_TEST_LOG")"
+if bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/corrupt.log" 2>&1; then
+    echo 'Bootstrap silently accepted a corrupted installed WordPress core' >&2
+    exit 1
+fi
+if tail -n +"$((before_corruption + 1))" "$WP_TEST_LOG" | grep -q 'core download'; then
+    echo 'Bootstrap overwrote an existing installation without approval' >&2
+    exit 1
+fi
+touch "$WP_PATH/.core-complete"
+
 export WP_EXISTING_URL=https://another.example.invalid
 if bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/mismatch.log" 2>&1; then
     echo 'Bootstrap accepted a changed existing site URL' >&2
@@ -75,4 +102,4 @@ if bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/invalid.log" 2>&1; the
 fi
 grep -q 'Invalid WordPress table prefix' "$tmp/invalid.log"
 
-printf '%s\n' 'PASS: WP-CLI bootstrap downloads/verifies, uses stdin secrets, activates cinema, preserves existing installation and rejects unsafe config.'
+printf '%s\n' 'PASS: WP-CLI bootstrap downloads/verifies, uses stdin secrets, activates cinema, recovers partial extraction, preserves installed core and rejects unsafe config.'
