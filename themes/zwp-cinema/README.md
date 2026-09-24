@@ -1,21 +1,23 @@
-# ZeaZ Cinema — first-party WordPress theme (alpha)
+# ZeaZ Cinema — WordPress Theme ของ ZeaZDev (Alpha)
 
-Original WordPress cinema theme inspired by generic vertical-video interaction patterns described in the [TikSwipe product features](https://www.wp-script.com/adult-wordpress-themes/tikswipe/): mobile up/down swipe, desktop mouse wheel, keyboard arrows, lazy infinite load, per-user favorites and creator submissions. It intentionally does **not** clone TikSwipe appearance, source code, logos, compiled bundles, screenshots, licensed assets or bundled vendor integrations.
+Theme ที่ออกแบบใหม่ในสไตล์โรงภาพยนตร์โทนดำ–ทอง โดยนำเฉพาะแนวคิดการใช้งาน Vertical Video จาก [TikSwipe Feature Page](https://www.wp-script.com/adult-wordpress-themes/tikswipe/) มาเป็น Functional Reference ไม่คัดลอก Source Code, Licensed Assets, Bundle, Logo หรือ Branding ของผู้ผลิต
 
-## Features in this increment
+## ฟีเจอร์ที่พัฒนา
 
-- Original dark-gold cinema visual design, responsive full-height reel feed and accessible film details.
-- Native CSS scroll snap for swipe, keyboard and desktop wheel shortcuts, playback pauses on inactive video, reduced-motion support.
-- REST-based six-item pagination, optional Genre filter and logged-in user favorite controls.
-- WordPress custom logo, menus, site icon, sign-in and native comments support.
-- HTML escaped and URL-validated public feed; no unapproved ads or third-party tracking injected.
+- Fullscreen Vertical Feed พร้อม CSS Scroll Snap สำหรับ Swipe บนมือถือ
+- Mouse Wheel, Keyboard Arrow, ปุ่ม Previous/Next และ Video Play/Pause
+- โหลดรายการถัดไปผ่าน REST API, Filter ตาม Genre และแสดง Favorites สำหรับผู้ใช้ที่ Login
+- หน้า Film Detail พร้อม WordPress Comments, หน้า Creator และหน้า Static Page สำหรับ Shortcode
+- รองรับ Custom Logo, Site Icon, WordPress Menu, Responsive Layout และ Reduced Motion
 
-## Install on staging
+## ติดตั้ง
 
-Copy to `wp-content/themes/zwp-cinema/`, activate alongside `wp-plugins/zwp-cinema/`. For a functional feed, create and publish at least one first-party `Cinema Film` with a licensed trailer MP4/WebM HTTPS link. Set a Featured Image for its poster. Use WordPress Appearance → Menus and Customize → Site Identity to configure the brand and favicon.
+คัดลอก `themes/zwp-cinema/` ไปยัง `wp-content/themes/zwp-cinema/` แล้ว Activate Theme ควบคู่กับ Plugin `wp-plugins/zwp-cinema/` ใน WordPress Staging เพิ่ม Cinema Film พร้อม MP4/WebM HTTPS URL ที่ได้รับอนุญาต และกำหนด Featured Image เพื่อเป็น Poster สามารถกำหนด Logo, Favicon และ Navigation ผ่าน WordPress Site Identity/Menu
 
-The theme does not implement ticket checkout, actual premium paywall, livestream streaming protection, public creator profile editing, image/video uploads, random-per-session ordering, custom advertisement scripts or live payment transactions. All of those are separate, reviewable follow-up releases.
+สร้างหน้า `/favorites/` โดยใช้ `[zwpc_favorites]` เพื่อให้เมนู Saved Films แสดงอัตโนมัติ สร้างหน้า Submission ด้วย `[zwpc_submit]` เมื่อพร้อมเปิด Creator Program
 
-## Verification
+**ยังไม่รองรับ:** Ticket Checkout, Premium Paywall, Native File Upload, ระบบสุ่มแบบ Session, Automatic Posters, Script-Based Advertising และ Live Payment ทั้งหมดต้องเป็น Phase แยก พร้อมการตรวจ Security และ Rights
 
-`php -l` over every PHP file; `node --check assets/js/reels.js`; WordPress staging browser test on desktop and touch devices; keyboard only and reduced-motion accessibility checks; signed-lease validation on the separately deployed license service. CSS and template presence are **not** evidence of a working live WordPress deployment.
+## ทดสอบ
+
+รัน `php -l` ทุกไฟล์ PHP และ `node --check assets/js/reels.js` พร้อมทดสอบจริงใน WordPress Staging บน Mobile, Desktop, Keyboard-Only และ Reduced-Motion ก่อนเปิดใช้งาน Production; ผล Static Check เพียงอย่างเดียวไม่ยืนยันว่าใช้งานจริงได้
