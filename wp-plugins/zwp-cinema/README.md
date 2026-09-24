@@ -1,22 +1,22 @@
-# ZeaZ Cinema — first-party WordPress plugin (alpha)
+# ZeaZ Cinema — WordPress Plugin ของ ZeaZDev (Alpha)
 
-This is original ZeaZDev code for a cinema film catalog and **short-film/trailer feed**. It does not use, copy, modify, activate, or replace WP-Script Core or TikSwipe. WP-Script products that you install separately still require their legitimate upstream product and site licenses.
+ปลั๊กอินที่พัฒนาขึ้นใหม่สำหรับ **Film Catalog, Trailer Feed, Genres, Favorites และ Creator Submission** โดยไม่คัดลอก ไม่เปลี่ยนระบบ Activate และไม่แตะ Site Key ของ WP-Script หากติดตั้งผลิตภัณฑ์ของ WP-Script แยกต่างหาก ยังคงต้องใช้ License ที่ถูกต้องจากผู้ผลิต
 
-## Install
+## ติดตั้งบน Staging
 
-1. Copy `wp-plugins/zwp-cinema/` to `wp-content/plugins/zwp-cinema/` in a disposable staging WordPress 6.4+ / PHP 8.1+ installation.
-2. Activate **ZeaZ Cinema** in wp-admin and save Settings → Permalinks once.
-3. Create a **Cinema Film** (administrator only); set a licensed HTTPS direct MP4/WebM trailer URL and Featured Image. Choose or create a Genre, then publish.
-4. Activate the separate first-party `themes/zwp-cinema/` theme from Appearance → Themes.
-5. Visit the homepage for the cinematic swipe feed. `/wp-json/zwpc/v1/feed?page=1` returns published films only.
+1. ใช้ WordPress 6.4+ และ PHP 8.1+ พร้อม Sodium บนระบบ Staging ที่แยกจาก Production
+2. คัดลอก `wp-plugins/zwp-cinema/` ไปยัง `wp-content/plugins/zwp-cinema/` แล้ว Activate **ZeaZ Cinema**
+3. ไปที่ Settings → Permalinks แล้วกด Save หนึ่งครั้ง
+4. ในเมนู Cinema Films ให้ Administrator เพิ่มภาพยนตร์ ระบุ HTTPS URL ของไฟล์ MP4/WebM ที่มีสิทธิ์เผยแพร่ เพิ่ม Featured Image และเลือก Genre ก่อน Publish
+5. ติดตั้ง Theme `themes/zwp-cinema/` เพื่อเปิดใช้ Homepage และ Swipe Feed
 
-No demo videos, third-party posters or copyrighted media are bundled. Supply footage and artwork you own or are authorized to distribute.
+ไม่มีภาพยนตร์ Poster หรือตัวอย่างหนังของบุคคลที่สามรวมอยู่ใน Source Code ต้องใช้ Media ที่มีสิทธิ์เผยแพร่จริงเท่านั้น
 
-## ZeaZ first-party license for creator submissions
+## ZeaZ License — สำหรับฟีเจอร์ Creator
 
-The public film feed, admin curation and read-only film pages do **not** require a license. Front-end creator submission, exposed via a page containing the shortcode `[zwpc_submit]`, is fail-closed unless the server verifies the `cinema.creator` feature from ZeaZ License Server v0.1. The creator must also sign in and confirm distribution rights. Their submission is stored as **pending**, not published.
+Public Feed, Film Details และการจัดการโดย Administrator ไม่จำเป็นต้องมี License ส่วนการส่งภาพยนตร์จาก Creator ผ่าน Shortcode `[zwpc_submit]` ใช้ Feature `cinema.creator` ที่ตรวจสอบจาก ZeaZ License Server ซึ่งเป็นระบบของเราเอง
 
-For staging, issue a first-party `zmovie` license with feature `cinema.creator` in ZeaZ License Server; store the one-time key securely, not in your git repository. Define in your secret-managed WordPress configuration:
+ให้สร้าง License ของ Product `zmovie` บน Server แล้วเก็บ Key ใน Secret Manager กำหนดค่าผ่าน `wp-config.php` หรือการ Inject Secret จาก Host:
 
 ```php
 define('ZEAZ_LICENSE_API', 'https://license.example.com');
@@ -25,36 +25,25 @@ define('ZEAZ_LICENSE_KEY', getenv('ZEAZ_LICENSE_KEY'));
 define('ZEAZ_LICENSE_PUBLIC_KEY', getenv('ZEAZ_LICENSE_PUBLIC_KEY'));
 ```
 
-`ZEAZ_LICENSE_PUBLIC_KEY` is the pinned base64url-encoded Ed25519 public key from a trusted out-of-band channel. **Never** copy the signing private key into WordPress or dynamically trust the public key returned by the same activation request. `ZEAZ_LICENSE_ORIGIN` must match the WordPress site origin. API requires HTTPS; local-only HTTP is intentionally not supported by this WordPress plugin until an explicit safe development mode exists.
+`ZEAZ_LICENSE_PUBLIC_KEY` ต้องเป็น Ed25519 Public Key ที่ Pin จากช่องทางที่เชื่อถือได้ **ห้าม** นำ Private Signing Key เข้า WordPress และห้ามนำ License จริงเข้า Git หรือ Log ระบบจะตรวจ Digital Signature, Audience, Issuer, Site Origin และเวลาหมดอายุของ Signed Lease หากตรวจสอบไม่ได้จะปิด Creator Submission โดยอัตโนมัติ Cached Lease มีอายุไม่เกิน 60 วินาที จึงมีความล่าช้าของการระงับสิทธิ์ได้ในช่วงเวลานี้ ห้ามใช้ Lease ดังกล่าวแทนการตรวจสอบสิทธิ์ของ Payment, Ticketing หรือ DRM
 
-License leases are verified locally using sodium, audience `zmovie`, site origin, issuer, timestamps and signature. Cached leases expire within 60 seconds. Server-side revocation can be delayed by an already-valid cached lease; do not use this mechanism to authorize payments, payouts, digital-rights grants or booking transactions.
+ปัจจุบัน Plugin ต้องเชื่อมต่อ License API ผ่าน HTTPS; ไม่รองรับ HTTP Local Development โดยปริยาย
 
-## API and permissions
+## REST API
 
-| Route | Authentication | Behavior |
+| Endpoint | สิทธิ์ | การทำงาน |
 | --- | --- | --- |
-| `GET /wp-json/zwpc/v1/feed?page=1&genre=drama` | Public | Published films, fixed six-item pages |
-| `GET /wp-json/zwpc/v1/favorites` | WordPress login | IDs of existing published favorite films |
-| `POST /wp-json/zwpc/v1/favorites/{id}` | WordPress login and REST nonce | Toggle user favorite |
+| `GET /wp-json/zwpc/v1/feed?page=1&genre=drama` | Public | แสดงภาพยนตร์ที่ Publish แล้ว ครั้งละ 6 รายการ |
+| `GET /wp-json/zwpc/v1/favorites` | Login | ส่งคืน ID ภาพยนตร์ที่บันทึกไว้ |
+| `POST /wp-json/zwpc/v1/favorites/{id}` | Login + WP REST Nonce | เพิ่มหรือลบรายการโปรด |
 
-Only administrators receive cinema post edit and publish capabilities on activation. Front-end creator submissions are validated through `admin-post.php` with an authenticated session, CSRF nonce, first-party entitlement, HTTPS media URL and rights assertion. Authors cannot self-publish through the default WordPress REST post controller. WordPress accounts, sign-in, comments and profiles use core WordPress functionality.
+สร้างหน้า WordPress ชื่อ `Favorites` แล้วใส่ Shortcode `[zwpc_favorites]` เพื่อแสดงรายการโปรด สร้างหน้า `Submit Film` พร้อม `[zwpc_submit]` เพื่อให้ Creator ส่ง URL, Synopsis และยืนยันสิทธิ์เผยแพร่ ทุก Submission จะมีสถานะ `pending` จนกว่า Administrator จะอนุมัติ ไม่เปิดให้ Creator Publish ผ่าน WordPress REST API โดยตรง
 
-## Security and limitations
+## ข้อจำกัดและ Security Gates
 
-- Do not install this directory inside WP-Script Core or modify `wpscore_site_key`.
-- First-party license credentials belong in the host's secrets manager, never WordPress options, README examples with real values, the theme or frontend JavaScript.
-- Untrusted external media is **not** downloaded or transcoded by this plugin. Only direct HTTPS MP4/WebM links are accepted; an operator must verify hosting, safety and content rights.
-- Native WordPress user meta favorites have last-write-wins behavior under simultaneous writes.
-- No live payment gateway, subscription checkout, DRM, ticket inventory, seats, film-rights validation, moderation automation, poster extraction or production deployment evidence is provided in this alpha.
-- Before production: review upload/moderation flows, REST API abuse limits, malware scanning for media upload features, age ratings, privacy/consent and offline-license revocation; execute a real WP runtime test on target infrastructure.
+- ยังไม่มี File Upload, Transcoding, Malware Scan, Payment, Seat Reservation, DRM, Premium Paywall หรือ Automatic Publication
+- รับเพียง HTTPS URL ที่ชี้ไปยัง MP4/WebM โดยไม่ Download ไฟล์จาก URL นั้น ผู้ดูแลต้องตรวจ Rights และ Media Host ก่อน Publish
+- Favorites ใช้ WordPress User Meta; การเขียนพร้อมกันหลายรายการยังเป็น Last-Write-Wins
+- Creator Submission ใช้ Login, CSRF Nonce, License Verification, URL Validation และ Rights Assertion แต่ต้องทดสอบ WordPress Runtime จริงก่อนใช้งานสาธารณะ
 
-## Manual staging acceptance checklist
-
-- [ ] Install on isolated staging WP 6.4+ and PHP 8.1+ with sodium; verify WordPress activation has no notices.
-- [ ] Add one licensed direct MP4 trailer and poster; check anonymous feed and keyboard/mobile controls.
-- [ ] Assert anonymous users cannot toggle favorites or submit a film.
-- [ ] Assert a Subscriber cannot publish via WP REST.
-- [ ] Verify valid feature enables submission to pending; expired, revoked or wrong-site lease denies submission.
-- [ ] Check incorrect origin/public key rejects all licensed actions; verify no secrets appear in HTML or REST.
-- [ ] Confirm WordPress Core comments, menus, archive permalinks and mobile responsive layout.
-- [ ] Re-run these checks after adding any payment or membership integration.
+**Acceptance บน Staging:** ทดสอบ Anonymous/Subscriber/Admin, REST Nonce, Film Publish, Favorite Toggle, Creator Pending Review, License ที่ถูกต้อง/หมดอายุ/ถูก Revoke/Wrong Site และการไม่ปรากฏ Secret ใน HTML/REST ก่อนเปิดใช้งานจริง
