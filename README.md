@@ -28,6 +28,16 @@ This platform implements deep-thinking production workflows with comprehensive f
 - **Advanced Analytics**: Real-time render performance metrics and resource utilization
 - **Deep Context Preservation**: Session-aware project continuity across all production phases
 
+## ZeaZ Cinema — WordPress Plugin & Theme (Alpha)
+
+โปรเจกต์มีส่วนเสริม WordPress สำหรับแสดงภาพยนตร์และ Trailer แบบ Vertical Swipe ที่พัฒนาขึ้นใหม่โดย ZeaZDev ไม่ใช่ส่วนหนึ่งของ WP-Script และไม่แทนที่ระบบ License ของ WP-Script
+
+- [ZeaZ Cinema Plugin](wp-plugins/zwp-cinema/README.md): Film Catalog, REST Feed, Favorites, Moderated Creator Submission และ ZeaZ License
+- [ZeaZ Cinema Theme](themes/zwp-cinema/README.md): Responsive Cinema Feed, Mouse Wheel, Keyboard, Film Details และ Creator Page
+- [Integration และ Production Gates](docs/cinema/WORDPRESS_INTEGRATION.md): ขอบเขตระบบ สิทธิ์ใช้งาน ข้อจำกัด และรายการทดสอบที่ยังต้องผ่าน
+
+ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ ขณะนี้เป็น Source Implementation พร้อม Static CI เท่านั้น ยังไม่มีหลักฐาน WordPress Runtime หรือ Production Acceptance
+
 ## Documentation
 
 Start with the [documentation index](docs/INDEX.md), which comprehensively maps user, operator, developer, contributor, and maintainer workflows to the canonical guides and focused provider runbooks. The [status vocabulary](docs/STATUS.md) and [documentation standard](docs/DOCUMENTATION_STANDARD.md) define how readiness, evidence, security, and future i18n work are described.
