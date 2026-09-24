@@ -57,11 +57,15 @@ jobs:
           "${compose[@]}" run --rm --entrypoint wp wpcli core verify-checksums
           "${compose[@]}" run --rm --entrypoint wp wpcli plugin is-active zwp-cinema
           "${compose[@]}" run --rm --entrypoint wp wpcli theme is-active zwp-cinema
+          "${compose[@]}" run --rm --entrypoint sh wpcli -c 'test -s /var/www/html/.htaccess && grep -q "RewriteEngine On" /var/www/html/.htaccess'
           curl --retry 10 --retry-delay 2 --retry-connrefused --fail --silent --show-error \
             --output "$RUNNER_TEMP/zwpc-home.html" http://127.0.0.1:8090/
           grep -Fq 'Every story deserves a screen' "$RUNNER_TEMP/zwpc-home.html"
           curl --fail --silent --show-error \
-            http://127.0.0.1:8090/wp-json/zwpc/v1/feed?page=1 | \
+            'http://127.0.0.1:8090/?rest_route=/zwpc/v1/feed&page=1' | \
+              python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["items"] == [] and body["page"] == 1'
+          curl --fail --silent --show-error \
+            'http://127.0.0.1:8090/wp-json/zwpc/v1/feed?page=1' | \
               python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["items"] == [] and body["page"] == 1'
       - name: Non-destructive repeat installation
         run: bash wp-installer/install.sh
