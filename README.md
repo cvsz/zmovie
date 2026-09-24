@@ -35,8 +35,10 @@ This platform implements deep-thinking production workflows with comprehensive f
 - [ZeaZ Cinema Plugin](wp-plugins/zwp-cinema/README.md): Film Catalog, REST Feed, Favorites, Moderated Creator Submission และ ZeaZ License
 - [ZeaZ Cinema Theme](themes/zwp-cinema/README.md): Responsive Cinema Feed, Mouse Wheel, Keyboard, Film Details และ Creator Page
 - [Integration และ Production Gates](docs/cinema/WORDPRESS_INTEGRATION.md): ขอบเขตระบบ สิทธิ์ใช้งาน ข้อจำกัด และรายการทดสอบที่ยังต้องผ่าน
+- [Architecture ADR](docs/cinema/ARCHITECTURE_ADR.md): Studio→Cinema boundary, commerce/ticketing แยก domain, Nginx routing, Ed25519 leases
+- [Current State](docs/production/CURRENT_STATE.md): สถานะปัจจุบัน, matrix, evidence และ runbooks
 
-ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ ขณะนี้เป็น Source Implementation พร้อม Static CI เท่านั้น ยังไม่มีหลักฐาน WordPress Runtime หรือ Production Acceptance
+ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ เชื่อมกันผ่าน explicit Studio→Cinema boundary (`zmovie_platform/studio_cinema.py`) ที่ต้องมี human approval 2 จุด ห้าม auto-publish จาก render สำเร็จ ดู [Current State](docs/production/CURRENT_STATE.md) และ [Feature Matrix](docs/production/FEATURE_MATRIX.md) สำหรับหลักฐาน runtime ปัจจุบันและงานที่เหลือ (live payments/ticket sales ต้องมี approval แยก)
 
 ## WordPress Automated Installer
 

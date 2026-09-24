@@ -73,9 +73,9 @@
 | License key set | **YES** | `ZEAZ_LICENSE_KEY` in `.env` |
 | License origin | `https://zmovie.zeaz.dev` | `ZEAZ_LICENSE_ORIGIN` in `.env` |
 | PHP syntax check | **PASS** | All plugin/theme PHP files pass |
-| License server connection | **NOT VERIFIED** | License server not running locally |
+| License server connection | **VERIFIED** | License Server healthy at 127.0.0.1:8085, activate returns signed lease |
 
-**Note:** License server (`https://license.example.com`) is not running locally. License verification returns `false` as expected when server is unreachable. This is a `NOT VERIFIED` gate that requires the license server to be running.
+**Note:** First-party License Server runs at `http://127.0.0.1:8085` (see `docs/services/LICENSE_SERVER.md`). `https://license.example.com` was a documentation placeholder and is not used.
 
 ---
 
@@ -141,35 +141,44 @@
 
 | Gate | Status | Evidence | Blocker |
 |------|--------|----------|---------|
-| License cryptography | **IMPLEMENTED_NOT_VERIFIED** | Ed25519 keys generated, license.php syntax OK | License server not running |
+| License cryptography | **VERIFIED** | Ed25519 License Server live, signed-lease activate verified | — |
 | DNS | **VERIFIED** | `cloudflare_dns_record.zmovie` in Terraform state | — |
 | Tunnel ingress | **VERIFIED** | `zmovie.zeaz.dev` in `local.zworkforce_ingress` | — |
 | Root routing | **VERIFIED** | `zmovie.zeaz.dev/` returns 307 (zMovie app) | — |
 | `/cinema` routing | **VERIFIED** | `zmovie.zeaz.dev/cinema/` returns 200 | — |
 | HTTPS | **VERIFIED** | TLS valid, security headers present | — |
-| WordPress runtime | **VERIFIED** | Plugin/theme active, siteurl correct | — |
-| RBAC | **NOT_APPLICABLE** | Requires test users | — |
-| Backup restore | **IMPLEMENTED_NOT_VERIFIED** | Backup script + daily cron active | Restore drill not executed |
-| Rollback | **IMPLEMENTED_NOT_VERIFIED** | Backup exists | Rollback drill not executed |
-| Monitoring | **IMPROVED** | Cloudflare Tunnel connected, services active | No dedicated monitoring |
-| Production readiness | **IMPLEMENTED_NOT_VERIFIED** | All infrastructure deployed | License server + restore drill pending |
+| WordPress runtime | **VERIFIED** | Plugin/theme active, siteurl correct, `zwpc/v1` REST live | — |
+| RBAC | **VERIFIED** | Project ownership + admin gates tested (unit + REST 401s) | — |
+| Backup restore | **VERIFIED** | Isolated restore drill passed (see §6 evidence doc) | — |
+| Rollback | **VERIFIED** | Plugin/theme rollback drill passed | — |
+| Monitoring | **IMPROVED** | Tunnel connected, health checks + cron-ready scripts | No PagerDuty (cron + MAILTO minimum) |
+| Studio→Cinema boundary | **VERIFIED** | 7 unit tests, no auto-publish | — |
+| Commerce sandbox | **VERIFIED** | 9 unit tests; live PSP blocked pending approval | — |
+| Ticketing sandbox | **VERIFIED** | 7 tests incl. concurrency; live sales blocked pending acceptance | — |
+| Security regression | **VERIFIED** | 8 regression tests + threat model + secret-scan CI | — |
+| Production readiness | **IMPLEMENTED** | P0 gates verified in sandbox scope; live money/sales explicitly blocked | Full E2E + a11y + load pending staging |
 
 ---
 
-## 10. Remaining Blockers
+## 10. Remaining Blockers (updated 2026-09-24, P2 execution)
 
-### P0 (Must Fix)
-1. **License server** — First-party License Server deployed at `http://127.0.0.1:8085`. Ed25519 signing verified. License verification via WordPress REST API pending final integration test.
+### P0 — Cleared this round
+- License server, restore drill, rollback drill, REST routing, credential
+  rotation, Terraform reconciliation: all VERIFIED (see §§11–14, evidence docs).
 
-### P1 (Should Fix)
-2. **Restore drill** — Backup exists but has not been restored in isolation. Need to execute restore drill into separate database.
-3. **Rollback drill** — No rollback procedure executed. Need to test rollback of plugin/theme.
+### P1 (Should Fix — staging + review needed)
+1. **Authenticated E2E** — Playwright smoke passed (desktop/mobile/keyboard/feed);
+   authenticated favorites/submit flows need staging + test users.
+2. **WordPress hardening review** — nonce/CSRF + moderation flows documented;
+   needs staged editor/reviewer walkthrough.
 
 ### P2 (Nice to Have)
-4. **Acceptance tests** — Browser E2E tests with Playwright not executed.
-5. **Accessibility audit** — WCAG 2.2 AA audit not performed.
-6. **Performance measurements** — TTFB, LCP, CLS not measured.
-7. **Documentation** — `docs/production/CURRENT_STATE.md`, `docs/runbooks/WORDPRESS_BACKUP_RESTORE.md` created but need content expansion.
+3. **Accessibility audit** — not run; do not claim WCAG compliance.
+4. **Performance/load SLOs** — observed timings only; SLOs need operator approval.
+5. **Staging env + CD + image scan/SBOM** — contract documented; infra in zworkforce scope.
+
+### BLOCKED (explicit approval required — do not proceed without it)
+- Live payments, live ticket sales, public auto-publish.
 
 ---
 
@@ -209,6 +218,35 @@
 | wp-config.php | **UPDATED** | ZEAZ_LICENSE_API = http://127.0.0.1:8085 |
 | DB credential rotation | **COMPLETED** | Password rotated, WordPress connected |
 
+## 14. P2 Execution Round (2026-09-24)
+
+Implemented, tested and committed (all GPG-signed on `main`):
+
+- **Phase 7 — Studio→Cinema boundary:** `zmovie_platform/studio_cinema.py` +
+  `cinema_import_routes.py` wired in `main.py` + `migrations.py`; 7 tests.
+- **Phase 8 — Commerce sandbox:** `zmovie_platform/commerce/` (plans, subs,
+  ledger, sandbox PSP, signed idempotent webhooks, refunds, reconciliation,
+  expiry, access checks); 9 tests. Live PSP raises by design.
+- **Phase 9 — Ticketing:** `zmovie_platform/ticketing/` core +
+  `services/cinema-api/` FastAPI service + synthetic seed; 7 tests incl.
+  concurrent no-double-sell. No live sales.
+- **Phase 10 — Security/privacy:** `privacy.py` + `/api/v2/privacy/*`,
+  `docs/security/THREAT_MODEL.md`, `LICENSE_KEY_MANAGEMENT.md`,
+  `secret-scan.yml`; 8 regression tests.
+- **Phase 11 — Ops:** `/livez` + `/readyz`, `smoke-deploy.sh`,
+  `check-backup.sh`, `check-license-api.sh`, versioned Nginx/cloudflared
+  examples, `DEPLOYMENT_RUNBOOK.md`, `WORDPRESS_BACKUP_RESTORE.md`; 2 probe tests.
+- **Phase 12 — Validation:** full evidence in
+  `docs/production/TEST_EVIDENCE.md` (143/145 unit; 2 pre-existing
+  `edge_tts` import errors in this env; ruff/PHP/JS/shellcheck/nginx/
+  terraform/WP-REST/license/playwright/pip-audit all recorded honestly).
+
+Deliverables index: `docs/production/CURRENT_STATE.md`,
+`FEATURE_MATRIX.md`, `TEST_EVIDENCE.md`, `DEPLOYMENT_RUNBOOK.md`,
+`BACKUP_RESTORE_EVIDENCE.md`, `ROLLBACK_EVIDENCE.md`,
+`docs/security/LICENSE_KEY_MANAGEMENT.md`, `docs/security/THREAT_MODEL.md`,
+`docs/cinema/ARCHITECTURE_ADR.md`.
+
 ## Conclusion
 
 The zMovie + ZeaZ Cinema platform has been deployed with all infrastructure components running:
@@ -219,7 +257,12 @@ The zMovie + ZeaZ Cinema platform has been deployed with all infrastructure comp
 - Backup and cron configured
 - All commits GPG-signed
 
-**Production readiness: IMPLEMENTED** — License Server deployed and operational, Nginx routing fixed, credential rotation completed. Remaining: backup restore drill, rollback drill, acceptance tests.
+**Production readiness: IMPLEMENTED** — P0 gates verified in sandbox scope
+(License Server live, routing fixed, credential rotated, restore + rollback
+drills passed, commerce/ticketing sandbox tested, security regression green).
+Live money, live ticket sales and public auto-publish stay explicitly BLOCKED
+pending payment/refund/legal/operational acceptance. Full E2E, accessibility
+audit and load SLOs need a staging environment and operator approval.
 
 ---
 
