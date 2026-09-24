@@ -27,6 +27,7 @@ case "$1 $2" in
         ;;
     'plugin is-active') test -f "$WP_PATH/.plugin-active" ;;
     'plugin activate') touch "$WP_PATH/.plugin-active" ;;
+    'rewrite structure') touch "$WP_PATH/.htaccess" ;;
     'option get') printf '%s\n' "${WP_EXISTING_URL:-$WP_SITE_URL}" ;;
     'core version') printf '%s\n' '7.1.2' ;;
 esac
@@ -49,7 +50,7 @@ export WP_VERSION=latest
 export WP_CLI_CACHE_DIR="$tmp/wp-cli-cache"
 
 bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/first.log"
-for marker in wp-settings.php wp-config.php .wp-installed .plugin-active; do
+for marker in wp-settings.php wp-config.php .wp-installed .plugin-active .htaccess; do
     test -f "$tmp/html/$marker" || { echo "Missing bootstrap marker $marker" >&2; exit 1; }
 done
 grep -q 'core download' "$WP_TEST_LOG"
