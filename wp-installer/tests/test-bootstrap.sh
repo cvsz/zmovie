@@ -27,7 +27,7 @@ case "$1 $2" in
         ;;
     'plugin is-active') test -f "$WP_PATH/.plugin-active" ;;
     'plugin activate') touch "$WP_PATH/.plugin-active" ;;
-    'rewrite structure') touch "$WP_PATH/.htaccess" ;;
+    'rewrite structure') printf 'RewriteEngine On\n' > "$WP_PATH/.htaccess" ;;
     'option get') printf '%s\n' "${WP_EXISTING_URL:-$WP_SITE_URL}" ;;
     'core version') printf '%s\n' '7.1.2' ;;
 esac
