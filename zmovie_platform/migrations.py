@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .storage import ensure_database
+from .studio_cinema import ensure_tables as ensure_cinema_import_tables
 
 
 def migrate() -> None:
@@ -10,3 +11,4 @@ def migrate() -> None:
     deployments can upgrade without destructive migrations.
     """
     ensure_database()
+    ensure_cinema_import_tables()

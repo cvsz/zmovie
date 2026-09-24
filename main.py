@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from app import app
 from zmovie_platform.api_routes import router as v2_router
+from zmovie_platform.cinema_import_routes import router as cinema_import_router
 from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
@@ -20,6 +21,7 @@ from zmovie_platform.security import SECURITY_HEADERS
 configure_logging()
 migrate()
 app.include_router(v2_router)
+app.include_router(cinema_import_router)
 app.include_router(media_preview_router)
 app.include_router(publisher_router)
 app.include_router(production_router)
