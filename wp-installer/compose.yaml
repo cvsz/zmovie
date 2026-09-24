@@ -38,6 +38,7 @@ services:
     environment:
       HOME: /tmp
       WP_CLI_CACHE_DIR: /tmp/zeaz-wp-cli-cache
+      WP_CLI_CONFIG_PATH: /opt/zeaz/wp-cli.yml
       WP_VERSION: ${WP_VERSION:-latest}
       WP_LOCALE: ${WP_LOCALE:-en_US}
       WP_SITE_URL: ${WP_SITE_URL:?Set WP_SITE_URL in wp-installer/.env}
@@ -55,6 +56,7 @@ services:
       - ../themes/zwp-cinema:/var/www/html/wp-content/themes/zwp-cinema:ro
       - ./scripts/bootstrap.sh:/opt/zeaz/bootstrap.sh:ro
       - ./config/wpcli.ini:/usr/local/etc/php/conf.d/zz-zeaz-installer.ini:ro
+      - ./config/wp-cli.yml:/opt/zeaz/wp-cli.yml:ro
     depends_on:
       db:
         condition: service_healthy
