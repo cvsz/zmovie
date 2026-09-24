@@ -51,6 +51,7 @@ for marker in wp-settings.php wp-config.php .wp-installed .plugin-active; do
     test -f "$tmp/html/$marker" || { echo "Missing bootstrap marker $marker" >&2; exit 1; }
 done
 grep -q 'core download' "$WP_TEST_LOG"
+grep -q 'core download https://wordpress.org/latest.zip' "$WP_TEST_LOG"
 grep -q 'core verify-checksums' "$WP_TEST_LOG"
 grep -q 'theme activate zwp-cinema' "$WP_TEST_LOG"
 ! grep -Eq 'test-only-(admin|db)-secret' "$WP_TEST_LOG"
@@ -68,7 +69,7 @@ touch "$tmp/partial/wp-settings.php"
 export WP_PATH="$tmp/partial"
 before_resume="$(wc -l < "$WP_TEST_LOG")"
 bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/recovery.log"
-grep -q 'unfinished first-install download' "$tmp/recovery.log"
+grep -q 'Recovering a partial first-install WordPress core' "$tmp/recovery.log"
 test -f "$tmp/partial/.core-complete"
 test -f "$tmp/partial/.wp-installed"
 tail -n +"$((before_resume + 1))" "$WP_TEST_LOG" | grep -q 'core download'
@@ -102,4 +103,4 @@ if bash "$root/wp-installer/scripts/bootstrap.sh" > "$tmp/invalid.log" 2>&1; the
 fi
 grep -q 'Invalid WordPress table prefix' "$tmp/invalid.log"
 
-printf '%s\n' 'PASS: WP-CLI bootstrap downloads/verifies, uses stdin secrets, activates cinema, recovers partial extraction, preserves installed core and rejects unsafe config.'
+printf '%s\n' 'PASS: WP-CLI downloads official ZIP, verifies checksums, uses stdin secrets, recovers partial extraction and preserves installed core.'
