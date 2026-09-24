@@ -35,6 +35,10 @@ fi
 if [ ! -f "$WP_PATH/wp-settings.php" ]; then
     printf '%s\n' 'Downloading official WordPress core using WP-CLI...'
     wp core download --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale="${WP_LOCALE:-en_US}" --force
+elif [ ! -f "$WP_PATH/wp-config.php" ] &&
+     ! wp core verify-checksums --path="$WP_PATH" --locale="${WP_LOCALE:-en_US}" >/dev/null 2>&1; then
+    printf '%s\n' 'An unfinished first-install download was detected; safely re-downloading WordPress core...'
+    wp core download --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale="${WP_LOCALE:-en_US}" --force
 else
     printf '%s\n' 'WordPress core already present; preserving installed files.'
 fi
