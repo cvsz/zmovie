@@ -13,6 +13,7 @@ from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
 from zmovie_platform.migrations import migrate
+from zmovie_platform.privacy_routes import router as privacy_router
 from zmovie_platform.product_routes import router as product_router
 from zmovie_platform.production_routes import router as production_router
 from zmovie_platform.publisher_routes import router as publisher_router
@@ -22,6 +23,7 @@ configure_logging()
 migrate()
 app.include_router(v2_router)
 app.include_router(cinema_import_router)
+app.include_router(privacy_router)
 app.include_router(media_preview_router)
 app.include_router(publisher_router)
 app.include_router(production_router)
