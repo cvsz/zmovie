@@ -1,5 +1,7 @@
 # zMovie
 
+![zMovie — Self-Hosted AI Studio: From Idea to Final Cut](static/images/zmovie-social-preview.svg)
+
 [![CI](https://github.com/cvsz/zmovie/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/cvsz/zmovie/actions/workflows/test.yml)
 ![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB?logo=python&logoColor=white)
 ![Deployment](https://img.shields.io/badge/Deployment-systemd%20%7C%20Docker-2496ED?logo=docker&logoColor=white)
@@ -25,6 +27,22 @@ This platform implements deep-thinking production workflows with comprehensive f
 - **Comprehensive Audit Trails**: Complete publication tracking with cryptographic verification
 - **Advanced Analytics**: Real-time render performance metrics and resource utilization
 - **Deep Context Preservation**: Session-aware project continuity across all production phases
+
+## ZeaZ Cinema — WordPress Plugin & Theme (Alpha)
+
+โปรเจกต์มีส่วนเสริม WordPress สำหรับแสดงภาพยนตร์และ Trailer แบบ Vertical Swipe ที่พัฒนาขึ้นใหม่โดย ZeaZDev ไม่ใช่ส่วนหนึ่งของ WP-Script และไม่แทนที่ระบบ License ของ WP-Script
+
+- [ZeaZ Cinema Plugin](wp-plugins/zwp-cinema/README.md): Film Catalog, REST Feed, Favorites, Moderated Creator Submission และ ZeaZ License
+- [ZeaZ Cinema Theme](themes/zwp-cinema/README.md): Responsive Cinema Feed, Mouse Wheel, Keyboard, Film Details และ Creator Page
+- [Integration และ Production Gates](docs/cinema/WORDPRESS_INTEGRATION.md): ขอบเขตระบบ สิทธิ์ใช้งาน ข้อจำกัด และรายการทดสอบที่ยังต้องผ่าน
+
+ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ ขณะนี้เป็น Source Implementation พร้อม Static CI เท่านั้น ยังไม่มีหลักฐาน WordPress Runtime หรือ Production Acceptance
+
+## WordPress Automated Installer
+
+มี `wp-installer/` สำหรับดาวน์โหลดและติดตั้ง WordPress ผ่าน WP-CLI พร้อมติดตั้ง `zwp-cinema` Plugin + Theme, สร้างหน้า Favorites/Submit Film และตั้งค่า ZeaZ License ให้ดึง Secret จาก Environment โดยไม่บันทึก Key จริงลง Repository
+
+เริ่มต้นที่ [คู่มือ WordPress Installer](wp-installer/README.md). Installer ออกแบบให้รันซ้ำได้ แต่การติดตั้งสำเร็จยังไม่ใช่ Production Acceptance; ต้องผ่าน WordPress Runtime, Browser, Backup/Restore และ Security Validation ก่อนเปิดบริการจริง
 
 ## Documentation
 

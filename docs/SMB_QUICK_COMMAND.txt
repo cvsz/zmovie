@@ -1,0 +1,1 @@
+sudo ZMOVIE_SMB_MOUNT=/mnt/zmovie-storage ./scripts/runtime-closeout-smb.sh --project prj_REAL --provider auto

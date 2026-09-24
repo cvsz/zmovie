@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+<title id="title">zMovie — from idea to final cut</title>
+<desc id="desc">ZeaZDev self-hosted AI studio social preview, with a cinematic storyboard, neon render frames and production timeline.</desc>
+<defs>
+  <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1121"/><stop offset=".58" stop-color="#12152b"/><stop offset="1" stop-color="#1d1235"/></linearGradient>
+  <linearGradient id="slant" x2="1" y2="0"><stop stop-color="#0b1325"/><stop offset="1" stop-color="#221b43"/></linearGradient>
+  <linearGradient id="teal" x2="1" y2="1"><stop stop-color="#164d70"/><stop offset="1" stop-color="#052538"/></linearGradient>
+  <linearGradient id="purple" x2=".4" y2="0" x1=".5" y1="1"><stop stop-color="#28274e"/><stop offset="1" stop-color="#512a69"/></linearGradient>
+  <linearGradient id="pink" x2="1" y2="1"><stop stop-color="#391d49"/><stop offset="1" stop-color="#61234a"/></linearGradient>
+  <filter id="cyanGlow"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <clipPath id="frontClip"><rect x="771" y="140" width="375" height="319" rx="10"/></clipPath>
+  <pattern id="ground" width="50" height="21" patternUnits="userSpaceOnUse" patternTransform="skewX(20)"><path d="M0 20.5H50 M.5 0V21" stroke="#31426f" stroke-width=".8" fill="none"/></pattern>
+</defs>
+<rect width="1280" height="640" fill="url(#bg)"/>
+<path d="M0 0H620L448 640H0Z" fill="#0c1224"/>
+<path d="M655 0H1280V640H470Z" fill="url(#slant)" opacity=".58"/>
+<g fill="none" stroke="#5575c8" stroke-width=".9" opacity=".9"><circle cx="132" cy="147" r="266"/><circle cx="132" cy="147" r="307"/><path d="M657 0 511 640"/></g>
+<g fill="#c5e5ff" opacity=".9">
+<circle cx="43" cy="148" r="1.5"/><circle cx="213" cy="123" r="0.8"/><circle cx="253" cy="130" r="0.8"/><circle cx="283" cy="70" r="0.8"/><circle cx="300" cy="451" r="1.5"/><circle cx="449" cy="100" r="0.8"/><circle cx="495" cy="144" r="0.8"/><circle cx="552" cy="47" r="0.8"/><circle cx="709" cy="188" r="1.5"/><circle cx="799" cy="68" r="0.8"/><circle cx="993" cy="155" r="0.8"/><circle cx="1068" cy="106" r="0.8"/><circle cx="1146" cy="78" r="1.5"/><circle cx="1150" cy="139" r="0.8"/><circle cx="1218" cy="264" r="0.8"/><circle cx="44" cy="443" r="0.8"/><circle cx="79" cy="475" r="1.5"/><circle cx="171" cy="487" r="0.8"/><circle cx="271" cy="506" r="0.8"/><circle cx="446" cy="494" r="0.8"/><circle cx="520" cy="542" r="1.5"/><circle cx="637" cy="552" r="0.8"/><circle cx="774" cy="568" r="0.8"/><circle cx="854" cy="476" r="0.8"/><circle cx="984" cy="563" r="1.5"/><circle cx="1139" cy="571" r="0.8"/><circle cx="1231" cy="438" r="0.8"/><circle cx="1037" cy="27" r="0.8"/>
+</g>
+<path d="M0 443H1280V640H0Z" fill="url(#ground)" opacity=".72"/>
+<path d="M0 443H1280M0 466H1280M0 489H1280M0 512H1280M0 535H1280M0 558H1280M0 582H1280M0 604H1280" stroke="#334576" stroke-width=".75" opacity=".75"/>
+<g transform="translate(76 55)">
+  <rect width="36" height="36" rx="11" fill="#37cbe2"/><path d="m14 10 13 8-13 8z" fill="#ddffff" opacity=".9"/>
+  <text x="48" y="24" fill="#c6d8e8" font-size="13" font-weight="700" letter-spacing=".6" font-family="Arial,Helvetica,sans-serif">ZEAZDEV  /  CREATIVE SYSTEMS</text>
+</g>
+<rect x="76" y="163" width="264" height="33" rx="17" fill="#26accb"/><circle cx="94" cy="179.5" r="4" fill="#6ce8ff"/>
+<text x="111" y="184" fill="#e8fbff" font-size="12" font-weight="700" font-family="Arial,Helvetica,sans-serif" letter-spacing=".45">SELF-HOSTED AI STUDIO</text>
+<text x="76" y="329" fill="#43d4ed" font-size="111" font-weight="800" font-family="Arial,Helvetica,sans-serif">z</text>
+<text x="134" y="329" fill="#fcfdff" font-size="111" font-weight="800" letter-spacing="-4" font-family="Arial,Helvetica,sans-serif">Movie</text>
+<rect x="77" y="366" width="85" height="4" rx="2" fill="#46e3ed"/><rect x="168" y="366" width="28" height="4" rx="2" fill="#d369e7"/>
+<text x="76" y="414" fill="#f3f6ff" font-size="24" font-weight="700" font-family="Arial,Helvetica,sans-serif">FROM IDEA TO FINAL CUT</text>
+<text x="77" y="446" fill="#9faac5" font-size="17" font-family="Arial,Helvetica,sans-serif">Storyboard  •  AI video  •  Production workflow</text>
+<g font-family="Arial,Helvetica,sans-serif">
+<rect x="76" y="519" width="169" height="47" rx="11" fill="#18243c" stroke="#7698c8" stroke-width=".9"/><text x="90" y="546" fill="#5beaff" font-size="12" font-weight="700">01</text><text x="116" y="546" fill="#dce5f5" font-size="13" font-weight="700">STORYBOARD</text><rect x="253" y="519" width="136" height="47" rx="11" fill="#18243c" stroke="#7698c8" stroke-width=".9"/><text x="267" y="546" fill="#5beaff" font-size="12" font-weight="700">02</text><text x="293" y="546" fill="#dce5f5" font-size="13" font-weight="700">RENDER</text><rect x="397" y="519" width="134" height="47" rx="11" fill="#18243c" stroke="#7698c8" stroke-width=".9"/><text x="411" y="546" fill="#5beaff" font-size="12" font-weight="700">03</text><text x="437" y="546" fill="#dce5f5" font-size="13" font-weight="700">EXPORT</text>
+</g>
+<g transform="translate(647 220)">
+  <rect width="254" height="262" rx="13" fill="#0b1b2b" stroke="#45cde8" stroke-width="1.4"/>
+  <rect x="4" y="4" width="246" height="254" rx="10" fill="url(#teal)"/>
+  <rect x="15" y="15" width="95" height="22" rx="11" fill="#142639" stroke="#7da0bd" stroke-width=".7"/>
+  <circle cx="26" cy="26" r="2" fill="#64f4ff"/>
+  <text x="34" y="30" fill="#e1eff9" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">SCENE 02</text>
+  <path d="M4 182 80 86 156 183 205 139 250 170V250H4Z" fill="#105277" opacity=".9"/>
+  <path d="M4 197 72 151 111 191 160 166 203 209 250 185V255H4Z" fill="#0d233e"/>
+  <path d="M15 48v13m0-13h13M235 245v-14m0 14h-13" fill="none" stroke="#54e5ed" stroke-width="1.4"/>
+  <path d="M28 234l57-6 45 6 49-8 50 4" fill="none" stroke="#66deee" stroke-width="1"/>
+</g>
+<g transform="translate(1008 193)">
+  <rect width="193" height="294" rx="14" fill="#271a3e" stroke="#cc6af0" stroke-width="1.2"/>
+  <rect x="5" y="5" width="183" height="284" rx="11" fill="url(#pink)"/>
+  <circle cx="90" cy="122" r="56" fill="#dd77a0" opacity=".9"/>
+  <path d="M5 200 55 157 98 207 149 171 188 218V285H5Z" fill="#271a3a"/>
+  <path d="M15 14h-12v12m171-12h12v12M15 277H3v-12m171 12h12v-12" fill="none" stroke="#ef70d0"/>
+</g>
+<g>
+  <rect x="766" y="135" width="384" height="325" rx="14" fill="#0d192d" stroke="#62daef" stroke-width="1.4"/>
+  <rect x="771" y="140" width="374" height="315" rx="10" fill="url(#purple)"/>
+  <g clip-path="url(#frontClip)">
+    <circle cx="1029" cy="288" r="50" fill="#f58596" stroke="#fee1ec" stroke-width="1.3"/>
+    <path d="M770 366 826 313 860 346 915 289 978 343 1015 323 1088 355 1145 338V455H770Z" fill="#1f2547"/>
+    <path d="M770 370 811 346 843 386 892 350 928 368 964 345 1008 378 1064 347 1112 377 1145 360V455H770Z" fill="#15213a"/>
+    <g fill="#132441"><rect x="800" y="342" width="12" height="81"/><rect x="830" y="357" width="9" height="66"/><rect x="869" y="347" width="10" height="79"/><rect x="900" y="363" width="9" height="65"/><rect x="936" y="344" width="10" height="82"/><rect x="984" y="350" width="11" height="73"/><rect x="1019" y="335" width="9" height="95"/><rect x="1054" y="354" width="13" height="67"/><rect x="1090" y="342" width="10" height="82"/></g>
+    <path d="M771 407 814 402 891 425 949 405 1008 435 1080 408 1145 390V455H771Z" fill="#0c162b"/>
+    <circle cx="967" cy="361" r="6.7" fill="#0a1526"/><path d="m963 370-9 35-2 17 6 2 9-32 8 33 6-2-6-38-2-16z" fill="#0a1526"/><path d="m960 375-14 18 5 3 15-14 11 16 5-4-13-20" fill="#0a1526"/>
+    <g stroke="#75e9ee" stroke-width="1.2" fill="none"><path d="M780 194v-11h11M1125 150h12v12M780 435v12h12M1136 435v12h-12"/></g>
+  </g>
+  <rect x="782" y="152" width="131" height="21" rx="10" fill="#101829" stroke="#7f93b4" stroke-width=".7"/>
+  <circle cx="794" cy="162" r="2" fill="#5febff"/>
+  <text x="802" y="166" fill="#e8f3ff" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">FRAME 01 / 04</text>
+</g>
+<rect x="744" y="506" width="435" height="47" rx="12" fill="#19243d" stroke="#6990cb" stroke-width="1"/>
+<text x="761" y="531" fill="#c3d6e9" font-family="Arial,Helvetica,sans-serif" font-size="11" font-weight="700">TIMELINE</text>
+<rect x="842" y="524.5" width="6" height="15" rx="3" fill="#55e3f4"/><rect x="852" y="523" width="6" height="13" rx="3" fill="#55e3f4"/><rect x="862" y="521.5" width="6" height="11" rx="3" fill="#55e3f4"/><rect x="872" y="527" width="6" height="9" rx="3" fill="#55e3f4"/><rect x="882" y="525.5" width="6" height="22" rx="3" fill="#55e3f4"/><rect x="892" y="524" width="6" height="20" rx="3" fill="#55e3f4"/><rect x="902" y="522.5" width="6" height="18" rx="3" fill="#55e3f4"/><rect x="912" y="521" width="6" height="16" rx="3" fill="#55e3f4"/><rect x="922" y="526.5" width="6" height="14" rx="3" fill="#55e3f4"/><rect x="932" y="525" width="6" height="12" rx="3" fill="#55e3f4"/><rect x="942" y="523.5" width="6" height="10" rx="3" fill="#55e3f4"/><rect x="952" y="522" width="6" height="8" rx="3" fill="#55e3f4"/><rect x="962" y="520.5" width="6" height="21" rx="3" fill="#55e3f4"/><rect x="972" y="526" width="6" height="19" rx="3" fill="#55e3f4"/><rect x="982" y="524.5" width="6" height="17" rx="3" fill="#ca78ee"/><rect x="992" y="523" width="6" height="15" rx="3" fill="#ca78ee"/><rect x="1002" y="521.5" width="6" height="13" rx="3" fill="#ca78ee"/><rect x="1012" y="527" width="6" height="11" rx="3" fill="#ca78ee"/><rect x="1022" y="525.5" width="6" height="9" rx="3" fill="#ca78ee"/><rect x="1032" y="524" width="6" height="22" rx="3" fill="#ca78ee"/><rect x="1042" y="522.5" width="6" height="20" rx="3" fill="#ca78ee"/><rect x="1052" y="521" width="6" height="18" rx="3" fill="#ca78ee"/><rect x="1062" y="526.5" width="6" height="16" rx="3" fill="#ca78ee"/><rect x="1072" y="525" width="6" height="14" rx="3" fill="#ca78ee"/><rect x="1082" y="523.5" width="6" height="12" rx="3" fill="#ca78ee"/><rect x="1092" y="522" width="6" height="10" rx="3" fill="#7897cb"/><rect x="1102" y="520.5" width="6" height="8" rx="3" fill="#7897cb"/><rect x="1112" y="526" width="6" height="21" rx="3" fill="#7897cb"/><rect x="1122" y="524.5" width="6" height="19" rx="3" fill="#7897cb"/><rect x="1132" y="523" width="6" height="17" rx="3" fill="#7897cb"/><rect x="1142" y="521.5" width="6" height="15" rx="3" fill="#7897cb"/><rect x="1152" y="527" width="6" height="13" rx="3" fill="#7897cb"/>
+<text x="1150" y="535" fill="#e1e9f9" font-family="Arial,Helvetica,sans-serif" font-size="12">24</text>
+<path d="M76 599H1206" stroke="#6583be" stroke-width=".7" opacity=".8"/>
+<text x="76" y="620" fill="#b9c6d9" font-family="Arial,Helvetica,sans-serif" font-size="10">OPEN SOURCE / BUILT FOR CREATORS</text>
+<text x="1077" y="620" fill="#b9c6d9" font-family="Arial,Helvetica,sans-serif" font-size="10">ZMOVIE • 2026</text>
+</svg>

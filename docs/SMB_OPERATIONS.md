@@ -1,0 +1,3 @@
+# SMB operations runbook
+
+Before production closeout, run `sudo ./scripts/smb-storage-doctor.sh`. If SMB is unavailable, repair the Windows share/network/mount first; do not point the mount path at a normal Linux directory. Keep at least 60 GB local free where practical; the closeout warns below 60 GB and blocks below 30 GB by default. If a copy is interrupted, rerun the closeout/archive step: rsync and SHA-256 verification make incomplete evidence visible rather than treating it as durable. Do not delete local production artifacts merely because an SMB path exists; require successful validation and checksum verification first.
