@@ -41,12 +41,31 @@ Plugin และ Theme Mount จาก Repository แบบ Read-only เพื�
 | `WP_SITE_URL` | `http://127.0.0.1:8090` | Canonical WordPress URL |
 | `WP_SITE_TITLE` | ZeaZ Cinema Staging | ชื่อเว็บไซต์ |
 | `WP_ADMIN_USER` | `cinema_owner` | Administrator แรก |
-| `WP_ADMIN_EMAIL` | `admin`example.invalid` | เปลี่ยนก่อนใช้งาน Public |
+| `WP_ADMIN_EMAIL` | `admin@example.invalid` | เปลี่ยนก่อนใช้งาน Public |
 | `WP_VERSION` | `latest` | ดาวน์โหลด WordPress เฉพาะเมื่อยังไม่มี Core |
 | `WP_LOCALE` | `en_US` | ใช้ `th` สำหรับ WordPress ภาษาไทยเมื่อมีแพ็กเกจ |
 | `WP_DB_NAME` | `zeaz_cinema` | MariaDB แยกจาก zMovie Studio |
 
 หากจะเข้าผ่าน Cloudflare Tunnel ให้ยังคง Bind ที่ 127.0.0.1 และกำหนด Domain, HTTPS, Trusted Proxy และ Forwarded Protocol บน Environment แยกให้ถูกต้องก่อนเริ่มติดตั้ง ตัวติดตั้งจะไม่เปลี่ยน URL ของเว็บไซต์เดิมโดยอัตโนมัติ และ **ยังไม่ใช่ Public Production Deployment Workflow**
+
+## แก้ปัญหา WP-CLI Cache และ PHP Memory
+
+หากเคยพบข้อความ `/.wp-cli/cache/: Permission denied` หรือ `Allowed memory size of 134217728 bytes exhausted` ขณะ Download/Extract WordPress ให้ใช้ Installer จาก Branch ที่รวม Fix นี้ (หรือ Pull Request #18) จากนั้นเรียกคำสั่งติดตั้งเดิมซ้ำโดย **ไม่ลบ Docker Volumes**:
+
+```bash
+bash wp-installer/install.sh
+```
+
+Installer กำหนด `WP_CLI_CACHE_DIR=/tmp/zeaz-wp-cli-cache` และตั้ง `memory_limit=512M` ให้เฉพาะ WP-CLI ผ่าน `wp-installer/config/wpcli.ini` พร้อมตรวจ Memory Limit ก่อน Download การแก้ไขไม่ต้องให้ Container ทำงานเป็น Root
+
+หากการ Download ครั้งก่อนถูกขัดจังหวะและยังไม่มี `wp-config.php` ตัวติดตั้งจะตรวจ WordPress Core Checksum ก่อนตัดสินใจ Download ใหม่เพื่อซ่อมการติดตั้งที่ยังไม่เสร็จ แต่จะไม่เขียนทับ WordPress ที่ติดตั้งใช้งานอยู่เมื่อ Checksum ผิดพลาด ผู้ดูแลต้องตรวจสอบและสำรองข้อมูลก่อนซ่อม Installation ที่ใช้งานแล้ว
+
+ตรวจ Memory Limit และ Cache ของ WP-CLI:
+
+```bash
+docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml run --rm --entrypoint php wpcli -r 'echo ini_get("memory_limit"), PHP_EOL;'
+docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml run --rm --entrypoint sh wpcli -c 'printf "%s\n" "$WP_CLI_CACHE_DIR"; mkdir -p "$WP_CLI_CACHE_DIR" && test -w "$WP_CLI_CACHE_DIR"'
+```
 
 ## การบริหารและข้อจำกัด
 
