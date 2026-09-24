@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from app import app
 from zmovie_platform.api_routes import router as v2_router
 from zmovie_platform.cinema_import_routes import router as cinema_import_router
+from zmovie_platform.commerce_routes import router as commerce_router
 from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
@@ -23,6 +24,7 @@ configure_logging()
 migrate()
 app.include_router(v2_router)
 app.include_router(cinema_import_router)
+app.include_router(commerce_router)
 app.include_router(privacy_router)
 app.include_router(media_preview_router)
 app.include_router(publisher_router)
@@ -65,3 +67,8 @@ def studio() -> HTMLResponse:
 @app.get("/product", include_in_schema=False)
 def product_studio() -> HTMLResponse:
     return HTMLResponse(Path("static/product.html").read_text(encoding="utf-8"))
+
+
+@app.get("/membership", include_in_schema=False)
+def membership() -> HTMLResponse:
+    return HTMLResponse(Path("static/membership.html").read_text(encoding="utf-8"))
