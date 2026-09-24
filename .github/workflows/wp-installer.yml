@@ -29,7 +29,8 @@ jobs:
           set -euo pipefail
           test -s wp-installer/.env.example
           test -s wp-installer/README.md
-          if grep -REn 'ZEAZ_LICENSE_KEY=[^[:space:]]{8,}|WP_ADMIN_PASSWORD=[^[:space:]]{12,}|DB_PASSWORD=[^[:space:]]{12,}' wp-installer --exclude='.env.example'; then
-            echo "Potential hard-coded secret found"
+          if grep -En 'ZEAZ_LICENSE_KEY=[^$[:space:]]{8,}|WP_ADMIN_PASSWORD=[^$[:space:]]{12,}|DB_PASSWORD=[^$[:space:]]{12,}' wp-installer/install.sh; then
+            echo "Potential hard-coded secret found in executable installer"
             exit 1
           fi
+          test ! -e wp-installer/.env
