@@ -38,6 +38,12 @@ This platform implements deep-thinking production workflows with comprehensive f
 
 ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ ขณะนี้เป็น Source Implementation พร้อม Static CI เท่านั้น ยังไม่มีหลักฐาน WordPress Runtime หรือ Production Acceptance
 
+## WordPress Automated Installer
+
+มี `wp-installer/` สำหรับดาวน์โหลดและติดตั้ง WordPress ผ่าน WP-CLI พร้อมติดตั้ง `zwp-cinema` Plugin + Theme, สร้างหน้า Favorites/Submit Film และตั้งค่า ZeaZ License ให้ดึง Secret จาก Environment โดยไม่บันทึก Key จริงลง Repository
+
+เริ่มต้นที่ [คู่มือ WordPress Installer](wp-installer/README.md). Installer ออกแบบให้รันซ้ำได้ แต่การติดตั้งสำเร็จยังไม่ใช่ Production Acceptance; ต้องผ่าน WordPress Runtime, Browser, Backup/Restore และ Security Validation ก่อนเปิดบริการจริง
+
 ## Documentation
 
 Start with the [documentation index](docs/INDEX.md), which comprehensively maps user, operator, developer, contributor, and maintainer workflows to the canonical guides and focused provider runbooks. The [status vocabulary](docs/STATUS.md) and [documentation standard](docs/DOCUMENTATION_STANDARD.md) define how readiness, evidence, security, and future i18n work are described.

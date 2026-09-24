@@ -1,0 +1,36 @@
+name: WordPress Installer checks
+on:
+  pull_request:
+    paths:
+      - 'wp-installer/**'
+      - '.github/workflows/wp-installer.yml'
+      - 'README.md'
+  push:
+    branches: [main]
+    paths:
+      - 'wp-installer/**'
+      - '.github/workflows/wp-installer.yml'
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Bash syntax
+        run: bash -n wp-installer/install.sh
+      - name: ShellCheck
+        run: shellcheck -x wp-installer/install.sh
+      - name: Secret hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s wp-installer/.env.example
+          test -s wp-installer/README.md
+          if grep -En 'ZEAZ_LICENSE_KEY=[^$[:space:]]{8,}|WP_ADMIN_PASSWORD=[^$[:space:]]{12,}|DB_PASSWORD=[^$[:space:]]{12,}' wp-installer/install.sh; then
+            echo "Potential hard-coded secret found in executable installer"
+            exit 1
+          fi
+          test ! -e wp-installer/.env
