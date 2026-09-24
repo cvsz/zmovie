@@ -2,6 +2,12 @@
 set -eu
 
 WP_PATH="${WP_PATH:-/var/www/html}"
+WP_CLI_CACHE_DIR="${WP_CLI_CACHE_DIR:-/tmp/zeaz-wp-cli-cache}"
+export WP_CLI_CACHE_DIR
+if ! mkdir -p "$WP_CLI_CACHE_DIR" || [ ! -w "$WP_CLI_CACHE_DIR" ]; then
+    printf 'WP-CLI cache directory is not writable: %s\n' "$WP_CLI_CACHE_DIR" >&2
+    exit 2
+fi
 cd "$WP_PATH"
 
 required="WP_SITE_URL WP_SITE_TITLE WP_ADMIN_USER WP_ADMIN_EMAIL WP_ADMIN_PASSWORD WP_DB_NAME WP_DB_USER WP_DB_PASSWORD WP_DB_PREFIX"
