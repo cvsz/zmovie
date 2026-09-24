@@ -1,5 +1,7 @@
 # zMovie
 
+![zMovie — Self-Hosted AI Studio: From Idea to Final Cut](static/images/zmovie-social-preview.svg)
+
 [![CI](https://github.com/cvsz/zmovie/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/cvsz/zmovie/actions/workflows/test.yml)
 ![Python](https://img.shields.io/badge/Python-3.11--3.14-3776AB?logo=python&logoColor=white)
 ![Deployment](https://img.shields.io/badge/Deployment-systemd%20%7C%20Docker-2496ED?logo=docker&logoColor=white)
