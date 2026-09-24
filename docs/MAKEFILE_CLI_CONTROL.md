@@ -10,10 +10,11 @@ zMovie ships with two operator interfaces for the full-stack installation:
 From a repository checkout:
 
 ```bash
+make server-packages
 make full-stack
 ```
 
-This invokes the hardened native installer, which provisions the application runtime, Python virtual environment, FFmpeg/ffprobe, `edge-tts` dependencies, Playwright Chromium, systemd service, persistent data/config directories, health check and the global `/usr/local/bin/zmovie-ctl` command.
+`make server-packages` installs the Ubuntu/Debian prerequisites shared by zMovie, ComfyUI and stable-diffusion.cpp: Python/venv tooling, FFmpeg, TTS support, build tooling, OpenGL runtime libraries and Vulkan development/diagnostic packages. `make full-stack` runs that target automatically, then provisions the application runtime, Python virtual environment, Playwright Chromium, systemd service, persistent data/config directories, health check and the global `/usr/local/bin/zmovie-ctl` command.
 
 The native installer also installs `make` so subsequent upgrades and operator tasks can use the Makefile directly.
 
@@ -24,6 +25,23 @@ make upgrade
 make status
 make doctor
 ```
+
+Durable worker and runtime checks:
+
+```bash
+make worker-status
+make worker-jobs
+make worker-recover
+make watchdog-status
+make backup-status
+make renderer-doctor
+make vulkan-status
+make sdcpp-evidence
+make upgrade-readiness
+```
+
+Use `make worker-recover APPLY=1` only after reviewing the dry-run output.
+Use `make sdcpp-evidence RUN_SMOKE=1` only with an operator-configured video model.
 
 ## Interactive CLI control panel
 

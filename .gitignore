@@ -5,3 +5,6 @@ __pycache__/
 data/
 .pytest_cache/
 .DS_Store
+
+# Large operator-managed reference media
+docs/AI-Seedance-2.0-ref.mp4

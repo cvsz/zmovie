@@ -25,15 +25,15 @@ as_service(){
   require_install
   if [[ "$(id -un)" == "$SERVICE_USER" ]]; then
     env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
+      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
       _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   elif [[ ${EUID} -eq 0 ]]; then
     runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
+      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
       _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   else
     sudo -u "$SERVICE_USER" env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
+      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
       _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   fi
 }
