@@ -6,13 +6,13 @@
 
 ต้องมี Docker Engine หรือ Docker Desktop พร้อม Docker Compose V2 และ OpenSSL หรือ Python 3 ตัวติดตั้งจะดาวน์โหลด WordPress จาก WordPress.org ด้วย WP-CLI และตรวจ Checksum โดยเปิดเว็บไซต์เฉพาะ **127.0.0.1:8090**
 
-`bash
+```bash
 git clone https://github.com/cvsz/zmovie.git
 cd zmovie
 bash wp-installer/install.sh --dry-run
 bash wp-installer/install.sh
 bash wp-installer/install.sh status
-`
+```
 
 เปิดเว็บไซต์ที่ http://127.0.0.1:8090/ และหน้า Admin ที่ http://127.0.0.1:8090/wp-admin/ ชื่อผู้ดูแลและรหัสผ่านเก็บไว้เฉพาะในไฟล์ `wp-installer/.env` ซึ่งตัวติดตั้งสร้างพร้อมตั้งสิทธิ์ไฟล์ 0600 ห้ามเผยแพร่หรือ Commit
 
@@ -50,12 +50,12 @@ Plugin และ Theme Mount จาก Repository แบบ Read-only เพื�
 
 ## การบริหารและข้อจำกัด
 
-`bash
+```bash
 bash wp-installer/install.sh status
 bash wp-installer/install.sh stop
 bash wp-installer/install.sh
 docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml run --rm --entrypoint wp wpcli core verify-checksums
-`
+```
 
 Creator Submission แบบ License ยังคงต้องเชื่อมต่อ ZeaZ License Server ตาม [คู่มือ Plugin](../wp-plugins/zwp-cinema/README.md) ตัวติดตั้งนี้ไม่ได้ส่ง Key เข้าระบบของบุคคลที่สาม และไม่ติดตั้ง WP-Script Core หรือ TikSwipe
 
