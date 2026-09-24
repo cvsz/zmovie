@@ -37,7 +37,7 @@
 
 ## 4. Incident ที่เคยเกิด (2026-09-24) และบทเรียน
 
-- **เหตุ:** DB password `zeaz-cinema-2026` หลุดใน `docs/production/FINAL_READINESS_REPORT.md`
+- **เหตุ:** DB password `zeaz-cinema-**** (rotated 2026-09-24)` หลุดใน `docs/production/FINAL_READINESS_REPORT.md`
   ที่เข้าถึงได้สาธารณะ (public report)
 - **การตอบสนอง:** ถือว่า compromised ทันที → สร้างรหัสผ่านใหม่
   high-entropy → อัปเดต MariaDB + `wp-config.php` + `.env` →

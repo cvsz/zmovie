@@ -4,11 +4,11 @@
 First-party License Server built with FastAPI + PostgreSQL + Ed25519 signing.
 
 ## Location
-`/home/cvsz/services/license-server/`
+`services/license-server/` (repo-relative)
 
 ## Running
 ```bash
-cd /home/cvsz/services/license-server
+cd services/license-server
 python3 server.py
 ```
 Server runs on `127.0.0.1:8085`.
@@ -27,9 +27,9 @@ Server runs on `127.0.0.1:8085`.
 - `iss` = "zeaz-license", `aud` = "zmovie"
 
 ## Key Storage
-- Private key: `/home/cvsz/.config/zeaz/license_server_private_key.pem`
-- Public key: `/home/cvsz/.config/zeaz/license_server_public_key.pem`
-- Public key (base64url): `/home/cvsz/.config/zeaz/public-key.pem`
+- Private key: `~/.config/zeaz/license_server_private_key.pem`
+- Public key: `~/.config/zeaz/license_server_public_key.pem`
+- Public key (base64url): `~/.config/zeaz/public-key.pem`
 
 ## License Key
 - Key: `647b1e4b9f52cc316474eeb083eb027a969a931ab6004826479ab3aeafb0db9`

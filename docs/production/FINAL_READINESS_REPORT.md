@@ -22,7 +22,7 @@
 - **Remote:** Synced with origin/fix/security-production-secrets
 
 ### Cloudflare Terraform
-- **Directory:** `/home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare`
+- **Directory:** `<zworkforce>/infrastructure/terraform/cloudflare`
 - **DNS Record:** `cloudflare_dns_record.zmovie` in Terraform state
 - **Tunnel:** `77107d8b-8293-421d-8189-85f74a73b30b` (active)
 - **Origin:** `http://127.0.0.1:80` (Nginx)
@@ -176,7 +176,7 @@
 
 ## 11. Credential Exposure Incident (P0)
 
-**Incident:** Database password `zeaz-cinema-2026` exposed in public report `docs/production/FINAL_READINESS_REPORT.md`.
+**Incident:** Database password `zeaz-cinema-**** (rotated 2026-09-24)` exposed in public report `docs/production/FINAL_READINESS_REPORT.md`.
 
 **Response:**
 1. Identified affected account: `zmovie_cinema@localhost`

@@ -7,7 +7,7 @@
 
 - **Script:** `/opt/backups/wordpress-backup.sh` (mysqldump + gzip + wp-content tar + SHA256 + integrity check)
 - **Cron:** ทุกวัน 02:00 (`0 2 * * * /opt/backups/wordpress-backup.sh`)
-- **MySQL auth:** `--defaults-file=/home/cvsz/.my.cnf` (chmod 600) — ห้ามใช้ `--password=` บน CLI
+- **MySQL auth:** `--defaults-file=~/.my.cnf` (chmod 600) — ห้ามใช้ `--password=` บน CLI
 - **ปลายทาง:** `/opt/backups/wordpress/zmovie-cinema-<TIMESTAMP>.sql.gz` + `wp-content-<TIMESTAMP>.tar.gz` + `checksums.txt`
 - **System cron WP:** ทุก 5 นาที `wp cron event run --due-now` (แทน WP-CRON ผ่าน web)
 

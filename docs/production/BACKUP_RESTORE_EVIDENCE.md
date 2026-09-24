@@ -3,7 +3,7 @@
 ## Backup Configuration
 - **Script**: `/opt/backups/wordpress-backup.sh`
 - **Cron**: Daily at 2:00 AM (`crontab`)
-- **MySQL config**: `/home/cvsz/.my.cnf` (chmod 600)
+- **MySQL config**: `~/.my.cnf` (chmod 600)
 - **Backup directory**: `/opt/backups/wordpress/`
 
 ## Latest Backup
@@ -31,8 +31,8 @@
 - **WordPress routes after rollback**: All responding correctly (200/302)
 
 ## Security Fix
-- **Issue**: Old DB password `zeaz-cinema-2026` found in backup script
-- **Fix**: Replaced with `--defaults-file=/home/cvsz/.my.cnf`
+- **Issue**: Old DB password `zeaz-cinema-**** (rotated 2026-09-24)` found in backup script
+- **Fix**: Replaced with `--defaults-file=~/.my.cnf`
 - **New backup script includes**: Integrity check, SHA256 checksum logging
 - **Status**: RESOLVED
 
