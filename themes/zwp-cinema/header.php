@@ -20,6 +20,9 @@
         <?php if (post_type_exists('zwpc_film')) : ?>
             <a href="<?php echo esc_url(get_post_type_archive_link('zwpc_film')); ?>"><?php esc_html_e('Films', 'zwp-cinema'); ?></a>
         <?php endif; ?>
+        <?php if (is_user_logged_in() && get_page_by_path('favorites')) : ?>
+            <a href="<?php echo esc_url(get_permalink(get_page_by_path('favorites'))); ?>"><?php esc_html_e('Saved films', 'zwp-cinema'); ?></a>
+        <?php endif; ?>
         <?php if (has_nav_menu('primary')) : wp_nav_menu(array('theme_location' => 'primary',
             'container' => false, 'items_wrap' => '<ul class="zwpc-menu">%3$s</ul>')); endif; ?>
     </nav>
