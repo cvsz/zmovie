@@ -36,12 +36,12 @@ export WP_URL=https://cinema.example.com
 export WP_TITLE='ZeaZ Cinema'
 export WP_ADMIN_USER=zeazadmin
 export WP_ADMIN_EMAIL=admin@example.com
-export WP_ADMIN_PASSWORD='...secret...'
+export WP_ADMIN_PASSWORD='<secret-from-manager>'
 export DB_HOST=127.0.0.1
 export DB_PORT=3306
 export DB_NAME=zmovie_cinema
 export DB_USER=zmovie_cinema
-export DB_PASSWORD='...secret...'
+export DB_PASSWORD='<secret-from-manager>'
 
 ./wp-installer/install.sh
 ```
@@ -53,7 +53,7 @@ export DB_PASSWORD='...secret...'
 ```bash
 export DB_AUTO_CREATE=true
 export DB_ROOT_USER=root
-export DB_ROOT_PASSWORD='...database-root-secret...'
+export DB_ROOT_PASSWORD='<secret-from-manager>'
 ```
 
 Installer ใช้ `MYSQL_PWD` เพื่อหลีกเลี่ยงการใส่ Root Password ใน command-line arguments แต่ production host ควรใช้ Secret Manager หรือ MySQL option file ที่ Permission จำกัด
