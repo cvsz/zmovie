@@ -40,7 +40,7 @@ else
 fi
 
 download_wordpress_core() {
-    wp core download "$WP_ZIP_URL" --path="$WP_PATH" --version="${WP_VERSION:-latest}" --locale=en_US --force
+    wp core download "$WP_ZIP_URL" --path="$WP_PATH" --force
 }
 
 if [ ! -f "$WP_PATH/wp-settings.php" ]; then
