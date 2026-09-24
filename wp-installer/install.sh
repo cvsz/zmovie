@@ -31,9 +31,18 @@ fi
 : "${VERIFY_CHECKSUMS:=true}"
 : "${FORCE_CORE_DOWNLOAD:=false}"
 
-for name in WP_URL WP_TITLE WP_ADMIN_USER WP_ADMIN_EMAIL WP_ADMIN_PASSWORD DB_NAME DB_USER DB_PASSWORD; do
+for name in WP_URL WP_TITLE WP_ADMIN_USER WP_ADMIN_EMAIL DB_NAME DB_USER; do
   [[ -n "${!name:-}" ]] || die "missing required environment variable: $name"
 done
+
+# Installation-only credentials are required only when they will actually
+# be used: DB_PASSWORD for a fresh wp-config.php, WP_ADMIN_PASSWORD for a
+# fresh core install. Repeat runs against an existing installation must
+# not require retaining them.
+require_credential() {
+  local name="$1" why="$2"
+  [[ -n "${!name:-}" ]] || die "missing required environment variable: $name ($why)"
+}
 
 [[ "$WP_URL" =~ ^https?://[^[:space:]]+$ ]] || die "WP_URL must be a valid http(s) URL"
 [[ "$DB_PREFIX" =~ ^[A-Za-z0-9_]+$ ]] || die "DB_PREFIX may contain only letters, digits, and underscore"
@@ -118,6 +127,7 @@ if [[ "$VERIFY_CHECKSUMS" == "true" ]]; then
 fi
 
 if [[ ! -f "$WP_PATH/wp-config.php" ]]; then
+  require_credential DB_PASSWORD "needed only to create a fresh wp-config.php"
   log "creating wp-config.php"
   printf '%s\n' "$DB_PASSWORD" | wp config create     "--dbname=$DB_NAME"     "--dbuser=$DB_USER"     "--dbhost=$DB_HOST:$DB_PORT"     "--dbprefix=$DB_PREFIX"     --dbcharset=utf8mb4     --prompt=dbpass     --skip-check
 
@@ -133,6 +143,7 @@ else
 fi
 
 if ! wp core is-installed >/dev/null 2>&1; then
+  require_credential WP_ADMIN_PASSWORD "needed only for a fresh WordPress install"
   log "installing WordPress database"
   printf '%s\n' "$WP_ADMIN_PASSWORD" | wp core install     "--url=$WP_URL"     "--title=$WP_TITLE"     "--admin_user=$WP_ADMIN_USER"     "--admin_email=$WP_ADMIN_EMAIL"     "--locale=$WP_LOCALE"     --skip-email     --prompt=admin_password
 else
