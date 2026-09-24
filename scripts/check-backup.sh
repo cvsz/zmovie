@@ -22,7 +22,7 @@ zcat "$latest" > /dev/null 2>&1 || fail "gzip integrity check failed: $latest"
 
 # Content: must contain the core WordPress tables.
 for table in wp_posts wp_users wp_options; do
-  zcat "$latest" 2>/dev/null | grep -q "CREATE TABLE \`$table\`" \
+  zcat "$latest" 2>/dev/null | grep -q 'CREATE TABLE `'"$table"'`' \
     || fail "backup missing table $table: $latest"
 done
 

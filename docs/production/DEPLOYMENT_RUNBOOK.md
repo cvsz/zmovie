@@ -56,15 +56,25 @@ ZEAZ_LICENSE_API=http://127.0.0.1:8085 bash scripts/check-license-api.sh
 
 ## 6. Monitoring & alerting
 
+Wired crons (cvsz; logs to `~/.local/share/zmovie-checks.log`, no MTA on host):
+
+- `15 2 * * * .../check-backup.sh` — WP backup freshness + integrity
+- `30 6 * * * .../check-disk.sh` — disk warn 85% / crit 95%
+- `5 * * * * .../check-license-api.sh` — License API availability
+- root `0 3 * * 0 .../backup-dr.sh` — weekly protected DR snapshot
+
 | สัญญาณ | วิธีตรวจ | alert |
 |---|---|---|
-| Backup ล้มเหลว/เก่า | `scripts/check-backup.sh` ผ่าน cron + `MAILTO` | exit ≠ 0 → mail |
-| License API ดับ | `scripts/check-license-api.sh` ผ่าน cron/monitoring | exit ≠ 0 → alert |
+| Backup ล้มเหลว/เก่า | `check-backup.sh` daily cron | exit ≠ 0 → check log |
+| License API ดับ | `check-license-api.sh` hourly cron | exit ≠ 0 → check log |
 | Media queue ค้าง | `zmovie-ctl worker-status`, watchdog status | journal + status |
-| Disk เต็ม | `df -h /var/lib/zmovie /opt/backups` ใน cron | threshold 80% |
+| Disk เต็ม | `check-disk.sh` daily cron (warn 85 / crit 95) | exit ≠ 0 → check log |
 | Service ดับ | `systemctl is-active`, `journalctl -u zmovie*` | watchdog repair + log |
 
-ยังไม่มี PagerDuty — ขั้นต่ำคือ cron + MAILTO + บันทึก incident
+ยังไม่มี PagerDuty/MTA — ขั้นต่ำคือ cron + log file + บันทึก incident.
+Known live alert (2026-09-24): disk 99% ทำ `zmovie-backup.service`
+fail ด้วย sqlite I/O error — mechanism ปกติ (พิสูจน์ด้วย manual run
+สำเร็จ) ต้องเคลียร์พื้นที่ ห้ามลบข้อมูล operator โดยพลการ.
 
 ## 7. Rollback
 
