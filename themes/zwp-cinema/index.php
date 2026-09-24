@@ -6,7 +6,8 @@
         <p><?php esc_html_e('Explore independently curated films, trailers and stories in a cinematic vertical feed.', 'zwp-cinema'); ?></p>
     </div>
     <?php if (post_type_exists('zwpc_film')) :
-        $selected_genre = sanitize_title((string) ($_GET['genre'] ?? ''));
+        $selected_genre = isset($_GET['genre']) && is_string($_GET['genre'])
+            ? sanitize_title(wp_unslash($_GET['genre'])) : '';
         $terms = get_terms(array('taxonomy' => 'zwpc_genre', 'hide_empty' => true));
     ?>
         <div class="zwpc-toolbar">
