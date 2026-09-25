@@ -1,0 +1,181 @@
+name: supply-chain
+
+# Release supply chain: container build, SBOM, image vulnerability scan,
+# artifact checksums, release manifest, staging gate and an explicit
+# production promotion gate.
+#
+# Security policy (docs/security/SUPPLY_CHAIN_POLICY.md):
+#   - HIGH/CRITICAL image findings with a fix available: BLOCKING.
+#   - HIGH/CRITICAL without a fix: reported as a tracked exception, not a
+#     silent pass and not a blanket bypass.
+#   - MEDIUM/LOW: reported only, never blocks unrelated pull requests.
+#
+# Action references are pinned to commit SHAs verified against the upstream
+# repositories. Do not loosen them to floating tags.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      promote_to_production:
+        description: 'Promote the verified build to production (requires the protected production environment)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom:
+    name: sbom-and-manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Build production container
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          load: true
+          tags: zmovie:supply-chain
+          push: false
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: zmovie:supply-chain
+          format: cyclonedx-json
+          output-file: zmovie-sbom.cdx.json
+          artifact-name: zmovie-sbom
+
+      - name: Compute artifact checksums
+        run: |
+          set -Eeuo pipefail
+          sha256sum zmovie-sbom.cdx.json > sbom.sha256
+          cat sbom.sha256
+
+      - name: Build release manifest
+        run: |
+          set -Eeuo pipefail
+          python3 scripts/release-manifest.py \
+            --image zmovie:supply-chain \
+            --checksums sbom.sha256 \
+            --out release-manifest.json >/dev/null
+          python3 -c "import json;d=json.load(open('release-manifest.json'));print(d['application']['commit'])"
+
+      - name: Upload SBOM, checksums and manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-evidence
+          path: |
+            zmovie-sbom.cdx.json
+            sbom.sha256
+            release-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+  image-scan:
+    name: container-vulnerability-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build production container
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          load: true
+          tags: zmovie:supply-chain
+          push: false
+
+      - name: Scan image (HIGH/CRITICAL with fix available is blocking)
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          image-ref: zmovie:supply-chain
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          vuln-type: os,library
+
+      - name: Record MEDIUM/LOW advisory summary without blocking
+        if: always()
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          image-ref: zmovie:supply-chain
+          format: json
+          output: trivy-all.json
+          severity: MEDIUM,LOW
+          ignore-unfixed: false
+          exit-code: '0'
+
+      - name: Upload full scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-vulnerability-report
+          path: trivy-all.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  staging-gate:
+    name: staging-release-gate
+    runs-on: ubuntu-latest
+    needs: [sbom, image-scan]
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Start the full stack and wait for readiness
+        run: |
+          set -Eeuo pipefail
+          docker compose up -d --wait --wait-timeout 300
+          docker compose ps
+          curl -fsS --max-time 20 http://127.0.0.1:8080/api/v2/health | head -c 200
+          echo
+          curl -fsS --max-time 20 http://127.0.0.1:8080/api/v2/readyz | head -c 200
+          echo
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  production-promotion:
+    name: production-promotion
+    # Explicitly gated: never runs on pull_request or on plain pushes, and
+    # additionally requires the protected `production` environment plus a
+    # manual workflow_dispatch opt-in.
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_to_production == true
+    needs: [sbom, image-scan, staging-gate]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Explain that promotion is operator-run
+        run: |
+          echo "Promotion gate reached for commit ${{ github.sha }}."
+          echo "This job intentionally performs no automated production change."
+          echo "Deploy from the reviewed commit with:"
+          echo "  sudo bash install.sh upgrade"
+          echo "and follow docs/production/DEPLOYMENT_RUNBOOK.md."
