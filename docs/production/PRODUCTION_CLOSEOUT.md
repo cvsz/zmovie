@@ -283,3 +283,17 @@ uncommitted user work, so nothing there was staged.
 **Still open:** `llmwiki.zeaz.dev` (404) and `cme.zeaz.dev` (502) resolve but are
 not managed by `zworkforce`; `zksato`, `zeaz-one*` and `support` do not resolve
 at all.
+
+## 20. zTTato hostname — tracked in the infrastructure repository
+
+`zttato.zeaz.dev` is not a zMovie concern, so its canonical documentation lives
+with the Cloudflare configuration that owns it:
+
+- `zworkforce` → `infrastructure/terraform/cloudflare/ZTTATO.md` (commit `a700bfb`)
+
+State as verified 2026-09-25: the hostname is live and served by a
+`custom-domains.chatgpt.site` CNAME returning 401 (`zTTato Creator`); it is not
+managed by Terraform; no `zttato-platform` tunnel exists; the three former
+`zttato*` tunnels are soft-deleted; and no origin service runs on this host.
+Nothing has been changed. The origin port, the target tunnel and the fate of
+the ChatGPT upstream are still undecided, so no cutover has been attempted.
