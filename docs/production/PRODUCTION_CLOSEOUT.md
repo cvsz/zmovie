@@ -63,12 +63,96 @@
 - SQLite backups `/var/backups/zmovie` มีถึงวันนี้ 03:15 — VERIFIED present
 - ห้ามเปิดโดยไม่มี approval: live payments, live ticket sales, public auto-publish, production reboot, destructive Terraform apply, production DB migration
 
-## 8. Outstanding operator decisions
+---
 
-1. Provision tunnel token + restart `core-cloudflared` (§2)
-2. Terraform stale-lock recovery approval (§3)
-3. Loopback-binding maintenance window (§7)
-4. SLO approval + 7-day measurement (§6)
-5. Interactive sessions: browser login E2E + screen-reader (§6)
-6. Off-host backup copies + at-rest encryption (§7, gap เดิม)
-7. PR merge สำหรับ closeout branch นี้ (ไม่ merge เอง)
+# P5 round (2026-09-25) — additions
+
+## 9. CI repairs shipped
+
+| Finding | Root cause | Fix | Status |
+|---|---|---|---|
+| `secret-scan` failed on docs prose | rule matched the phrase, not PEM structure | `scripts/secret-scan.sh` (opening marker + base64 body + closing marker) + `tests/test_secret_scan.py` (11 tests) | VERIFIED |
+| `verify_docs` failed on ~30 links | `../` used from `docs/production/` (needs `../../`) | corrected; 2 references pointed at files that no longer exist, repointed to current sources | VERIFIED |
+| `verify_docs` failed on private host paths | absolute developer paths in committed docs | symbolic `<zmovie-repo>` notation, validator unchanged | VERIFIED |
+
+Validation: ruff PASS, secret scan PASS, `docker compose config` PASS, PHP lint
+PASS, `node --check` PASS, shellcheck PASS, `pip-audit` clean,
+`unittest discover` **189 tests OK (2 PG tests skipped without a DSN)**.
+
+## 10. Monitoring defect found and fixed
+
+The alert cron entries were non-functional: `check-backup.sh`, `check-disk.sh`
+and `check-license-api.sh` were committed mode `100644` while being invoked
+directly from crontab, so every run failed with `Permission denied`. The
+monitoring log held 26 permission errors and zero real results. The daily
+WordPress backup was also scheduled in the user crontab although it needs
+root, so it had not run since 2026-09-24.
+
+- scripts marked `100755` in git and on disk — VERIFIED
+- WordPress backup moved to the root crontab with a log file — VERIFIED
+- fresh integrity-checked dump produced 2026-09-25T18:04Z — VERIFIED
+- all three checks re-run manually: `[check-license-api] OK`,
+  `[check-backup] OK`, `[check-disk] OK worst=69%` — VERIFIED
+
+## 11. Browser acceptance (anonymous, read-only)
+
+`scripts/e2e-anonymous-cinema.py` — **20/20 PASS** against the live public
+surface: rendering, landmarks, feed envelope, keyboard order and first tab
+stop, reduced motion, mobile overflow, and anonymous authorization negatives
+(favorites 401, submit 401, invalid nonce 403). Never logs in and never
+mutates content, so it is safe against production.
+
+Authenticated viewer/creator/admin flows remain BLOCKED: no separate
+WordPress staging install exists (backlog item 5).
+
+## 12. Release supply chain
+
+`.github/workflows/supply-chain.yml` (new): container build, CycloneDX SBOM,
+SHA-256 checksums, release manifest, Trivy image scan, Compose staging gate,
+and a production promotion job that runs only on manual dispatch against a
+protected environment and performs no automated production change. All
+third-party actions are pinned to SHAs verified against upstream.
+Policy: `docs/security/SUPPLY_CHAIN_POLICY.md`.
+
+## 13. Network binding
+
+Dependency map verified: Nginx is the only local consumer and already proxies
+`127.0.0.1:8080`; the tunnel terminates on Nginx `:80`; no container publishes
+host port 8080. `install.sh` now renders `--host "${ZMOVIE_HOST:-0.0.0.0}"`, so
+the bind address is an operator decision with unchanged default behavior, plus
+a drop-in and `docs/runbooks/LOOPBACK_BINDING.md`. Not applied — needs an
+approved maintenance window.
+
+## 14. Off-host backup
+
+`scripts/backup-offsite.sh` verified end to end (no-destination, replicate and
+dry-run paths all executed): AES-256-CBC/PBKDF2, passphrase via
+`-pass file:` so it never appears in `ps`, decrypt-and-verify on every run.
+Actual replication BLOCKED — no approved destination exists on this host.
+
+## 15. Observed baseline (measurements, not SLOs)
+
+20 requests per endpoint, 2026-09-25T18:02Z, all 100% at expected status:
+
+| Endpoint | avg | p95 |
+|---|---|---|
+| prod root (307) | 0.125s | 0.354s |
+| `/cinema/` (200) | 0.229s | 0.417s |
+| `/cinema/wp-json/` (200) | 0.251s | 0.479s |
+| `license/health` (200) | 0.073s | 0.103s |
+| zMovie health (loopback) | 0.737s | 1.765s |
+| staging health (loopback) | 0.192s | 0.491s |
+
+Backup OK, worker queue empty and not paused, root disk 69%. These are observed
+values only; formal SLO targets still require operator approval.
+
+## 16. Outstanding operator decisions (P5)
+
+1. Provision tunnel token + restart `core-cloudflared` (§2) — BLOCKED
+2. Terraform stale-lock recovery approval (§3) — BLOCKED
+3. Loopback-binding maintenance window (§13) — prepared, not applied
+4. SLO approval on top of the observed baseline (§15)
+5. WordPress staging install for authenticated browser E2E (§11) — BLOCKED
+6. Off-host backup destination (§14) — BLOCKED
+7. Merge PR for `ops/production-recovery-closeout` — not merged automatically
+8. Authenticated `gh` token to open/merge PRs — currently HTTP 401
