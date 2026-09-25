@@ -46,14 +46,14 @@
 | Staging env + CD pipeline | VERIFIED (staging) | Isolated staging live with deploy/rollback workflow; full CD + image scan pending |
 | Container image scan / SBOM signing | PARTIAL | `pip-audit` clean + pinned freeze; CycloneDX/container-scan/provenance pending (toolchain gaps) |
 | DR snapshots + disk alerts | VERIFIED | `backup-dr.sh` verified manifest, key-restore dry-run (pubkey match), wired crons; off-host copies + at-rest encryption GAPS |
-| Live disk pressure | ALERTING | Root 99% caused backup I/O error (mechanism proven healthy); operator cleanup required, no unilateral deletes |
+| Live disk pressure | VERIFIED (2026-09-25) | Root 99%→65% (66G free) via Docker builder/image/volume prune + pip/uv/npm/pnpm/journal/apt cleanup; all 25 containers healthy; syslog crash-loop (stale zaffiliate units) stopped+disabled |
 
 ## Dependency-ordered backlog (remaining)
 
 1. P1: browser login/logout + screen-reader session (interactive).
 2. P1: SLO approval + staged soak measurement.
 3. P1: off-host backup copies + at-rest encryption decision.
-4. P1: disk cleanup (operator-owned data + docker/journals).
+4. ~~P1: disk cleanup (operator-owned data + docker/journals).~~ DONE 2026-09-25 (root 65%, 66G free).
 5. P2: WP staging parity (separate WP install) for full browser E2E.
 6. P2: CD pipeline + image scan/SBOM/provenance + release tagging policy.
 7. BLOCKED จนกว่าจะ approval: live payments, live ticket sales, public auto-publish,
