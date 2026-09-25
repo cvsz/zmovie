@@ -103,26 +103,48 @@ jobs:
           tags: zmovie:supply-chain
           push: false
 
-      - name: Scan image (HIGH/CRITICAL with fix available is blocking)
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          image-ref: zmovie:supply-chain
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          vuln-type: os,library
+      - name: Install Trivy with verified checksum
+        # The trivy-action default (v0.65.0) points at a GitHub release that
+        # has zero uploaded assets, so the download 404s and the job fails
+        # before any scan runs. Install explicitly instead and verify the
+        # tarball against the checksum published in the same release.
+        env:
+          TRIVY_VERSION: v0.74.0
+        run: |
+          set -Eeuo pipefail
+          arch="Linux-64bit"
+          base="https://github.com/aquasecurity/trivy/releases/download/${TRIVY_VERSION}"
+          file="trivy_${TRIVY_VERSION#v}_${arch}.tar.gz"
+          curl -fsSL --retry 3 -o "$file" "$base/$file"
+          curl -fsSL --retry 3 -o checksums.txt "$base/trivy_${TRIVY_VERSION#v}_checksums.txt"
+          grep " $file\$" checksums.txt | sha256sum --check --strict -
+          tar -xzf "$file" trivy
+          sudo install -m 0755 trivy /usr/local/bin/trivy
+          trivy --version
 
-      - name: Record MEDIUM/LOW advisory summary without blocking
+      - name: Scan image (HIGH/CRITICAL with fix available is blocking)
+        run: |
+          set -Eeuo pipefail
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 1 \
+            --format table \
+            zmovie:supply-chain
+
+      - name: Record full advisory report without blocking
         if: always()
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          image-ref: zmovie:supply-chain
-          format: json
-          output: trivy-all.json
-          severity: MEDIUM,LOW
-          ignore-unfixed: false
-          exit-code: '0'
+        run: |
+          set -Eeuo pipefail
+          trivy image \
+            --scanners vuln \
+            --ignore-unfixed=false \
+            --exit-code 0 \
+            --format json \
+            --output trivy-all.json \
+            zmovie:supply-chain || true
+          test -s trivy-all.json
 
       - name: Upload full scan report
         if: always()
