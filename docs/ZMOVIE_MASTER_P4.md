@@ -42,17 +42,17 @@ LANGUAGE RULES
 
 Main application:
 
-  /home/cvsz/zmovie
+  <zmovie-repo> (production host checkout)
   https://github.com/cvsz/zmovie
 
 Infrastructure:
 
-  /home/cvsz/platforms/zworkforce
+  <zworkforce-repo> (production host checkout)
   https://github.com/cvsz/zworkforce
 
 Cloudflare Terraform:
 
-  /home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+  <zworkforce-repo>/infrastructure/terraform/cloudflare
 
 Existing WordPress installation:
 
@@ -375,7 +375,7 @@ PHASE 2 — P1: TERRAFORM STATE AND LOCK RECOVERY
 
 Inspect:
 
-  /home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+  <zworkforce-repo>/infrastructure/terraform/cloudflare
 
 Determine:
 

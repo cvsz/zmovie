@@ -15,8 +15,8 @@
 
 ## 2. Cloudflare Tunnel (P0)
 
-- **Root cause (VERIFIED):** `core-cloudflared.service` crash-loop (restart counter ~126) เพราะ `CLOUDFLARE_TUNNEL_TOKEN` ไม่มีใน `/home/cvsz/zworkforce/.env.cloudflare` (0600) และ unit ที่ติดตั้งขาด `EnvironmentFile=` (ต่างจาก template)
-- **Fix ที่ทำ (IMPLEMENTED):** backup unit ไป `/tmp/core-cloudflared.service.bak-20260925` แล้วเพิ่ม `EnvironmentFile=/home/cvsz/zworkforce/.env.cloudflare` ให้ตรง template, `daemon-reload` ผ่าน, service ยัง `activating` ตามคาด (รอ token) — manual connectors ไม่กระทบ (ยัง 2 processes)
+- **Root cause (VERIFIED):** `core-cloudflared.service` crash-loop (restart counter ~126) เพราะ `CLOUDFLARE_TUNNEL_TOKEN` ไม่มีใน tunnel env file ของ `<zworkforce-repo>` (`.env.cloudflare`, 0600, นอก Git) และ unit ที่ติดตั้งขาด `EnvironmentFile=` (ต่างจาก template)
+- **Fix ที่ทำ (IMPLEMENTED):** backup unit ไว้ภายนอก Git แล้วเพิ่ม `EnvironmentFile=` ชี้ tunnel env file เดิมให้ตรง template, `daemon-reload` ผ่าน, service ยัง `activating` ตามคาด (รอ token) — manual connectors ไม่กระทบ (ยัง 2 processes)
 - **Secure delivery (VERIFIED):** wrapper `cloudflare-tunnel.sh` ส่ง token ผ่าน env `TUNNEL_TOKEN` แล้ว `unset` ต้นทาง, `ps` ไม่เห็น secret; `cloudflared 2026.9.1` รองรับ `--token-file` / `$TUNNEL_TOKEN_FILE`
 - **Traffic continuity (VERIFIED 2026-09-25 ~17:00 UTC):** `https://zmovie.zeaz.dev/` 307, `/cinema/` 200, `https://license.zeaz.dev/health` 200
 - **Token rotation:** BLOCKED — token เดิม visible ใน argv ของ manual connectors ถือว่า potentially compromised ต้อง rotate หลัง cutover (ต้อง operator approval)
