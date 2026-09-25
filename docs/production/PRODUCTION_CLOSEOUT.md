@@ -33,14 +33,32 @@
   (`tunnel run --token ${TUNNEL_TOKEN}`), exposing it in `ps`.
 
 
-## 3. Terraform (P1)
+## 3. Terraform (P1) — backend claim corrected 2026-09-25
 
-- Backend: S3-compatible (R2) + `use_lockfile=true` — VERIFIED
-- Lock: `.terraform.tfstate.lock.info` ค้างจาก `OperationTypePlan` โดย `cvsz@core.zeaz.dev` เมื่อ `2026-09-24T14:27:13Z`; ไม่มี terraform process รันอยู่ (`pgrep -c terraform` = 0) — สันนิษฐาน stale แต่**ห้าม force-unlock** ต้องใช้ backend recovery หลัง operator approval — BLOCKED
+> **Correction.** Earlier rounds recorded the backend as "S3-compatible (R2) with
+> `use_lockfile=true`". That was wrong: it was inferred from
+> `backend.r2.tf.example`, which is an example file that was never applied.
+> There is **no `backend` block in any `.tf` file**, so Terraform uses the
+> **default local backend** and the state is a single local file
+> `infrastructure/terraform/cloudflare/terraform.tfstate` (gitignored, ~114 KB).
+> Consequence: state exists on this host only, and a lock there can only be held
+> by a local process.
+
+- The reported lock was a **local** lock from an interrupted
+  `OperationTypePlan` at `2026-09-24T14:27:13Z`, with no Terraform process, no
+  cron and no CI holding it. `terraform force-unlock` refuses on local state
+  ("Local state cannot be unlocked by another process"), so the stale lock file
+  was removed after operator approval — the supported recovery for a stale
+  *local* lock. Evidence kept outside Git. — RESOLVED
+- `terraform fmt -check -recursive`: clean; `terraform validate`: Success;
+  `terraform state list`: 36 resources
+- `plan` after the Cloudflare consolidation: **No changes** — VERIFIED
+
 - `terraform fmt -check -recursive`: PASS (exit 0)
 - `terraform validate`: SUCCESS (warnings เดิมเรื่อง undeclared vars)
-- `terraform state list`: PASS — มี `cloudflare_dns_record.zmovie` และ `.license`
-- `plan`/`apply`: ไม่รัน (รอ lock resolution + approval) — BLOCKED
+- `terraform state list`: PASS — 36 resources รวม `cloudflare_dns_record.zmovie`, `.license`, `.zaffiliate`, `.zsme`
+- `plan`/`apply`: รันแล้วสำหรับการรวม ownership ของ Cloudflare (ดู §19) — ผลลัพธ์ `No changes` หลัง apply
+
 
 ## 4. PostgreSQL (P3 ใน P4)
 
@@ -237,3 +255,31 @@ shadowed the valid stored account. Using `env -u GITHUB_TOKEN gh …` restores
 API access, and PR #20 state and check results are readable again. Note that
 the value of that environment variable was printed once into an operator
 terminal during diagnosis; treat it as exposed and rotate it.
+
+## 19. Cloudflare ownership consolidation (2026-09-25T19:20–19:35Z)
+
+Single owner for Cloudflare + Terraform is now `zworkforce`
+(`infrastructure/terraform/cloudflare`), 36 managed resources, PR
+`cvsz/zWorkforce#237`.
+
+| Action | Result |
+|---|---|
+| Stale **local** state lock cleared (approved) | RESOLVED — no process, no cron, no CI held it |
+| `zsme.tf` was untracked while applied in state | now versioned — removed a live destroy-on-clone risk |
+| `zaffiliate.zeaz.dev` adopted from a second config | `terraform import`, never recreated |
+| Plan before apply | 0 add, 2 change, **0 destroy** |
+| Ingress delta | +1 rule (`zaffiliate.zeaz.dev` → `127.0.0.1:3100`), 0 removed, order preserved |
+| `zaffiliate.zeaz.dev` | **404 → 200** (it had no ingress rule on any tunnel) |
+| Regression check, 28 tunnel hostnames | all unchanged except `zaffiliate` |
+| Plan after apply | **No changes** |
+| Backend reality | **local state**, not R2 — `backend.r2.tf.example` was never applied |
+
+**Deliberately not done.** A second, *stateless* Terraform copy remains in the
+`zeaz` repository. It has never been applied, but uniquely declares `llmwiki`,
+`zksato` and `workforce`. It was left in place so that intent is ported into
+`zworkforce` before deletion rather than discarded. That repo also carries
+uncommitted user work, so nothing there was staged.
+
+**Still open:** `llmwiki.zeaz.dev` (404) and `cme.zeaz.dev` (502) resolve but are
+not managed by `zworkforce`; `zksato`, `zeaz-one*` and `support` do not resolve
+at all.
