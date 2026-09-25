@@ -13,16 +13,25 @@
 - zmovie untracked (pre-existing, ไม่แตะ): `deploy/cloudflared/core-cloudflared.service.example`, `docs/ZMOVIE_MASTER_P4-1.md`, `docs/ZMOVIE_MASTER_P4-2.md`, `docs/runbooks/CLOUDFLARED_RECOVERY.md`, `docs/runbooks/POSTGRES_INTEGRATION.md`
 - Commits ทั้งหมด GPG-signed (EDDSA `CD57FEA24696DC7E1DB25A8A220A4C8CCC7D2D50`)
 
-## 2. Cloudflare Tunnel (P0)
+## 2. Cloudflare Tunnel (P0) — superseded 2026-09-25T19:05Z, see §17
 
-- **Root cause (VERIFIED):** `core-cloudflared.service` crash-loop (restart counter ~126) เพราะ `CLOUDFLARE_TUNNEL_TOKEN` ไม่มีใน tunnel env file ของ `<zworkforce-repo>` (`.env.cloudflare`, 0600, นอก Git) และ unit ที่ติดตั้งขาด `EnvironmentFile=` (ต่างจาก template)
-- **Fix ที่ทำ (IMPLEMENTED):** backup unit ไว้ภายนอก Git แล้วเพิ่ม `EnvironmentFile=` ชี้ tunnel env file เดิมให้ตรง template, `daemon-reload` ผ่าน, service ยัง `activating` ตามคาด (รอ token) — manual connectors ไม่กระทบ (ยัง 2 processes)
-- **Secure delivery (VERIFIED):** wrapper `cloudflare-tunnel.sh` ส่ง token ผ่าน env `TUNNEL_TOKEN` แล้ว `unset` ต้นทาง, `ps` ไม่เห็น secret; `cloudflared 2026.9.1` รองรับ `--token-file` / `$TUNNEL_TOKEN_FILE`
-- **Traffic continuity (VERIFIED 2026-09-25 ~17:00 UTC):** `https://zmovie.zeaz.dev/` 307, `/cinema/` 200, `https://license.zeaz.dev/health` 200
-- **Token rotation:** BLOCKED — token เดิม visible ใน argv ของ manual connectors ถือว่า potentially compromised ต้อง rotate หลัง cutover (ต้อง operator approval)
-- **Reboot readiness:** BLOCKED — unit `enabled` + `Restart=always` แล้ว แต่ยังไม่ healthy จนกว่า token จะมา; ห้าม reboot prod โดยไม่มี approval
+> **Correction.** Rounds P4/P5 concluded that production traffic depended on a
+> manually started connector with no supervision, and that reboot would
+> interrupt public access. **That conclusion was wrong.** It came from a
+> `systemctl list-units 'cloudflared*'` glob that does not match units named
+> after their service rather than the binary. The host actually runs three
+> enabled tunnel units, and public traffic was already supervised. The real
+> defect was narrower and is now fixed — see §17.
 
-**Operator decision:** provision `CLOUDFLARED_TUNNEL_TOKEN` ของ tunnel `zeaz-platform` เดิมลง `.env.cloudflare` (0600) ผ่าน dashboard/scoped token แล้ว `sudo systemctl restart core-cloudflared` ตาม `docs/runbooks/CLOUDFLARED_RECOVERY.md`
+- **Original finding (superseded):** `core-cloudflared.service` crash-looped
+  because its token was absent; the unit also lacked `EnvironmentFile=`.
+- **Real state (VERIFIED):** `zaffiliate-tunnel.service` (enabled, active) runs
+  the connector that serves `zmovie.zeaz.dev` and `license.zeaz.dev` via
+  `http://127.0.0.1:80`. `zkids-tunnel.service` serves a different tunnel.
+  Both were already enabled, so reboot readiness was fine.
+- **Real defect (FIXED):** both units passed the token on the command line
+  (`tunnel run --token ${TUNNEL_TOKEN}`), exposing it in `ps`.
+
 
 ## 3. Terraform (P1)
 
@@ -148,11 +157,83 @@ values only; formal SLO targets still require operator approval.
 
 ## 16. Outstanding operator decisions (P5)
 
-1. Provision tunnel token + restart `core-cloudflared` (§2) — BLOCKED
+1. ~~Provision tunnel token + restart `core-cloudflared`~~ — superseded by §17
 2. Terraform stale-lock recovery approval (§3) — BLOCKED
 3. Loopback-binding maintenance window (§13) — prepared, not applied
 4. SLO approval on top of the observed baseline (§15)
 5. WordPress staging install for authenticated browser E2E (§11) — BLOCKED
 6. Off-host backup destination (§14) — BLOCKED
 7. Merge PR for `ops/production-recovery-closeout` — not merged automatically
-8. Authenticated `gh` token to open/merge PRs — currently HTTP 401
+8. Authenticated `gh` token to open/merge PRs — resolved 2026-09-25 (§18)
+
+## 17. Managed connector recovery (2026-09-25T19:00–19:05Z)
+
+**Discovery.** `.env.cloudflare` was updated with R2/S3 credentials, a
+`tunnel_id` and an API token. Two corrections followed from live API checks:
+
+1. Production `zmovie.zeaz.dev` and `license.zeaz.dev` are served by the
+   **`zaffiliate-tunnel`** connector (`zaffiliate-tunnel.service`), not by
+   `zeaz-platform` as previously assumed. `zeaz-platform`'s published ingress
+   contains `zmovie.zeaz.dev` but **not** `license.zeaz.dev`.
+2. The connector was **already** systemd-managed and enabled. The earlier
+   "manual connector / reboot risk" finding was a globbing artefact and is
+   withdrawn.
+
+**Credential path.** The API token in `.env.cloudflare` can read the tunnel
+token (`GET .../cfd_tunnel/{id}/token` → HTTP 200). Minting is not available:
+`POST`/`PUT` on that path return 405 and `/token/rotate` returns 404, so the
+API scope cannot rotate. No token was ever read from a process, `ps`, `/proc`
+or a log.
+
+**Defect fixed.** `zaffiliate-tunnel.service` passed the secret on the command
+line:
+
+```text
+ExecStart=... cloudflared ... tunnel run --token ${TUNNEL_TOKEN}
+```
+
+systemd expanded the variable into argv, exposing the token to every local user
+via `ps`. `cloudflared` reads `$TUNNEL_TOKEN` from the environment natively, so
+the flag was removed and the unit now passes no secret in argv:
+
+```text
+ExecStart=... cloudflared --no-autoupdate --config /etc/cloudflared-zaffiliate/config.yml tunnel run
+```
+
+| Check | Result |
+|---|---|
+| `systemd-analyze verify` | clean |
+| Service state after restart | `active`, 4 connections re-registered |
+| New PID errors | 0 |
+| argv inspection | no `--token`, no token blob |
+| Public routes after cutover | `/` 307, `/cinema/` 200, `/cinema/wp-json/` 200, `zwpc/v1/feed` 200, `license/health` 200 |
+| Tunnel state | `zaffiliate-tunnel` healthy |
+
+**Cleanup.** `core-cloudflared.service` was left crash-looping and is unrelated
+to zmovie; it was stopped and disabled rather than left spinning, and
+`.env.cloudflare` was restored to its pre-session content.
+
+**Token rotation: BLOCKED.** The API returns the *same* token that was exposed,
+and the available scope cannot mint or rotate. The exposed value therefore
+remains valid and must be rotated through the Cloudflare dashboard, after which
+`/etc/cloudflared-zaffiliate/token.env` must be updated and the unit restarted.
+The value was not found in any scanned shell history.
+
+**Residual exposure (out of zmovie scope).** `zkids-tunnel.service` still
+passes its token in argv and has the identical one-line defect. It serves other
+hostnames, not zmovie.
+
+**Shared-tunnel observation.** `zaffiliate-tunnel` reported 12 connections
+before the change and 4 after, i.e. only this host's connector remains. All
+hostnames whose origin exists on this host are healthy; `qwen`, `cme`, `zneon`
+and `studio` return 502 because their origins are not on this host. This
+affects other products, was not caused by any action here, and needs separate
+investigation.
+
+## 18. `gh` access
+
+`gh` returned HTTP 401 because an invalid `GITHUB_TOKEN` environment variable
+shadowed the valid stored account. Using `env -u GITHUB_TOKEN gh …` restores
+API access, and PR #20 state and check results are readable again. Note that
+the value of that environment variable was printed once into an operator
+terminal during diagnosis; treat it as exposed and rotate it.
