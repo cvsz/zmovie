@@ -76,6 +76,25 @@ def v2_health() -> dict[str, object]:
     return public_health_report()
 
 
+@router.get("/livez", tags=["system"], include_in_schema=False)
+def livez() -> dict[str, object]:
+    """Liveness: กระบวนการยังทำงานอยู่ (ไม่แตะ DB/disk)."""
+    return {"status": "alive"}
+
+
+@router.get("/readyz", tags=["system"], include_in_schema=False)
+def readyz() -> dict[str, object]:
+    """Readiness: DB + migrations พร้อมรับงานหรือไม่."""
+    from .migrations import migrate
+
+    try:
+        migrate()
+        count = user_count()
+    except Exception as exc:  # noqa: BLE001 - readiness ต้องรายงานทุกความล้มเหลว
+        raise HTTPException(status_code=503, detail="not ready") from exc
+    return {"status": "ready", "users": count}
+
+
 @router.get("/capabilities", tags=["system"])
 def capabilities() -> dict[str, object]:
     return {

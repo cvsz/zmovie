@@ -36,8 +36,16 @@ This platform implements deep-thinking production workflows with comprehensive f
 - [ZeaZ Cinema Theme](themes/zwp-cinema/README.md): Responsive Cinema Feed, Mouse Wheel, Keyboard, Film Details และ Creator Page
 - [WordPress Auto-Installer](wp-installer/README.md): ดาวน์โหลดและติดตั้ง WordPress, MariaDB, ZeaZ Cinema Plugin และ Theme บน Local Staging ด้วย Docker Compose และ WP-CLI
 - [Integration และ Production Gates](docs/cinema/WORDPRESS_INTEGRATION.md): ขอบเขตระบบ สิทธิ์ใช้งาน ข้อจำกัด และรายการทดสอบที่ยังต้องผ่าน
+- [Architecture ADR](docs/cinema/ARCHITECTURE_ADR.md): Studio→Cinema boundary, commerce/ticketing แยก domain, Nginx routing, Ed25519 leases
+- [Current State](docs/production/CURRENT_STATE.md): สถานะปัจจุบัน, matrix, evidence และ runbooks
 
-ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ ขณะนี้เป็น Source Implementation พร้อม Static CI เท่านั้น ยังไม่มีหลักฐาน WordPress Runtime หรือ Production Acceptance
+ระบบ zMovie AI Studio, Render Worker และ Publication Approval เดิมยังคงแยกจาก WordPress Integration นี้ เชื่อมกันผ่าน explicit Studio→Cinema boundary (`zmovie_platform/studio_cinema.py`) ที่ต้องมี human approval 2 จุด ห้าม auto-publish จาก render สำเร็จ ดู [Current State](docs/production/CURRENT_STATE.md) และ [Feature Matrix](docs/production/FEATURE_MATRIX.md) สำหรับหลักฐาน runtime ปัจจุบันและงานที่เหลือ (live payments/ticket sales ต้องมี approval แยก)
+
+## WordPress Automated Installer
+
+มี `wp-installer/` สำหรับดาวน์โหลดและติดตั้ง WordPress ผ่าน WP-CLI พร้อมติดตั้ง `zwp-cinema` Plugin + Theme, สร้างหน้า Favorites/Submit Film และตั้งค่า ZeaZ License ให้ดึง Secret จาก Environment โดยไม่บันทึก Key จริงลง Repository
+
+เริ่มต้นที่ [คู่มือ WordPress Installer](wp-installer/README.md). Installer ออกแบบให้รันซ้ำได้ แต่การติดตั้งสำเร็จยังไม่ใช่ Production Acceptance; ต้องผ่าน WordPress Runtime, Browser, Backup/Restore และ Security Validation ก่อนเปิดบริการจริง
 
 ## Documentation
 

@@ -1,27 +1,41 @@
-<?php get_header(); ?>
-<main id="main" class="zwpc-film-page">
-    <?php while (have_posts()) : the_post();
-        $video = function_exists('zwpc_valid_video_url') ?
-            zwpc_valid_video_url(get_post_meta(get_the_ID(), 'zwpc_video_url', true)) : '';
-    ?>
-        <p class="zwpc-eyebrow"><?php esc_html_e('NOW SHOWING · ZEA Z CINEMA', 'zwp-cinema'); ?></p>
-        <h1><?php the_title(); ?></h1>
-        <?php if ($video) : ?>
-            <video class="zwpc-player" controls playsinline preload="metadata"
-                <?php if (has_post_thumbnail()) : ?>
-                    poster="<?php echo esc_url(get_the_post_thumbnail_url(get_the_ID(), 'large')); ?>"
-                <?php endif; ?>>
-                <source src="<?php echo esc_url($video); ?>"
-                    type="<?php echo esc_attr(preg_match('/\\.webm(?:\\?|$)/i', $video) ? 'video/webm' : 'video/mp4'); ?>">
-                <?php esc_html_e('Your browser cannot play this video.', 'zwp-cinema'); ?>
-            </video>
-        <?php elseif (has_post_thumbnail()) : ?>
-            <?php the_post_thumbnail('large', array('class' => 'zwpc-poster')); ?>
-        <?php endif; ?>
-        <div class="entry-content"><?php the_content(); ?></div>
-        <p><a class="zwpc-details-link" href="<?php echo esc_url(home_url('/')); ?>">
-            <?php esc_html_e('← Back to the cinema', 'zwp-cinema'); ?></a></p>
-        <?php if (comments_open() || get_comments_number()) : comments_template(); endif; ?>
-    <?php endwhile; ?>
+<?php
+get_header();
+$film = get_post();
+$video_url = get_post_meta($film->ID, 'zwpc_video_url', true);
+$poster_url = get_post_meta($film->ID, 'zwpc_poster_url', true) ?: get_the_post_thumbnail_url($film->ID, 'large');
+$runtime = get_post_meta($film->ID, 'zwpc_runtime', true);
+$age_rating = get_post_meta($film->ID, 'zwpc_age_rating', true);
+$genres = wp_get_post_terms($film->ID, 'zwpc_genre', array('fields' => 'names'));
+$creator = get_post_meta($film->ID, 'zwpc_creator', true) ?: get_the_author();
+?>
+<main id="primary" class="site-main">
+    <article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
+        <header class="entry-header">
+            <?php if ($poster_url): ?>
+                <img src="<?php echo esc_url($poster_url); ?>" alt="<?php the_title(); ?>" class="film-poster" loading="lazy" />
+            <?php endif; ?>
+            <h1 class="entry-title"><?php the_title(); ?></h1>
+        </header>
+        <div class="entry-content">
+            <?php if (!empty($genres)): ?>
+                <span class="film-genres"><?php echo esc_html(implode(', ', $genres)); ?></span>
+            <?php endif; ?>
+            <?php if ($runtime): ?>
+                <span class="film-runtime"><?php echo esc_html($runtime); ?> min</span>
+            <?php endif; ?>
+            <?php if ($age_rating): ?>
+                <span class="film-age-rating"><?php echo esc_html($age_rating); ?></span>
+            <?php endif; ?>
+            <div class="film-creator"><?php echo esc_html($creator); ?></div>
+            <?php the_content(); ?>
+            <?php if ($video_url): ?>
+                <div class="film-player">
+                    <video controls preload="metadata" poster="<?php echo esc_url($poster_url); ?>">
+                        <source src="<?php echo esc_url($video_url); ?>" type="video/mp4" />
+                    </video>
+                </div>
+            <?php endif; ?>
+        </div>
+    </article>
 </main>
 <?php get_footer(); ?>

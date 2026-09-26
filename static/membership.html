@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>สมาชิก / Membership — zMovie (Sandbox)</title>
+<style>
+:root { color-scheme: dark; }
+body { font-family: system-ui, sans-serif; background: #141414; color: #eee; margin: 0 auto; max-width: 720px; padding: 16px; }
+.banner { background: #4a2c00; border: 1px solid #a86a00; padding: 8px 12px; border-radius: 8px; }
+.card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-top: 12px; }
+label { display: block; margin-top: 8px; }
+input, select, button { font-size: 1rem; padding: 8px; margin-top: 4px; width: 100%; box-sizing: border-box; }
+button { background: #e50914; color: #fff; border: 0; border-radius: 6px; cursor: pointer; min-height: 44px; }
+button.secondary { background: #333; }
+pre { white-space: pre-wrap; word-break: break-word; background: #111; padding: 8px; border-radius: 6px; }
+.error { color: #ff8a8a; } .ok { color: #8aff8a; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+<h1>สมาชิก / Membership</h1>
+<div class="banner" role="note">SANDBOX เท่านั้น — ไม่มีการตัดเงินจริง / Sandbox only, no real charges.</div>
+
+<div class="card" id="loginCard">
+<h2>เข้าสู่ระบบ / Login</h2>
+<label for="username">ชื่อผู้ใช้ / Username</label>
+<input id="username" name="username" autocomplete="username" />
+<label for="password">รหัสผ่าน / Password</label>
+<input id="password" name="password" type="password" autocomplete="current-password" />
+<button id="loginBtn">เข้าสู่ระบบ / Login</button>
+<p id="loginMsg" role="status"></p>
+</div>
+
+<div class="card">
+<h2>แผน / Plans</h2>
+<button id="plansBtn" class="secondary">แสดงแผน / Show plans</button>
+<pre id="plansOut"></pre>
+</div>
+
+<div class="card">
+<h2>สมาชิกของฉัน / My subscription</h2>
+<button id="subBtn" class="secondary">แสดงสิทธิ์ / Show entitlements</button>
+<pre id="subOut"></pre>
+</div>
+
+<div class="card">
+<h2>สมัคร sandbox / Sandbox checkout</h2>
+<label for="plan">แผน / Plan</label>
+<select id="plan"><option value="premium">premium</option><option value="creator">creator</option><option value="free">free</option></select>
+<button id="checkoutBtn">สร้าง checkout / Create checkout</button>
+<button id="confirmBtn" class="secondary">ยืนยันชำระเงิน / Confirm payment</button>
+<pre id="checkoutOut"></pre>
+</div>
+
+<div class="card">
+<h2>จัดการ / Manage</h2>
+<button id="cancelBtn" class="secondary">ยกเลิก (ท้ายรอบ) / Cancel at period end</button>
+<button id="ledgerBtn" class="secondary">ใบเสร็จ / Receipts</button>
+<pre id="manageOut"></pre>
+<p><a href="/api/v2/privacy/export" id="exportLink">ส่งออกข้อมูลของฉัน / Export my data</a></p>
+</div>
+
+<script src="/static/membership.js"></script>
+</main>
+</body>
+</html>

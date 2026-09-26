@@ -589,7 +589,7 @@ For production models use:
 
 not:
 
-  /var/lib/zmovie/models/...
+  the operator home directory
 
 because hardened systemd services may use ProtectHome=true.
 

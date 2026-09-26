@@ -1,0 +1,56 @@
+# Example Nginx site: zMovie root + WordPress /cinema/ sub-path.
+#
+# This is a VERSIONED EXAMPLE, not the live host file. Copy to
+# /etc/nginx/sites-available/zmovie-cinema and adjust server_name.
+# Live DNS/tunnel/origin source of truth: zworkforce Terraform
+# (infrastructure/terraform/cloudflare). Never expose uvicorn or
+# database ports publicly; origins stay on 127.0.0.1.
+#
+# Requires symlink: /var/www/cinema -> /var/www/zmovie-cinema
+# (root /var/www lets try_files resolve /cinema/index.php correctly).
+
+server {
+    listen 80;
+    server_name zmovie.zeaz.dev;
+
+    # zMovie application - proxy to uvicorn on port 8080 (localhost only).
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # WordPress cinema at /cinema/.
+    location /cinema/ {
+        root /var/www;
+        index index.php;
+        try_files $uri $uri/ /cinema/index.php?$args;
+
+        # PHP handler nested inside the prefix so try_files fallback
+        # reaches PHP-FPM instead of the default root.
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+            fastcgi_param SCRIPT_NAME /cinema$fastcgi_script_name;
+            fastcgi_pass unix:/run/php/php8.5-fpm.sock;
+        }
+    }
+
+    location = /cinema {
+        return 301 /cinema/;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+}
