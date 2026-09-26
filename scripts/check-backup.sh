@@ -17,13 +17,19 @@ if ! find "$latest" -mmin "-$((MAX_AGE_HOURS * 60))" -print -quit | grep -q .; t
   fail "latest backup is older than ${MAX_AGE_HOURS}h: $latest"
 fi
 
-# Integrity: gzip stream must decode.
-zcat "$latest" > /dev/null 2>&1 || fail "gzip integrity check failed: $latest"
+# Decompress once into a scratch file. Piping `zcat` straight into
+# `grep -q` is racy: grep exits on the first match, zcat dies on SIGPIPE,
+# and `set -o pipefail` then reports the pipeline as failed. That produced
+# intermittent false "missing table" alarms on healthy backups.
+scratch="$(mktemp)"
+trap 'rm -f "$scratch"' EXIT
+zcat "$latest" > "$scratch" 2>/dev/null || { rm -f "$scratch"; fail "gzip integrity check failed: $latest"; }
 
 # Content: must contain the core WordPress tables.
 for table in wp_posts wp_users wp_options; do
-  zcat "$latest" 2>/dev/null | grep -q 'CREATE TABLE `'"$table"'`' \
-    || fail "backup missing table $table: $latest"
+  grep -q 'CREATE TABLE `'"$table"'`' "$scratch" \
+    || { rm -f "$scratch"; fail "backup missing table $table: $latest"; }
 done
 
+rm -f "$scratch"
 printf '[check-backup] OK: %s\n' "$latest"

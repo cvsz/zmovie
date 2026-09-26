@@ -1,0 +1,24 @@
+# Sanitized systemd drop-in: bind zMovie to loopback only.
+# NO secrets. Install during an approved maintenance window.
+#
+# Install:
+#   sudo install -m 0644 zmovie-loopback-bind.conf.example \
+#     /etc/systemd/system/zmovie.service.d/10-loopback-bind.conf
+#   sudo systemctl daemon-reload
+#   sudo systemctl restart zmovie
+#
+# Rollback:
+#   sudo rm -f /etc/systemd/system/zmovie.service.d/10-loopback-bind.conf
+#   sudo systemctl daemon-reload && sudo systemctl restart zmovie
+#
+# Preconditions (verified on the production host before authoring):
+#   - Nginx is the only local consumer and already proxies http://127.0.0.1:8080
+#   - no container publishes host port 8080
+#   - the Cloudflare Tunnel terminates on Nginx :80, not on :8080
+#   - UFW DENY 8080 stays in place as defense in depth
+#
+# Newer installs read ZMOVIE_HOST from /etc/zmovie/zmovie.env and need no
+# drop-in: set ZMOVIE_HOST=127.0.0.1 there instead.
+[Service]
+ExecStart=
+ExecStart=/bin/sh -c 'exec /opt/zmovie/.venv/bin/uvicorn main:app --host 127.0.0.1 --port "$ZMOVIE_PORT" --workers 1 --proxy-headers'

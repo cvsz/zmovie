@@ -5,3 +5,14 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# Local development and agent artifacts must never enter the image.
+# A stray .venv added ~292 MB of developer packages, shipped a different
+# dependency set than CI produces, and changed vulnerability-scan results.
+.venv/
+.venv*/
+.playwright/
+.playwright-cli/
+.superpowers/
+.evidence/
+*.log
