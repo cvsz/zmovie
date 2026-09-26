@@ -1,206 +1,140 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-log() { printf '[wp-installer] %s\n' "$*"; }
-die() { printf '[wp-installer] ERROR: %s\n' "$*" >&2; exit 1; }
-need() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
+INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_DIR="$(cd -- "$INSTALLER_DIR/.." && pwd -P)"
+ENV_FILE="$INSTALLER_DIR/.env"
+COMPOSE_FILE="$INSTALLER_DIR/compose.yaml"
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="${WP_INSTALLER_ENV:-$SCRIPT_DIR/.env}"
+usage() {
+    cat <<'HELP'
+Usage: bash wp-installer/install.sh [install|status|stop|--dry-run|--help]
+  install     Download and install WordPress + ZeaZ Cinema on local Docker staging.
+  status      Show WordPress and MariaDB containers.
+  stop        Stop this staging stack without deleting its volumes.
+  --dry-run   Show the installation steps without changing files or starting Docker.
+  --help      Show this message.
 
-if [[ -f "$ENV_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
-
-: "${WP_PATH:=/var/www/zmovie-cinema}"
-: "${WP_VERSION:=latest}"
-: "${WP_LOCALE:=en_US}"
-: "${DB_HOST:=127.0.0.1}"
-: "${DB_PORT:=3306}"
-: "${DB_PREFIX:=wp_}"
-: "${DB_AUTO_CREATE:=false}"
-: "${DB_ROOT_USER:=root}"
-: "${INSTALL_PLUGIN:=true}"
-: "${INSTALL_THEME:=true}"
-: "${ACTIVATE_THEME:=true}"
-: "${CREATE_CINEMA_PAGES:=true}"
-: "${VERIFY_CHECKSUMS:=true}"
-: "${FORCE_CORE_DOWNLOAD:=false}"
-
-for name in WP_URL WP_TITLE WP_ADMIN_USER WP_ADMIN_EMAIL DB_NAME DB_USER; do
-  [[ -n "${!name:-}" ]] || die "missing required environment variable: $name"
-done
-
-# Installation-only credentials are required only when they will actually
-# be used: DB_PASSWORD for a fresh wp-config.php, WP_ADMIN_PASSWORD for a
-# fresh core install. Repeat runs against an existing installation must
-# not require retaining them.
-require_credential() {
-  local name="$1" why="$2"
-  [[ -n "${!name:-}" ]] || die "missing required environment variable: $name ($why)"
+Configuration: wp-installer/.env (generated on first real install; gitignored).
+Secrets are generated automatically and are never printed by this script.
+HELP
 }
 
-[[ "$WP_URL" =~ ^https?://[^[:space:]]+$ ]] || die "WP_URL must be a valid http(s) URL"
-[[ "$DB_PREFIX" =~ ^[A-Za-z0-9_]+$ ]] || die "DB_PREFIX may contain only letters, digits, and underscore"
-[[ "$WP_ADMIN_EMAIL" == *@*.* ]] || die "WP_ADMIN_EMAIL does not look valid"
+die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-need php
-need curl
-need tar
-need rsync
-need mktemp
+check_sources() {
+    [[ -s "$REPO_DIR/wp-plugins/zwp-cinema/zwp-cinema.php" ]] || die 'Missing ZeaZ Cinema plugin source.'
+    [[ -s "$REPO_DIR/themes/zwp-cinema/style.css" ]] || die 'Missing ZeaZ Cinema theme source.'
+    [[ -s "$REPO_DIR/themes/zwp-cinema/index.php" ]] || die 'Missing ZeaZ Cinema theme template.'
+    [[ -s "$INSTALLER_DIR/scripts/bootstrap.sh" ]] || die 'Missing WP-CLI bootstrap script.'
+}
 
-WP_CLI_BIN="${WP_CLI_BIN:-}"
-WP_CLI_MODE="exec"
-if [[ -z "$WP_CLI_BIN" ]]; then
-  if command -v wp >/dev/null 2>&1; then
-    WP_CLI_BIN="$(command -v wp)"
-  else
-    WP_CLI_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/zmovie-wp-installer"
-    WP_CLI_BIN="$WP_CLI_DIR/wp-cli.phar"
-    WP_CLI_MODE="phar"
-    mkdir -p "$WP_CLI_DIR"
-    if [[ ! -s "$WP_CLI_BIN" ]]; then
-      log "downloading WP-CLI official Phar"
-      tmp_wpcli="$(mktemp "$WP_CLI_DIR/wp-cli.phar.XXXXXX")"
-      trap 'rm -f "${tmp_wpcli:-}"' EXIT
-      curl --fail --location --proto '=https' --tlsv1.2 https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar --output "$tmp_wpcli"
-      php "$tmp_wpcli" --info >/dev/null || die "downloaded WP-CLI Phar failed validation"
-      chmod 0755 "$tmp_wpcli"
-      mv "$tmp_wpcli" "$WP_CLI_BIN"
-      tmp_wpcli=
-      trap - EXIT
+make_secret() {
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 32
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import secrets; print(secrets.token_hex(32))'
+    else
+        die 'Install openssl or python3 to securely generate secrets.'
     fi
-  fi
-elif [[ "$WP_CLI_BIN" == *.phar ]]; then
-  WP_CLI_MODE=phar
-fi
-
-wp_raw() {
-  if [[ "$WP_CLI_MODE" == "phar" ]]; then
-    php "$WP_CLI_BIN" "$@"
-  else
-    "$WP_CLI_BIN" "$@"
-  fi
 }
 
-wp() {
-  wp_raw --path="$WP_PATH" --allow-root "$@"
+ensure_env() {
+    if [[ ! -e "$ENV_FILE" ]]; then
+        umask 077
+        cp "$INSTALLER_DIR/.env.example" "$ENV_FILE"
+        printf 'Created private configuration: %s\n' "$ENV_FILE"
+    fi
+    chmod 600 "$ENV_FILE"
+    local key
+    for key in WP_ADMIN_PASSWORD WP_DB_PASSWORD WP_DB_ROOT_PASSWORD; do
+        if ! grep -Eq "^${key}=[[:xdigit:]]{64}$" "$ENV_FILE"; then
+            if grep -q "^${key}=" "$ENV_FILE"; then
+                die "$key exists but is not a valid 64-character hex secret; configure it securely."
+            fi
+            printf '%s=%s\n' "$key" "$(make_secret)" >> "$ENV_FILE"
+        fi
+    done
 }
 
-wp_raw --info >/dev/null || die "WP-CLI bootstrap failed"
-
-if [[ "$DB_AUTO_CREATE" == "true" ]]; then
-  need mysql
-  [[ -n "${DB_ROOT_PASSWORD:-}" ]] || die "DB_AUTO_CREATE=true requires DB_ROOT_PASSWORD"
-  [[ "$DB_NAME" =~ ^[A-Za-z0-9_]+$ ]] || die "DB_NAME contains unsupported characters for auto-create"
-  [[ "$DB_USER" =~ ^[A-Za-z0-9_]+$ ]] || die "DB_USER contains unsupported characters for auto-create"
-
-  log "creating database/user when absent"
-  MYSQL_PWD="$DB_ROOT_PASSWORD" mysql     --host="$DB_HOST" --port="$DB_PORT" --user="$DB_ROOT_USER"     --protocol=TCP --batch --skip-column-names <<SQL
-CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
-ALTER USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'%';
-FLUSH PRIVILEGES;
-SQL
-fi
-
-mkdir -p "$WP_PATH"
-
-if [[ ! -f "$WP_PATH/wp-includes/version.php" ]]; then
-  log "downloading WordPress $WP_VERSION ($WP_LOCALE)"
-  download_args=(core download "--version=$WP_VERSION" "--locale=$WP_LOCALE" --skip-content)
-  [[ "$FORCE_CORE_DOWNLOAD" == "true" ]] && download_args+=(--force)
-  wp "${download_args[@]}"
-else
-  log "WordPress core already present; skipping core download"
-fi
-
-if [[ "$VERIFY_CHECKSUMS" == "true" ]]; then
-  log "verifying WordPress core checksums"
-  wp core verify-checksums --include-root
-fi
-
-if [[ ! -f "$WP_PATH/wp-config.php" ]]; then
-  require_credential DB_PASSWORD "needed only to create a fresh wp-config.php"
-  log "creating wp-config.php"
-  printf '%s\n' "$DB_PASSWORD" | wp config create     "--dbname=$DB_NAME"     "--dbuser=$DB_USER"     "--dbhost=$DB_HOST:$DB_PORT"     "--dbprefix=$DB_PREFIX"     --dbcharset=utf8mb4     --prompt=dbpass     --skip-check
-
-  # Read first-party license values from process environment at runtime.
-  wp config set ZEAZ_LICENSE_API "getenv('ZEAZ_LICENSE_API') ?: ''" --raw
-  wp config set ZEAZ_LICENSE_ORIGIN "getenv('ZEAZ_LICENSE_ORIGIN') ?: ''" --raw
-  wp config set ZEAZ_LICENSE_KEY "getenv('ZEAZ_LICENSE_KEY') ?: ''" --raw
-  wp config set ZEAZ_LICENSE_PUBLIC_KEY "getenv('ZEAZ_LICENSE_PUBLIC_KEY') ?: ''" --raw
-  wp config set DISALLOW_FILE_EDIT true --raw
-  wp config set FORCE_SSL_ADMIN true --raw
-else
-  log "wp-config.php already exists; preserving existing configuration"
-fi
-
-if ! wp core is-installed >/dev/null 2>&1; then
-  require_credential WP_ADMIN_PASSWORD "needed only for a fresh WordPress install"
-  log "installing WordPress database"
-  printf '%s\n' "$WP_ADMIN_PASSWORD" | wp core install     "--url=$WP_URL"     "--title=$WP_TITLE"     "--admin_user=$WP_ADMIN_USER"     "--admin_email=$WP_ADMIN_EMAIL"     "--locale=$WP_LOCALE"     --skip-email     --prompt=admin_password
-else
-  log "WordPress database already installed; skipping core install"
-fi
-
-install_local_component() {
-  local kind="$1" src="$2" dest="$3"
-  [[ -d "$src" ]] || die "missing repository source: $src"
-  mkdir -p "$dest"
-  rsync -a --delete --exclude='.git' "$src/" "$dest/"
-  log "installed local $kind source into $dest"
+get_env_value() {
+    local key="$1" line
+    line="$(grep -E "^${key}=" "$ENV_FILE" | tail -n 1 || true)"
+    line="${line#*=}"
+    line="${line%\"}"
+    line="${line#\"}"
+    printf '%s' "$line"
 }
 
-if [[ "$INSTALL_PLUGIN" == "true" ]]; then
-  install_local_component plugin     "$REPO_ROOT/wp-plugins/zwp-cinema"     "$WP_PATH/wp-content/plugins/zwp-cinema"
-  wp plugin activate zwp-cinema
-fi
+validate_env() {
+    local bind_ip site_url port
+    bind_ip="$(get_env_value WP_BIND_IP)"
+    port="$(get_env_value WP_PORT)"
+    site_url="$(get_env_value WP_SITE_URL)"
+    [[ "$bind_ip" == 127.0.0.1 ]] || die 'Installer binds to loopback only; configure external HTTPS routing separately.'
+    [[ "$port" =~ ^[0-9]{2,5}$ ]] && ((10#$port >= 1024 && 10#$port <= 65535)) || die 'WP_PORT must be an unprivileged TCP port (1024-65535).'
+    [[ "$site_url" =~ ^https?://[^[:space:]]+$ ]] || die 'WP_SITE_URL must be an HTTP(S) URL.'
+    [[ "$site_url" != *'@'* ]] || die 'WP_SITE_URL cannot contain credentials.'
+    local key value
+    for key in WP_ADMIN_PASSWORD WP_DB_PASSWORD WP_DB_ROOT_PASSWORD; do
+        value="$(get_env_value "$key")"
+        [[ "$value" =~ ^[[:xdigit:]]{64}$ ]] || die "Invalid $key."
+    done
+    [[ "$(get_env_value WP_ADMIN_USER)" != admin ]] || die 'Select a non-default WordPress administrator username.'
+}
 
-if [[ "$INSTALL_THEME" == "true" ]]; then
-  install_local_component theme     "$REPO_ROOT/themes/zwp-cinema"     "$WP_PATH/wp-content/themes/zwp-cinema"
-  if [[ "$ACTIVATE_THEME" == "true" ]]; then
-    wp theme activate zwp-cinema
-  fi
-fi
+docker_check() {
+    command -v docker >/dev/null 2>&1 || die 'Docker is missing. Install Docker Engine + Compose V2.'
+    docker compose version >/dev/null 2>&1 || die 'Docker Compose V2 is missing.'
+    docker info >/dev/null 2>&1 || die 'Docker daemon is unavailable or your user lacks permission.'
+}
 
-if [[ "$CREATE_CINEMA_PAGES" == "true" ]]; then
-  if ! wp post list --post_type=page --name=favorites --field=ID --format=ids | grep -q '[0-9]'; then
-    wp post create --post_type=page --post_status=publish       --post_title='Favorites' --post_name='favorites'       --post_content='[zwpc_favorites]' >/dev/null
-    log "created Favorites page"
-  fi
-  if ! wp post list --post_type=page --name=submit-film --field=ID --format=ids | grep -q '[0-9]'; then
-    wp post create --post_type=page --post_status=publish       --post_title='Submit Film' --post_name='submit-film'       --post_content='[zwpc_submit]' >/dev/null
-    log "created Submit Film page"
-  fi
-fi
+compose() { docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"; }
 
-wp rewrite structure '/%postname%/' --hard
-wp rewrite flush --hard
-wp cache flush >/dev/null 2>&1 || true
-
-log "running final verification"
-wp core is-installed
-wp core version
-wp plugin status zwp-cinema || true
-wp theme status zwp-cinema || true
-
-cat <<EOF
-
-WordPress installation completed.
-
-Site:      $WP_URL
-Path:      $WP_PATH
-Admin URL: ${WP_URL%/}/wp-admin/
-
-Security reminders:
-- Keep WP_ADMIN_PASSWORD, DB_PASSWORD and ZEAZ_LICENSE_KEY in a secret manager.
-- Put the site behind HTTPS before exposing wp-admin publicly.
-- Run the staging acceptance checklist in wp-plugins/zwp-cinema/README.md.
-EOF
+command_name="${1:-install}"
+case "$command_name" in
+    --help|-h|help) usage; exit 0 ;;
+    --dry-run)
+        check_sources
+        cat <<'STEPS'
+Dry run: no .env is written and no Docker commands are executed.
+1. Generate wp-installer/.env with independent 256-bit admin/DB/root secrets.
+2. Validate local-only listener and check Docker Compose.
+3. Pull the official WordPress, WP-CLI, MariaDB and BusyBox images.
+4. Initialize persistent WP volume ownership and wait for healthy MariaDB.
+5. Download WordPress from WordPress.org with WP-CLI and verify checksums.
+6. Provision wp-config.php and WP database if absent; activate local plugin/theme.
+7. Start WordPress on the configured loopback port and check container health.
+STEPS
+        exit 0 ;;
+    install)
+        check_sources
+        ensure_env
+        validate_env
+        docker_check
+        compose config --quiet
+        printf '%s\n' 'Pulling official installation images...'
+        compose --profile installer pull db volume-init wpcli wordpress
+        printf '%s\n' 'Preparing named WordPress storage...'
+        compose run --rm volume-init
+        printf '%s\n' 'Starting local MariaDB...'
+        compose up -d --wait db
+        printf '%s\n' 'Checking installer PHP memory limit...'
+        compose run --rm --entrypoint php wpcli -r 'if (ini_get("memory_limit") !== "512M") { fwrite(STDERR, "Installer PHP requires memory_limit=512M\n"); exit(1); } echo "WP-CLI PHP memory_limit=512M\n";'
+        printf '%s\n' 'Downloading/configuring WordPress via WP-CLI...'
+        compose run --rm wpcli
+        printf '%s\n' 'Starting WordPress...'
+        compose up -d --wait wordpress
+        printf '%s\n' 'WordPress staging installer completed.'
+        printf 'Website: %s\n' "$(get_env_value WP_SITE_URL)"
+        printf 'Login:   %s/wp-login.php\n' "$(get_env_value WP_SITE_URL | sed 's:/*$::')"
+        printf 'Admin:   %s\n' "$(get_env_value WP_ADMIN_USER)"
+        printf '%s\n' 'Credentials are in wp-installer/.env (mode 0600); do not commit or expose them.'
+        ;;
+    status|stop)
+        [[ -f "$ENV_FILE" ]] || die 'No wp-installer/.env found. Run install first.'
+        docker_check
+        if [[ "$command_name" == status ]]; then compose ps; else compose stop wordpress db; fi
+        ;;
+    *) usage >&2; die "Unknown command: $command_name" ;;
+esac

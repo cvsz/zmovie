@@ -1,36 +1,77 @@
-name: WordPress Installer checks
+name: WordPress Auto-Installer
 on:
   pull_request:
     paths:
       - 'wp-installer/**'
       - '.github/workflows/wp-installer.yml'
-      - 'README.md'
+      - 'wp-plugins/zwp-cinema/**'
+      - 'themes/zwp-cinema/**'
   push:
     branches: [main]
     paths:
       - 'wp-installer/**'
       - '.github/workflows/wp-installer.yml'
+      - 'wp-plugins/zwp-cinema/**'
+      - 'themes/zwp-cinema/**'
 permissions:
   contents: read
 jobs:
-  installer:
+  installer-static:
     runs-on: ubuntu-latest
+    timeout-minutes: 7
     steps:
       - uses: actions/checkout@v4
-      - name: Install ShellCheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - name: Bash syntax
-        run: bash -n wp-installer/install.sh
-      - name: ShellCheck
-        run: shellcheck -x wp-installer/install.sh
-      - name: Secret hygiene
+      - name: Check Bash and POSIX shell syntax
+        run: |
+          bash -n wp-installer/install.sh wp-installer/tests/*.sh
+          sh -n wp-installer/scripts/bootstrap.sh
+      - name: Test installer and WP-CLI mock idempotency
+        run: |
+          bash wp-installer/tests/test-installer.sh
+          bash wp-installer/tests/test-bootstrap.sh
+      - name: Validate Docker Compose with synthetic CI credentials
         shell: bash
         run: |
           set -euo pipefail
-          test -s wp-installer/.env.example
-          test -s wp-installer/README.md
-          if grep -En 'ZEAZ_LICENSE_KEY=[^$[:space:]]{8,}|WP_ADMIN_PASSWORD=[^$[:space:]]{12,}|DB_PASSWORD=[^$[:space:]]{12,}' wp-installer/install.sh; then
-            echo "Potential hard-coded secret found in executable installer"
-            exit 1
+          cp wp-installer/.env.example wp-installer/.env
+          chmod 600 wp-installer/.env
+          trap 'rm -f wp-installer/.env' EXIT
+          for name in WP_ADMIN_PASSWORD WP_DB_PASSWORD WP_DB_ROOT_PASSWORD; do
+            printf '%s=%s\n' "$name" "$(openssl rand -hex 32)" >> wp-installer/.env
+          done
+          docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml config --quiet
+  wordpress-staging-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [installer-static]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and install WordPress with original Cinema plugin and theme
+        run: bash wp-installer/install.sh
+      - name: Check WordPress Core, activated plugin and theme
+        shell: bash
+        run: |
+          set -euo pipefail
+          compose=(docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml)
+          "${compose[@]}" run --rm --entrypoint wp wpcli core is-installed
+          "${compose[@]}" run --rm --entrypoint wp wpcli core verify-checksums
+          "${compose[@]}" run --rm --entrypoint wp wpcli plugin is-active zwp-cinema
+          "${compose[@]}" run --rm --entrypoint wp wpcli theme is-active zwp-cinema
+          "${compose[@]}" run --rm --entrypoint sh wpcli -c 'test -s /var/www/html/.htaccess && grep -q "RewriteEngine On" /var/www/html/.htaccess'
+          curl --retry 10 --retry-delay 2 --retry-connrefused --fail --silent --show-error \
+            --output "$RUNNER_TEMP/zwpc-home.html" http://127.0.0.1:8090/
+          grep -Fq 'Every story deserves a screen' "$RUNNER_TEMP/zwpc-home.html"
+          curl --fail --silent --show-error \
+            'http://127.0.0.1:8090/?rest_route=/zwpc/v1/feed&page=1' | \
+              python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["items"] == [] and body["page"] == 1'
+          curl --fail --silent --show-error \
+            'http://127.0.0.1:8090/wp-json/zwpc/v1/feed?page=1' | \
+              python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["items"] == [] and body["page"] == 1'
+      - name: Non-destructive repeat installation
+        run: bash wp-installer/install.sh
+      - name: Stop staging containers (preserve volumes)
+        if: always()
+        run: |
+          if [ -f wp-installer/.env ]; then
+            docker compose --env-file wp-installer/.env -f wp-installer/compose.yaml stop wordpress db || true
           fi
-          test ! -e wp-installer/.env
