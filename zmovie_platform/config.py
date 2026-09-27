@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -11,6 +12,8 @@ class Settings:
     port: int = int(os.getenv("ZMOVIE_PORT", "8080"))
     auth_enabled: bool = os.getenv("ZMOVIE_AUTH_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
     cors_origins: tuple[str, ...] = tuple(item.strip() for item in os.getenv("ZMOVIE_CORS_ORIGINS", "").split(",") if item.strip())
+    base_url: str = os.getenv("ZMOVIE_BASE_URL", "").rstrip("/")
+    oauth_enabled: bool = os.getenv("ZMOVIE_OAUTH_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
 
 
 settings = Settings()

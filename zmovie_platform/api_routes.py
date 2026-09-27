@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from .api_schemas import AssetRequest, BootstrapRequest, LoginRequest, PipelineRequest, RenderRequest, StoryboardRequest
 from .audit import write as audit
@@ -16,6 +16,7 @@ from .exporter import export_project
 from .health import public_health_report
 from .jobs import submit
 from .metrics import increment, snapshot
+from .oauth import OAuthManager, build_oauth_manager_from_env, ensure_oauth_tables, find_or_create_oauth_user
 from .pipeline import assemble_from_jobs, render_project, render_shot, run_end_to_end
 from .presets import PRESETS
 from .providers import provider_specs
@@ -39,6 +40,17 @@ EXPORT_ROOT = Path(os.getenv("ZMOVIE_EXPORT_ROOT", "data/exports"))
 
 # First-run native/container installations can provision an admin through env.
 bootstrap_admin_from_env()
+ensure_oauth_tables()
+
+# OAuth manager (lazy init from env)
+_oauth_manager: OAuthManager | None = None
+
+
+def get_oauth_manager() -> OAuthManager:
+    global _oauth_manager
+    if _oauth_manager is None:
+        _oauth_manager = build_oauth_manager_from_env()
+    return _oauth_manager
 
 
 def current_actor(authorization: str | None = Header(default=None)) -> dict[str, str]:
@@ -97,16 +109,26 @@ def readyz() -> dict[str, object]:
 
 @router.get("/capabilities", tags=["system"])
 def capabilities() -> dict[str, object]:
+    oauth_providers = []
+    if settings.auth_enabled and settings.oauth_enabled:
+        try:
+            mgr = get_oauth_manager()
+            oauth_providers = mgr.list_providers()
+        except Exception:
+            pass
     return {
         "version": "2.0.0",
         "auth_enabled": settings.auth_enabled,
         "auth_bootstrap_required": settings.auth_enabled and user_count() == 0,
+        "oauth_enabled": settings.auth_enabled and settings.oauth_enabled,
+        "oauth_providers": oauth_providers,
         "providers": provider_specs(),
         "presets": PRESETS,
         "features": [
             "projects", "character-bible", "storyboard", "continuity-locks", "production-manifest",
             "quality-control", "director-notes", "render-jobs", "mock-renderer", "webhook-renderer",
             "asset-library", "ffmpeg-assembly", "production-export", "local-auth", "audit", "backup", "metrics",
+            "oauth",
         ],
     }
 
@@ -141,6 +163,152 @@ def login(payload: LoginRequest, request: Request) -> dict[str, object]:
     increment("auth.login_success")
     audit("auth.login", actor=user["username"])
     return {"user": user, "token": issue_token(user)}
+
+
+@router.get("/auth/oauth/providers", tags=["auth"])
+def oauth_providers() -> dict[str, object]:
+    """List configured OAuth providers."""
+    if not settings.auth_enabled or not settings.oauth_enabled:
+        return {"enabled": False, "providers": []}
+    mgr = get_oauth_manager()
+    return {"enabled": True, "providers": mgr.list_providers()}
+
+
+@router.get("/auth/oauth/login/{provider}", tags=["auth"])
+async def oauth_login(provider: str, request: Request) -> RedirectResponse:
+    """Initiate OAuth login flow."""
+    if not settings.auth_enabled or not settings.oauth_enabled:
+        raise HTTPException(status_code=404, detail="OAuth not enabled")
+    mgr = get_oauth_manager()
+    provider_obj = mgr.get_provider(provider)
+    if not provider_obj:
+        raise HTTPException(status_code=404, detail="OAuth provider not found")
+    base = settings.base_url or str(request.base_url).rstrip("/")
+    redirect_uri = f"{base}/api/v2/auth/oauth/callback"
+    auth_url, state = mgr.create_authorization_url(provider, redirect_uri)
+    response = RedirectResponse(url=auth_url)
+    response.set_cookie("oauth_state", state, httponly=True, secure=True, samesite="lax", max_age=600)
+    return response
+
+
+@router.get("/auth/oauth/callback", tags=["auth"])
+async def oauth_callback(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+) -> dict[str, object]:
+    """Handle OAuth callback, create/link user, return JWT."""
+    if not settings.auth_enabled or not settings.oauth_enabled:
+        raise HTTPException(status_code=404, detail="OAuth not enabled")
+    if error:
+        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Missing OAuth code or state")
+
+    # Verify state from cookie
+    cookie_state = request.cookies.get("oauth_state", "")
+    if not cookie_state or cookie_state != state:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
+
+    mgr = get_oauth_manager()
+    base = settings.base_url or str(request.base_url).rstrip("/")
+    redirect_uri = f"{base}/api/v2/auth/oauth/callback"
+
+    # Extract provider from state store
+    stored = mgr._state_store.get(state)
+    if not stored:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+    provider_name = stored[0]
+
+    try:
+        result = await mgr.exchange_code_for_provider(provider_name, redirect_uri, code, state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    userinfo = result["userinfo"]
+
+    # Find or create user
+    user = await find_or_create_oauth_user(provider_name, userinfo)
+    token = issue_token(user)
+    audit("auth.oauth.login", actor=user["username"], provider=provider_name)
+
+    response = RedirectResponse(url=f"{base}/studio?oauth=1")
+    response.delete_cookie("oauth_state")
+    return {
+        "user": user,
+        "token": token,
+        "provider": provider_name,
+        "redirect": f"{base}/studio",
+    }
+
+
+@router.post("/auth/oauth/link/{provider}", tags=["auth"])
+async def oauth_link(
+    provider: str,
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    """Link current authenticated user to an OAuth provider."""
+    if not settings.auth_enabled or not settings.oauth_enabled:
+        raise HTTPException(status_code=404, detail="OAuth not enabled")
+    mgr = get_oauth_manager()
+    provider_obj = mgr.get_provider(provider)
+    if not provider_obj:
+        raise HTTPException(status_code=404, detail="OAuth provider not found")
+    base = settings.base_url or "http://localhost:8080"
+    redirect_uri = f"{base}/api/v2/auth/oauth/callback/link"
+    auth_url, state = mgr.create_authorization_url(provider, redirect_uri)
+    # Store state with marker for linking
+    return {"auth_url": auth_url, "state": state}
+
+
+@router.get("/auth/oauth/callback/link", tags=["auth"])
+async def oauth_callback_link(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    """Handle OAuth link callback."""
+    if not settings.auth_enabled or not settings.oauth_enabled:
+        raise HTTPException(status_code=404, detail="OAuth not enabled")
+    if error:
+        raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Missing OAuth code or state")
+
+    mgr = get_oauth_manager()
+    base = settings.base_url or str(request.base_url).rstrip("/")
+    redirect_uri = f"{base}/api/v2/auth/oauth/callback/link"
+
+    # Extract provider from state store
+    stored = mgr._state_store.get(state)
+    if not stored:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+    provider_name = stored[0]
+
+    try:
+        result = await mgr.exchange_code_for_provider(provider_name, redirect_uri, code, state)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    userinfo = result["userinfo"]
+    sub = str(userinfo.get("sub") or userinfo.get("id") or "")
+    if not sub:
+        raise HTTPException(status_code=400, detail="OAuth userinfo missing subject")
+
+    # Link to current user
+    with connect() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO oauth_links(user_id, provider, provider_sub)
+               VALUES((SELECT id FROM users WHERE username=?),?,?)""",
+            (actor["username"], provider_name, sub),
+        )
+        conn.commit()
+
+    audit("auth.oauth.link", actor=actor["username"], provider=provider_name)
+    return {"linked": True, "provider": provider_name}
 
 
 @router.get("/projects", tags=["projects"])
