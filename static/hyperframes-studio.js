@@ -77,12 +77,13 @@
       };
     }
 
-    loadTemplates();
     ['loginBtn','bootstrapBtn'].forEach(id=>{
       const button=byId(id);
       if(button)button.addEventListener('click',()=>setTimeout(loadTemplates,500));
     });
   }
+
+  window.hyperframesStudio = { loadTemplates };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);
   else install();
