@@ -26,8 +26,7 @@ for f in /etc/zmovie/zmovie.env /etc/zmovie/zmovie-staging.env \
          /etc/zmovie-cinema/license-server.env \
          /etc/php/8.5/fpm/pool.d/zmovie-cinema-env.conf \
          /etc/nginx/sites-available/zmovie-cinema /etc/nginx/sites-available/license-zeaz \
-         /etc/systemd/system/zeaz-license.service /etc/systemd/system/zmovie-staging.service \
-         /etc/cloudflared-zaffiliate/config.yml; do
+/etc/systemd/system/zeaz-license.service /etc/systemd/system/zmovie-staging.service; do
   [[ -f "$f" ]] && cp -p "$f" "$OUT/config/" || log "WARN: missing $f"
 done
 chmod 600 "$OUT"/config/*

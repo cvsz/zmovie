@@ -41,6 +41,7 @@ provider or publication workflow.
 - [Makefile and CLI control](MAKEFILE_CLI_CONTROL.md)
 - [ComfyUI remote GPU](COMFYUI_REMOTE_GPU.md)
 - [ComfyUI workflow integration](../workflows/comfyui/README.md)
+- [Cloudflare & Terraform ownership](cloudflare-terraform.md)
 - [stable-diffusion.cpp local renderer](SDCPP_LOCAL_RENDERER.md)
 - [Hyperframes](HYPERFRAMES.md)
 - [Bilibili publishing](BILIBILI_PUBLISHING.md)

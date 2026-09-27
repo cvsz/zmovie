@@ -26,10 +26,17 @@ server {
     }
 
     # WordPress cinema at /cinema/.
+    # TLS is terminated at Cloudflare edge; explicitly pass HTTPS headers
+    # so WordPress generates correct URLs and cookies.
     location /cinema/ {
         root /var/www;
         index index.php;
         try_files $uri $uri/ /cinema/index.php?$args;
+
+        # Proxy headers for WordPress behind Cloudflare + Nginx (TLS terminated at edge)
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
 
         # PHP handler nested inside the prefix so try_files fallback
         # reaches PHP-FPM instead of the default root.
@@ -37,6 +44,8 @@ server {
             include snippets/fastcgi-php.conf;
             fastcgi_param SCRIPT_FILENAME $request_filename;
             fastcgi_param SCRIPT_NAME /cinema$fastcgi_script_name;
+            fastcgi_param HTTPS on;
+            fastcgi_param HTTP_X_FORWARDED_PROTO https;
             fastcgi_pass unix:/run/php/php8.5-fpm.sock;
         }
     }

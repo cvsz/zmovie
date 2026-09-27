@@ -34,7 +34,7 @@ or external publication confirmation.
   (`zmovie_platform/privacy.py`, `/api/v2/privacy/*`);
 - Liveness/readiness probes (`/api/v2/livez`, `/api/v2/readyz`),
   deployment smoke and backup/license health scripts, versioned
-  Nginx/cloudflared examples, deployment + WordPress backup/restore runbooks;
+  Nginx examples (Cloudflare Terraform in `cvsz/zworkforce`), deployment + WordPress backup/restore runbooks;
 - Security: threat model, Ed25519 license key management, secret-scan CI,
   cross-cutting regression tests; and
 - Production evidence set: feature matrix, test evidence, rollback evidence,

@@ -74,6 +74,14 @@ if [ ! -f "$WP_PATH/wp-config.php" ]; then
     wp config set DISALLOW_FILE_EDIT true --raw --path="$WP_PATH"
     if [ "${WP_SITE_URL#https://}" != "$WP_SITE_URL" ]; then
         wp config set FORCE_SSL_ADMIN true --raw --path="$WP_PATH"
+        # Detect HTTPS behind reverse proxy (Cloudflare + Nginx)
+        wp config set --raw --path="$WP_PATH" "
+if (isset(\$_SERVER['HTTP_X_FORWARDED_PROTO']) && \$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+    \$_SERVER['HTTPS'] = 'on';
+}
+if (isset(\$_SERVER['HTTP_X_FORWARDED_SSL']) && \$_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') {
+    \$_SERVER['HTTPS'] = 'on';
+}"
     fi
 else
     printf '%s\n' 'Existing wp-config.php preserved.'
