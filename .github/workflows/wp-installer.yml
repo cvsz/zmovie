@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check Bash and POSIX shell syntax
         run: |
           bash -n wp-installer/install.sh wp-installer/tests/*.sh
@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: 20
     needs: [installer-static]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download and install WordPress with original Cinema plugin and theme
         run: bash wp-installer/install.sh
       - name: Check WordPress Core, activated plugin and theme
