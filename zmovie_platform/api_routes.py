@@ -33,6 +33,7 @@ from .repository import (
     save_project,
 )
 from .security import validate_managed_asset_path
+from .storage import connect
 from .storyboard import create_storyboard, production_manifest, regenerate_project_prompts
 
 router = APIRouter(prefix="/api/v2")

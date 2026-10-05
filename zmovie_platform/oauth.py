@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import json
+import base64
+import hashlib
 import secrets
 import time
-import urllib.parse
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from .storage import connect
-from .auth import create_user, issue_token
 
 
 @dataclass(frozen=True)
@@ -52,8 +50,6 @@ class OAuthManager:
         code_verifier = secrets.token_urlsafe(64) if provider.pkce else ""
         code_challenge = ""
         if provider.pkce:
-            import hashlib
-            import base64
             challenge = hashlib.sha256(code_verifier.encode()).digest()
             code_challenge = base64.urlsafe_b64encode(challenge).rstrip(b"=").decode()
 

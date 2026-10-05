@@ -39,17 +39,17 @@ Follow AGENTS.md in every relevant repository.
 
 Main application:
 
-  /home/cvsz/zmovie
+  ~/zmovie
   https://github.com/cvsz/zmovie
 
 Cloudflare infrastructure:
 
-  /home/cvsz/platforms/zworkforce
+  ~/platforms/zworkforce
   https://github.com/cvsz/zworkforce
 
 Terraform:
 
-  /home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+  ~/platforms/zworkforce/infrastructure/terraform/cloudflare
 
 Production:
 

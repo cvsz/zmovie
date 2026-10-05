@@ -12,21 +12,21 @@ Your objective is to close the remaining production-readiness gaps for zMovie an
 zMovie:
 
 ```text
-/home/cvsz/zmovie
+~/zmovie
 https://github.com/cvsz/zmovie
 ```
 
 zWorkforce:
 
 ```text
-/home/cvsz/platforms/zworkforce
+~/platforms/zworkforce
 https://github.com/cvsz/zworkforce
 ```
 
 Cloudflare Terraform:
 
 ```text
-/home/cvsz/platforms/zworkforce/infrastructure/terraform/cloudflare
+~/platforms/zworkforce/infrastructure/terraform/cloudflare
 ```
 
 ## Current GitHub state to verify first
@@ -85,7 +85,7 @@ Do not assume these SHAs are still current after fetch.
 
 # PHASE 0 — RECONCILE LOCAL AND REMOTE STATE
 
-Start in `/home/cvsz/zmovie`.
+Start in `~/zmovie`.
 
 Run:
 
@@ -157,21 +157,21 @@ Preferred approach:
 Examples of real material that must still fail:
 
 ```text
------BEGIN PRIVATE KEY-----
+[BEGIN PRIVATE KEY]
 ...
------END PRIVATE KEY-----
+[END PRIVATE KEY]
 ```
 
 ```text
------BEGIN RSA PRIVATE KEY-----
+[BEGIN RSA PRIVATE KEY]
 ...
------END RSA PRIVATE KEY-----
+[END RSA PRIVATE KEY]
 ```
 
 ```text
------BEGIN OPENSSH PRIVATE KEY-----
+[BEGIN OPENSSH PRIVATE KEY]
 ...
------END OPENSSH PRIVATE KEY-----
+[END OPENSSH PRIVATE KEY]
 ```
 
 Documentation sentences that only mention the phrase must pass.
@@ -277,7 +277,7 @@ Sanitize committed documentation.
 Replace host-specific paths such as:
 
 ```text
-/home/cvsz/...
+~/...
 /tmp/...
 ```
 
