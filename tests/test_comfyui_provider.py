@@ -1,6 +1,8 @@
+import http.server
 import json
 import os
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,6 +11,28 @@ from zmovie_platform.providers import COMFYUI, provider_specs
 
 
 class ComfyUIProviderTests(unittest.TestCase):
+    def test_http_provider_does_not_follow_redirects(self):
+        class RedirectHandler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "file:///etc/passwd")
+                self.end_headers()
+
+            def log_message(self, _format, *_args):
+                return
+
+        server = http.server.HTTPServer(("127.0.0.1", 0), RedirectHandler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            with patch.dict(os.environ, {"ZMOVIE_COMFYUI_URL": f"http://127.0.0.1:{server.server_port}"}):
+                with self.assertRaisesRegex(RuntimeError, "ComfyUI HTTP 302"):
+                    COMFYUI._request_json("GET", "/redirect")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
     def test_workflow_placeholders_and_node_overrides(self):
         workflow = {
             "6": {

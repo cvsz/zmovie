@@ -35,3 +35,15 @@
   (รอรันบน hosted CI)
 - Bind address: ยัง `0.0.0.0:8080` (UFW DENY เป็น mitigation); loopback เตรียมไว้
   รอ maintenance window
+
+## Source security updates (2026-10-06)
+
+การเปลี่ยนแปลงใน source tree รอบนี้เพิ่ม startup validation สำหรับ bind ที่ไม่ใช่
+loopback, จำกัด HTTP bootstrap ให้ใช้ loopback ทั้งฝั่ง bind และ client, ทำ
+first-admin insert แบบ atomic, จำกัด OAuth email linking ให้ email ที่ provider
+ยืนยันแล้ว, และย้าย OAuth token กลับเข้า Studio ผ่าน URL fragment ที่ถูกลบจาก
+address bar หลังบันทึก token นอกจากนี้ License Server ใช้ SQLite state ที่คงอยู่
+หลัง restart พร้อม file permissions แบบจำกัด และ WordPress feed จำกัด page size
+OAuth บน public host ต้องใช้ `ZMOVIE_BASE_URL` แบบ HTTPS เพื่อไม่อาศัย Host
+header จาก request
+ผลตรวจ source นี้ไม่ยืนยันว่า production host ได้ deploy หรือ restart แล้ว

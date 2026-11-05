@@ -13,10 +13,28 @@ chmod 700 "$OUT_ROOT" "$OUT"
 log(){ printf '[backup-dr] %s\n' "$*"; }
 [[ "$(id -u)" -eq 0 ]] || { log "must run as root"; exit 1; }
 
-# 1) License key material (active + pinned public)
+# 1) License key material and durable license state
 mkdir -p "$OUT/zeaz-keys"
 cp -p /home/cvsz/.config/zeaz/license_server_private_key.pem "$OUT/zeaz-keys/" 2>/dev/null || log "WARN: server private key not found"
 cp -p /home/cvsz/.config/zeaz/license_server_public_key.pem "$OUT/zeaz-keys/" 2>/dev/null || log "WARN: server public key not found"
+if [[ -f /home/cvsz/.config/zeaz/licenses.sqlite3 ]]; then
+  python3 - /home/cvsz/.config/zeaz/licenses.sqlite3 "$OUT/zeaz-keys/licenses.sqlite3" <<'PY'
+import sqlite3
+import sys
+from pathlib import Path
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+with sqlite3.connect(source) as src, sqlite3.connect(target) as dst:
+    src.backup(dst)
+    result = dst.execute("PRAGMA quick_check").fetchone()
+    if result is None or str(result[0]).lower() != "ok":
+        raise SystemExit(f"License database integrity check failed: {result}")
+PY
+  chmod 600 "$OUT/zeaz-keys/licenses.sqlite3"
+else
+  log "WARN: license database not found"
+fi
 chmod 600 "$OUT"/zeaz-keys/* 2>/dev/null || true
 
 # 2) Service configuration (no databases)

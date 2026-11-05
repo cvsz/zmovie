@@ -8,13 +8,16 @@ After=network.target
 
 [Service]
 Type=simple
-User=root
+User=cvsz
+Group=cvsz
 WorkingDirectory=/home/cvsz/services/license-server
 EnvironmentFile=/etc/zmovie-cinema/license-admin.env
 EnvironmentFile=/etc/zmovie-cinema/license-server.env
+Environment=LICENSE_DB_PATH=/home/cvsz/.config/zeaz/licenses.sqlite3
 ExecStart=/usr/bin/python3 server.py
 Restart=always
 RestartSec=3
+UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

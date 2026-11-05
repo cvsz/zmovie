@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import secrets
+import sqlite3
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -30,7 +31,7 @@ class OAuthProvider:
 class OAuthManager:
     def __init__(self, providers: dict[str, OAuthProvider]):
         self._providers = providers
-        self._state_store: dict[str, tuple[str, str, float]] = {}  # state -> (provider_name, code_verifier, expires_at)
+        self._state_store: dict[str, tuple[str, str, float, str | None]] = {}
 
     def get_provider(self, name: str) -> OAuthProvider | None:
         return self._providers.get(name)
@@ -41,7 +42,13 @@ class OAuthManager:
             for p in self._providers.values()
         ]
 
-    def create_authorization_url(self, provider_name: str, redirect_uri: str) -> tuple[str, str]:
+    def create_authorization_url(
+        self,
+        provider_name: str,
+        redirect_uri: str,
+        *,
+        subject: str | None = None,
+    ) -> tuple[str, str]:
         provider = self._providers[provider_name]
         if provider is None:
             raise ValueError(f"Unknown OAuth provider: {provider_name}")
@@ -53,7 +60,7 @@ class OAuthManager:
             challenge = hashlib.sha256(code_verifier.encode()).digest()
             code_challenge = base64.urlsafe_b64encode(challenge).rstrip(b"=").decode()
 
-        self._state_store[state] = (provider_name, code_verifier, time.time() + 600)  # 10 min expiry
+        self._state_store[state] = (provider_name, code_verifier, time.time() + 600, subject)
 
         client = AsyncOAuth2Client(
             client_id=provider.client_id,
@@ -89,7 +96,7 @@ class OAuthManager:
         stored = self._state_store.pop(state, None)
         if not stored:
             raise ValueError("Invalid or expired OAuth state")
-        stored_provider, code_verifier, expires_at = stored
+        stored_provider, code_verifier, expires_at, _subject = stored
         if stored_provider != provider_name:
             raise ValueError("OAuth state provider mismatch")
         if expires_at < time.time():
@@ -235,29 +242,15 @@ async def find_or_create_oauth_user(
 
     Links by email if available, otherwise by provider+subject.
     """
-    email = userinfo.get("email")
+    email = str(userinfo.get("email") or "").strip().lower()
+    email_verified = userinfo.get("email_verified") is True
+    verified_email = email if email and email_verified else ""
     sub = str(userinfo.get("sub") or userinfo.get("id") or "")
     if not sub:
         raise ValueError("OAuth userinfo missing subject/ID")
 
     with connect() as conn:
-        # Try to find by email first
-        if email:
-            row = conn.execute(
-                "SELECT id,username,role FROM users WHERE email=?",
-                (email.lower(),),
-            ).fetchone()
-            if row:
-                # Link OAuth if not already linked
-                conn.execute(
-                    """INSERT OR IGNORE INTO oauth_links(user_id, provider, provider_sub)
-                       VALUES(?,?,?)""",
-                    (row["id"], provider_name, sub),
-                )
-                conn.commit()
-                return {"id": row["id"], "username": row["username"], "role": row["role"]}
-
-        # Try to find by provider+sub
+        conn.execute("BEGIN IMMEDIATE")
         row = conn.execute(
             """SELECT u.id,u.username,u.role FROM users u
                JOIN oauth_links o ON u.id=o.user_id
@@ -267,34 +260,40 @@ async def find_or_create_oauth_user(
         if row:
             return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
-        # Create new user
-        # Generate username from email or provider+sub
-        if email:
-            base_username = email.split("@")[0].lower()
-        else:
-            base_username = f"{provider_name}_{sub[:8]}"
+        if verified_email:
+            row = conn.execute(
+                "SELECT id,username,role FROM users WHERE lower(email)=?",
+                (verified_email,),
+            ).fetchone()
+            if row:
+                try:
+                    conn.execute(
+                        "INSERT INTO oauth_links(user_id, provider, provider_sub) VALUES(?,?,?)",
+                        (row["id"], provider_name, sub),
+                    )
+                except sqlite3.IntegrityError as exc:
+                    raise ValueError("OAuth identity is already linked to another account") from exc
+                return {"id": row["id"], "username": row["username"], "role": row["role"]}
 
-        # Ensure unique username
+        base_username = verified_email.split("@", 1)[0] if verified_email else f"{provider_name}_{sub[:8]}"
         username = base_username
         counter = 1
-        while True:
-            try:
-                with connect() as conn2:
-                    cur = conn2.execute(
-                        "INSERT INTO users(username,password_hash,role,email) VALUES(?,?,?,?)",
-                        (username, "", "user", email or ""),
-                    )
-                    user_id = cur.lastrowid
-                    conn2.execute(
-                        "INSERT INTO oauth_links(user_id, provider, provider_sub) VALUES(?,?,?)",
-                        (user_id, provider_name, sub),
-                    )
-                    conn2.commit()
-                break
-            except Exception:
-                counter += 1
-                username = f"{base_username}{counter}"
+        while conn.execute("SELECT 1 FROM users WHERE username=?", (username,)).fetchone():
+            counter += 1
+            username = f"{base_username}{counter}"
 
+        cur = conn.execute(
+            "INSERT INTO users(username,password_hash,role,email) VALUES(?,?,?,?)",
+            (username, "", "user", verified_email),
+        )
+        user_id = cur.lastrowid
+        try:
+            conn.execute(
+                "INSERT INTO oauth_links(user_id, provider, provider_sub) VALUES(?,?,?)",
+                (user_id, provider_name, sub),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("OAuth identity is already linked to another account") from exc
         return {"id": user_id, "username": username, "role": "user"}
 
 

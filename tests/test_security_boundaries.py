@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import tempfile
 import unittest
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,6 +16,7 @@ from starlette.requests import Request
 import app
 from zmovie_platform import api_routes, auth, health, publisher_routes, storage
 from zmovie_platform.api_schemas import AssetRequest, BootstrapRequest, LoginRequest
+from zmovie_platform.config import Settings, validate_runtime_settings
 
 
 def request_from_host(host: str) -> Request:
@@ -79,18 +82,71 @@ class SecurityBoundaryTests(unittest.TestCase):
         self.assertEqual(limited.exception.headers["Retry-After"], "60")
 
     def test_bootstrap_is_rate_limited_per_client(self) -> None:
-        host = f"203.0.113.{uuid.uuid4().int % 200 + 1}"
-        request = request_from_host(host)
+        request = request_from_host("127.0.0.1")
         payload = BootstrapRequest(username="admin", password="correct-horse")
         user = {"id": 1, "username": "admin", "role": "admin"}
-        with patch.object(api_routes, "user_count", return_value=0), patch.object(
-            api_routes, "create_user", return_value=user
+        with patch.object(api_routes, "settings", SimpleNamespace(auth_enabled=True, host="127.0.0.1")), patch.object(
+            api_routes, "create_first_admin", return_value=user
         ), patch.object(api_routes, "issue_token", return_value="token"), patch.object(api_routes, "audit"):
             for _ in range(5):
                 self.assertEqual(api_routes.bootstrap(payload, request)["token"], "token")
             with self.assertRaises(HTTPException) as limited:
                 api_routes.bootstrap(payload, request)
         self.assertEqual(limited.exception.status_code, 429)
+        self.assertEqual(limited.exception.headers["Retry-After"], "60")
+
+    def test_bootstrap_is_denied_to_remote_peers(self) -> None:
+        request = request_from_host("203.0.113.10")
+        payload = BootstrapRequest(username="admin", password="correct-horse")
+        config = SimpleNamespace(auth_enabled=True, host="127.0.0.1")
+        with patch.object(api_routes, "settings", config), patch.object(api_routes, "create_first_admin") as create:
+            with self.assertRaises(HTTPException) as denied:
+                api_routes.bootstrap(payload, request)
+        self.assertEqual(denied.exception.status_code, 403)
+        create.assert_not_called()
+
+    def test_first_admin_bootstrap_is_atomic(self) -> None:
+        def create_admin() -> dict[str, object] | None:
+            return auth.create_first_admin("admin", "correct-horse")
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(lambda _: create_admin(), range(2)))
+        self.assertEqual(sum(result is not None for result in results), 1)
+        self.assertEqual(auth.user_count(), 1)
+
+    def test_remote_bind_requires_authentication_and_persistent_secret(self) -> None:
+        with patch.dict(os.environ, {"ZMOVIE_SECRET_KEY": ""}):
+            with self.assertRaisesRegex(RuntimeError, "ZMOVIE_AUTH_ENABLED"):
+                validate_runtime_settings(Settings(host="0.0.0.0", auth_enabled=False))
+            with self.assertRaisesRegex(RuntimeError, "ZMOVIE_SECRET_KEY"):
+                validate_runtime_settings(Settings(host="0.0.0.0", auth_enabled=True))
+        with patch.dict(os.environ, {"ZMOVIE_SECRET_KEY": "x" * 32}):
+            validate_runtime_settings(Settings(host="0.0.0.0", auth_enabled=True))
+        validate_runtime_settings(Settings(host="127.0.0.1", auth_enabled=False))
+
+    def test_app_startup_initializes_database_and_env_admin(self) -> None:
+        old_app_db = app.DB_PATH
+        old_data_dir = app.DATA_DIR
+        app.DB_PATH = self.root / "legacy.db"
+        app.DATA_DIR = self.root
+        try:
+            with patch.object(app, "validate_runtime_settings"), patch.dict(
+                os.environ,
+                {"ZMOVIE_ADMIN_USER": "bootstrap-admin", "ZMOVIE_ADMIN_PASSWORD": "correct-horse"},
+                clear=False,
+            ):
+                async def start_application() -> None:
+                    async with app.lifespan(app.app):
+                        return
+
+                asyncio.run(start_application())
+            self.assertEqual(auth.user_count(), 1)
+            with storage.connect() as conn:
+                columns = {row["name"] for row in conn.execute("PRAGMA table_info(users)")}
+            self.assertIn("email", columns)
+        finally:
+            app.DB_PATH = old_app_db
+            app.DATA_DIR = old_data_dir
 
     def test_legacy_generation_is_rate_limited(self) -> None:
         host = f"192.0.2.{uuid.uuid4().int % 200 + 1}"

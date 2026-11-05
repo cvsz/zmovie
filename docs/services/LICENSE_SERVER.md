@@ -30,8 +30,16 @@ Server runs on `127.0.0.1:8085`.
 - Private key: `~/.config/zeaz/license_server_private_key.pem`
 - Public key: `~/.config/zeaz/license_server_public_key.pem`
 - Public key (base64url): `~/.config/zeaz/public-key.pem`
+- Directory mode: `0700`; private/public key modes: `0600` / `0644`
+- Durable license database: `~/.config/zeaz/licenses.sqlite3` (mode `0600`)
 
 ## License Key
-- Key: `647b1e4b9f52cc316474eeb083eb027a969a931ab6004826479ab3aeafb0db9`
+- Supply `LICENSE_SEED_KEYS` through the restricted service environment file.
+- ห้ามบันทึกค่า license key ในเอกสารหรือ repository
 - Product: zmovie
 - Features: catalog, favorites, submit_film, creator_submission, license_verification
+
+ฐานข้อมูล license เก็บ feature, expiry, revocation และ activation metadata
+โดยเก็บ SHA-256 digest แทน key ต้นฉบับ ระบบสำรองข้อมูลด้วย SQLite online
+backup ใน `scripts/backup-dr.sh`; เก็บ backup คู่กับ signing key ในที่เก็บ
+เข้ารหัสและจำกัดสิทธิ์

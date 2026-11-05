@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privacy Policy for zMovie at zmovie.zeaz.dev.">
+  <title>Privacy Policy — zMovie</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #090b10; color: #eef3ff; }
+    body { margin: 0; line-height: 1.65; }
+    header, main, footer { max-width: 860px; margin: 0 auto; padding: 20px; }
+    header, footer { border-bottom: 1px solid #253044; }
+    footer { border-top: 1px solid #253044; border-bottom: 0; }
+    nav { display: flex; flex-wrap: wrap; gap: 16px; }
+    a { color: #a9beff; }
+    h1, h2 { line-height: 1.25; }
+    h1 { margin-top: 24px; font-size: clamp(2rem, 6vw, 3rem); }
+    section { margin: 28px 0; }
+    .muted { color: #aab6ca; }
+  </style>
+</head>
+<body>
+  <header>
+    <nav aria-label="Site navigation">
+      <a href="/studio">Open zMovie Studio</a>
+      <a href="/terms">Terms of Service</a>
+      <a href="/privacy">Privacy Policy</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="muted">Last updated: October 6, 2026</p>
+    <p>This policy describes data handled by the zMovie instance at <strong>zmovie.zeaz.dev</strong>. The operator, <strong>cvsz</strong>, controls its application database, media storage, backups, and access settings.</p>
+
+    <section>
+      <h2>Information handled</h2>
+      <ul>
+        <li>Account information such as a username, password verifier, role, and, when an identity provider is used, the provider subject and verified email address.</li>
+        <li>Content you create or upload, including prompts, project and storyboard details, render-job metadata, and media assets and outputs.</li>
+        <li>Operational and security records, which may include account names, action types, timestamps, and request metadata needed to operate and protect the instance.</li>
+        <li>Authentication data in your browser. zMovie stores its API session token in browser local storage and uses a short-lived cookie during an OAuth sign-in flow.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>How information is used and shared</h2>
+      <p>Information is used to provide the requested zMovie features, authenticate users, protect the instance, and maintain operational records. zMovie does not include advertising or analytics SDKs.</p>
+      <p>When the operator enables an external identity, rendering, or publishing integration, the data needed for that action may be sent to the endpoint configured for that integration. For example, a rendering request may include its prompt and input media, and a publishing request may send the approved package to the selected platform. Those providers process information under their own terms and policies. Network and security providers used to serve this domain may also process connection metadata.</p>
+    </section>
+
+    <section>
+      <h2>Storage and retention</h2>
+      <p>Application records and media are kept in storage managed for this instance. The operator’s backup and cleanup schedules determine how long copies remain. A deletion request removes account and related database records, but security audit records are retained for integrity; media files and backups may remain until the operator’s cleanup and backup-retention processes remove them.</p>
+    </section>
+
+    <section>
+      <h2>Your choices</h2>
+      <p>Use a device you trust and clear the browser’s site storage when you want to remove the locally stored session token. Authenticated data export is available at <code>/api/v2/privacy/export</code>. Account deletion is available through the authenticated <code>POST /api/v2/privacy/delete</code> endpoint and requires confirmation of the account name. Deletion does not immediately remove retained audit records, media files, or backup copies as described above.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>For privacy questions or account data requests, contact cvsz at <a href="mailto:sea@zeaz.dev">sea@zeaz.dev</a>. You can also use the authenticated export and deletion controls described above.</p>
+    </section>
+  </main>
+  <footer>
+    <nav aria-label="Legal navigation">
+      <a href="/terms">Terms of Service</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/studio">zMovie Studio</a>
+    </nav>
+  </footer>
+</body>
+</html>

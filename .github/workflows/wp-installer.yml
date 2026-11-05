@@ -67,6 +67,11 @@ jobs:
           curl --fail --silent --show-error \
             'http://127.0.0.1:8090/wp-json/zwpc/v1/feed?page=1' | \
               python3 -c 'import json,sys; body=json.load(sys.stdin); assert body["items"] == [] and body["page"] == 1'
+          for query in 'per_page=0' 'per_page=49' 'page=0' 'page=10001'; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              "http://127.0.0.1:8090/wp-json/zwpc/v1/feed?${query}")"
+            test "$status" = 400 || { echo "Expected 400 for ${query}, got ${status}" >&2; exit 1; }
+          done
       - name: Non-destructive repeat installation
         run: bash wp-installer/install.sh
       - name: Stop staging containers (preserve volumes)

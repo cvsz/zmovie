@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import mimetypes
-import urllib.error
-import urllib.request
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from .providers import ComfyUIProvider
 
@@ -62,20 +62,20 @@ class ZFlowComfyUIProvider(ComfyUIProvider):
         if not path.is_file():
             raise FileNotFoundError(f"source image not found: {path}")
         boundary = "----zflow-" + uuid.uuid4().hex
-        request = urllib.request.Request(
-            self._base_url() + "/upload/image",
-            data=self._multipart_image(path, boundary),
-            method="POST",
-            headers={**self._headers(), "Content-Type": f"multipart/form-data; boundary={boundary}"},
-        )
+        headers = {**self._headers(), "Content-Type": f"multipart/form-data; boundary={boundary}"}
         try:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"ComfyUI image upload failed HTTP {exc.code}: {detail[:1200]}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(f"ComfyUI unavailable at {self._base_url()}: {exc.reason}") from exc
+            response = httpx.post(
+                self._base_url() + "/upload/image", content=self._multipart_image(path, boundary),
+                headers=headers, timeout=120, follow_redirects=False,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(
+                f"ComfyUI image upload failed HTTP {exc.response.status_code}: {exc.response.text[:1200]}"
+            ) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"ComfyUI unavailable at {self._base_url()}: {type(exc).__name__}") from exc
         if not isinstance(payload, dict) or not payload.get("name"):
             raise RuntimeError(f"ComfyUI image upload returned invalid response: {payload!r}")
         name = str(payload["name"])

@@ -14,7 +14,6 @@ from zmovie_platform.config import settings
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
 from zmovie_platform.media_upload_routes import router as media_upload_router
-from zmovie_platform.migrations import migrate
 from zmovie_platform.privacy_routes import router as privacy_router
 from zmovie_platform.product_routes import router as product_router
 from zmovie_platform.production_routes import router as production_router
@@ -22,7 +21,6 @@ from zmovie_platform.publisher_routes import router as publisher_router
 from zmovie_platform.security import SECURITY_HEADERS
 
 configure_logging()
-migrate()
 app.include_router(v2_router)
 app.include_router(cinema_import_router)
 app.include_router(commerce_router)
@@ -74,3 +72,20 @@ def product_studio() -> HTMLResponse:
 @app.get("/membership", include_in_schema=False)
 def membership() -> HTMLResponse:
     return HTMLResponse(Path("static/membership.html").read_text(encoding="utf-8"))
+
+
+def _legal_page(filename: str) -> HTMLResponse:
+    path = Path(__file__).resolve().parent / "static" / filename
+    return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
+@app.get("/terms", include_in_schema=False)
+@app.get("/terms-of-service", include_in_schema=False)
+def terms_of_service() -> HTMLResponse:
+    return _legal_page("terms.html")
+
+
+@app.get("/privacy", include_in_schema=False)
+@app.get("/privacy-policy", include_in_schema=False)
+def privacy_policy() -> HTMLResponse:
+    return _legal_page("privacy.html")

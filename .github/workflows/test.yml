@@ -161,7 +161,7 @@ jobs:
           python -m pip install ruff==0.16.1 pip-audit==2.10.1
 
       - name: Run focused Python lint
-        run: ruff check app.py main.py zmovie_platform tests
+        run: ruff check app.py main.py zmovie_platform tests scripts/check_studio_inline_js.py
 
       - name: Audit Python dependencies
         run: pip-audit -r requirements.txt

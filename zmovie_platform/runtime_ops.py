@@ -8,11 +8,11 @@ import shutil
 import socket
 import sqlite3
 import subprocess
-import urllib.error
-import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from .storage import DB_PATH, connect
 from .worker_queue import get as get_worker_job
@@ -47,10 +47,18 @@ def _api_health() -> dict[str, Any]:
     port = os.getenv("ZMOVIE_PORT", "8080").strip() or "8080"
     url = f"http://127.0.0.1:{port}/api/v2/health"
     try:
-        with urllib.request.urlopen(url, timeout=5) as response:
-            body = response.read(4096).decode("utf-8", errors="replace")
-        return {"ok": 200 <= response.status < 300, "status": response.status, "body": body[:1000]}
-    except (urllib.error.URLError, OSError, ValueError) as exc:
+        with httpx.stream("GET", url, timeout=5, follow_redirects=False) as response:
+            body = bytearray()
+            for chunk in response.iter_bytes():
+                body.extend(chunk[: 4096 - len(body)])
+                if len(body) >= 4096:
+                    break
+        return {
+            "ok": 200 <= response.status_code < 300,
+            "status": response.status_code,
+            "body": body.decode("utf-8", errors="replace")[:1000],
+        }
+    except (httpx.RequestError, ValueError) as exc:
         return {"ok": False, "detail": type(exc).__name__}
 
 

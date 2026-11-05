@@ -173,6 +173,7 @@ install_or_upgrade(){
     cat >"$ENV_FILE" <<EOF
 ZMOVIE_HOST=0.0.0.0
 ZMOVIE_PORT=${PORT}
+ZMOVIE_BASE_URL=${PUBLIC_BASE_URL}
 ZMOVIE_DB_PATH=${DATA_DIR}/zmovie.db
 ZMOVIE_MEDIA_ROOT=${DATA_DIR}/media
 ZMOVIE_EXPORT_ROOT=${DATA_DIR}/exports
@@ -220,6 +221,7 @@ EOF
       PORT="${existing_port:-$PORT}"
     fi
     grep -q '^ZMOVIE_PUBLISH_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_PUBLISH_ROOT=%s\n' "$DATA_DIR/publish" >>"$ENV_FILE"
+    grep -q '^ZMOVIE_BASE_URL=' "$ENV_FILE" || printf 'ZMOVIE_BASE_URL=%s\n' "$PUBLIC_BASE_URL" >>"$ENV_FILE"
     grep -q '^ZMOVIE_ENABLE_DOCS=' "$ENV_FILE" || printf 'ZMOVIE_ENABLE_DOCS=%s\n' "${ZMOVIE_ENABLE_DOCS:-false}" >>"$ENV_FILE"
     grep -q '^ZMOVIE_TTS_PROVIDER=' "$ENV_FILE" || printf 'ZMOVIE_TTS_PROVIDER=edge\n' >>"$ENV_FILE"
     grep -q '^ZMOVIE_TTS_VOICE=' "$ENV_FILE" || printf 'ZMOVIE_TTS_VOICE=th-TH-PremwadeeNeural\n' >>"$ENV_FILE"

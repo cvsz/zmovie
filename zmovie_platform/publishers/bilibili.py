@@ -265,11 +265,22 @@ def _update_job(job_id: str, **fields: Any) -> dict[str, Any]:
         raise ValueError(f"unsupported publish-job fields: {sorted(unknown)}")
     if "metadata" in fields:
         fields["metadata"] = dumps(fields["metadata"])
-    fields["updated_at"] = utcnow()
-    assignments = ",".join(f"{key}=?" for key in fields)
-    values = list(fields.values()) + [job_id]
     with connect() as conn:
-        cur = conn.execute(f"UPDATE publish_jobs SET {assignments} WHERE id=?", values)
+        cur = conn.execute(
+            "UPDATE publish_jobs SET "
+            "status=CASE WHEN ? THEN ? ELSE status END, "
+            "published_url=CASE WHEN ? THEN ? ELSE published_url END, "
+            "error=CASE WHEN ? THEN ? ELSE error END, "
+            "metadata=CASE WHEN ? THEN ? ELSE metadata END, "
+            "updated_at=? WHERE id=?",
+            (
+                "status" in fields, fields.get("status"),
+                "published_url" in fields, fields.get("published_url"),
+                "error" in fields, fields.get("error"),
+                "metadata" in fields, fields.get("metadata"),
+                utcnow(), job_id,
+            ),
+        )
         if cur.rowcount == 0:
             raise ValueError("publish job not found")
     return get_publish_job(job_id) or {}

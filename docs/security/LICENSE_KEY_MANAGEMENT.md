@@ -19,9 +19,14 @@
 
 | คีย์ | ที่อยู่ | ใครเข้าถึงได้ |
 |---|---|---|
-| Private signing key | License Server env/host เท่านั้น (`license_server_private_key.pem`, chmod 600) | License Server process เท่านั้น |
+| Private signing key | License Server host เท่านั้น (`license_server_private_key.pem`, directory 0700/file 0600) | License Server process เท่านั้น |
 | Public verify key | `wp-config.php: ZEAZ_LICENSE_PUBLIC_KEY` (base64url, pin นอกระบบ) + `/v1/public-key` | WordPress + สาธารณะ (verify only) |
 | License key (`ZEAZ_LICENSE_KEY`) | secret env ของ site | WordPress server เท่านั้น |
+
+License Server เก็บ feature, expiry, revocation และ activation metadata ใน
+SQLite ที่ `LICENSE_DB_PATH` (ค่าเริ่มต้นอยู่ใน key directory, mode 0600) โดย
+เก็บ SHA-256 digest แทน plaintext key ต้อง backup ฐานข้อมูลพร้อม keypair ด้วย
+วิธี SQLite online backup ตาม [คู่มือ License Server](../services/LICENSE_SERVER.md)
 
 **ห้าม:** commit private key / license key / DB password ลง git,
 พิมพ์ secret ลง log/issue/PR, ฝัง key ใน HTML/JS, ใช้ key เดียวข้าม product

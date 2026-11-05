@@ -151,13 +151,13 @@ dev-setup: ## Create local venv and install Python + Chromium dependencies
 
 dev: ## Run local development API/Studio
 	@test -x "$(PY)" || { echo "Run 'make dev-setup' first" >&2; exit 2; }
-	$(PY) -m uvicorn main:app --host $(HOST) --port $(PORT) --reload
+	ZMOVIE_HOST="$(HOST)" $(PY) -m uvicorn main:app --host $(HOST) --port $(PORT) --reload
 
 test: ## Run unit tests
 	$(PYTHON) -m unittest discover -s tests -v
 
 lint: ## Run Ruff when installed
-	$(PYTHON) -m ruff check app.py main.py zmovie_platform tests
+	$(PYTHON) -m ruff check app.py main.py zmovie_platform tests scripts/check_studio_inline_js.py
 
 audit: ## Audit Python dependencies when pip-audit is installed
 	$(PYTHON) -m pip_audit -r requirements.txt
@@ -168,6 +168,7 @@ check: ## Run compile, tests, shell syntax and frontend JS syntax
 	bash -n install.sh install-docker.sh scripts/*.sh
 	node --check static/app.js
 	node --check static/studio-preview.js
+	$(PYTHON) scripts/check_studio_inline_js.py
 
 compose-build: ## Build Docker production image
 	$(COMPOSE) build

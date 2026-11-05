@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 import zmovie
 from zmovie_platform.auth import decode_token
-from zmovie_platform.config import settings
+from zmovie_platform.config import settings, validate_runtime_settings
 from zmovie_platform.rate_limit import allowed
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -48,7 +48,15 @@ DOCS_ENABLED = _env_flag("ZMOVIE_ENABLE_DOCS")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    validate_runtime_settings()
+    from zmovie_platform.auth import bootstrap_admin_from_env
+    from zmovie_platform.migrations import migrate
+    from zmovie_platform.oauth import ensure_oauth_tables
+
+    migrate()
     init_db()
+    bootstrap_admin_from_env()
+    ensure_oauth_tables()
     yield
 
 
@@ -242,6 +250,6 @@ def history_item(generation_id: int) -> dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
 
-    host = os.getenv("ZMOVIE_HOST", "0.0.0.0")
+    host = os.getenv("ZMOVIE_HOST", "127.0.0.1")
     port = int(os.getenv("ZMOVIE_PORT", "8080"))
     uvicorn.run("main:app", host=host, port=port, reload=False)

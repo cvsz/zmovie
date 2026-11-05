@@ -6,13 +6,13 @@ import os
 import shutil
 import subprocess
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+
+import httpx
 
 
 @dataclass(frozen=True)
@@ -79,17 +79,22 @@ class GenericWebhookProvider:
         endpoint = os.getenv("ZMOVIE_PROVIDER_WEBHOOK", "").strip()
         if not endpoint:
             raise RuntimeError("ZMOVIE_PROVIDER_WEBHOOK is not configured")
+        parsed_endpoint = urllib.parse.urlsplit(endpoint)
+        if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
+            raise RuntimeError("ZMOVIE_PROVIDER_WEBHOOK must be an http(s) URL")
         token = os.getenv("ZMOVIE_PROVIDER_TOKEN", "").strip()
         payload = json.dumps({"prompt": prompt, "negative_prompt": negative_prompt, **metadata}).encode("utf-8")
-        request = urllib.request.Request(endpoint, data=payload, method="POST", headers={"Content-Type": "application/json"})
+        headers = {"Content-Type": "application/json"}
         if token:
-            request.add_header("Authorization", f"Bearer {token}")
+            headers["Authorization"] = f"Bearer {token}"
         try:
-            with urllib.request.urlopen(request, timeout=120) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"provider HTTP {exc.code}: {body[:1000]}") from exc
+            response = httpx.post(endpoint, content=payload, headers=headers, timeout=120, follow_redirects=False)
+            response.raise_for_status()
+            data = response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(f"provider HTTP {exc.response.status_code}: {exc.response.text[:1000]}") from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"provider request failed: {type(exc).__name__}") from exc
         if not isinstance(data, dict):
             raise TypeError("provider response must be a JSON object")
         return data
@@ -152,15 +157,19 @@ class ComfyUIProvider:
         if payload is not None:
             body = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        request = urllib.request.Request(self._base_url() + path, data=body, method=method, headers=headers)
         try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                raw = response.read()
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"ComfyUI HTTP {exc.code} for {path}: {detail[:1200]}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(f"ComfyUI unavailable at {self._base_url()}: {exc.reason}") from exc
+            response = httpx.request(
+                method, self._base_url() + path, content=body, headers=headers,
+                timeout=timeout, follow_redirects=False,
+            )
+            response.raise_for_status()
+            raw = response.content
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(
+                f"ComfyUI HTTP {exc.response.status_code} for {path}: {exc.response.text[:1200]}"
+            ) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"ComfyUI unavailable at {self._base_url()}: {type(exc).__name__}") from exc
         try:
             return json.loads(raw.decode("utf-8"))
         except json.JSONDecodeError as exc:
@@ -327,11 +336,15 @@ class ComfyUIProvider:
 
     def _download_output(self, ref: dict[str, str], target: Path) -> None:
         query = urllib.parse.urlencode(ref)
-        request = urllib.request.Request(self._base_url() + "/view?" + query, headers=self._headers(), method="GET")
         try:
-            with urllib.request.urlopen(request, timeout=300) as response, target.open("wb") as handle:
-                shutil.copyfileobj(response, handle)
-        except (urllib.error.HTTPError, urllib.error.URLError) as exc:
+            with httpx.stream(
+                "GET", self._base_url() + "/view?" + query, headers=self._headers(),
+                timeout=300, follow_redirects=False,
+            ) as response, target.open("wb") as handle:
+                response.raise_for_status()
+                for chunk in response.iter_bytes():
+                    handle.write(chunk)
+        except httpx.HTTPError as exc:
             raise RuntimeError(f"failed to download ComfyUI output {ref['filename']}: {exc}") from exc
 
     def _download_outputs(self, entry: dict[str, Any], output_dir: Path, job_id: str) -> tuple[list[str], str, str]:

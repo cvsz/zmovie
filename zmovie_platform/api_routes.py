@@ -1,22 +1,25 @@
 from __future__ import annotations
 
+import ipaddress
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from .api_schemas import AssetRequest, BootstrapRequest, LoginRequest, PipelineRequest, RenderRequest, StoryboardRequest
 from .audit import write as audit
-from .auth import authenticate, bootstrap_admin_from_env, create_user, decode_token, issue_token, user_count
+from .auth import authenticate, create_first_admin, decode_token, issue_token, user_count
 from .backup import create_backup
-from .config import settings
+from .config import is_loopback_host, settings
 from .exporter import export_project
 from .health import public_health_report
 from .jobs import submit
 from .metrics import increment, snapshot
-from .oauth import OAuthManager, build_oauth_manager_from_env, ensure_oauth_tables, find_or_create_oauth_user
+from .oauth import OAuthManager, build_oauth_manager_from_env, find_or_create_oauth_user
 from .pipeline import assemble_from_jobs, render_project, render_shot, run_end_to_end
 from .presets import PRESETS
 from .providers import provider_specs
@@ -38,10 +41,6 @@ from .storyboard import create_storyboard, production_manifest, regenerate_proje
 
 router = APIRouter(prefix="/api/v2")
 EXPORT_ROOT = Path(os.getenv("ZMOVIE_EXPORT_ROOT", "data/exports"))
-
-# First-run native/container installations can provision an admin through env.
-bootstrap_admin_from_env()
-ensure_oauth_tables()
 
 # OAuth manager (lazy init from env)
 _oauth_manager: OAuthManager | None = None
@@ -82,6 +81,39 @@ def _enforce_rate_limit(request: Request, *, name: str, limit: int) -> None:
             detail="rate limit exceeded",
             headers={"Retry-After": "60"},
         )
+
+
+def oauth_base_url(request: Request) -> str:
+    configured = settings.base_url.strip().rstrip("/")
+    if not configured:
+        peer = request.client.host if request.client else ""
+        try:
+            peer_is_loopback = ipaddress.ip_address(peer).is_loopback
+        except ValueError:
+            peer_is_loopback = False
+        if not is_loopback_host(request.url.hostname or "") or not peer_is_loopback:
+            raise HTTPException(status_code=503, detail="OAuth requires ZMOVIE_BASE_URL on a public host")
+        return str(request.base_url).rstrip("/")
+
+    try:
+        parsed = urlsplit(configured)
+        hostname = parsed.hostname or ""
+        parsed.port
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="ZMOVIE_BASE_URL is invalid") from exc
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+        or (not is_loopback_host(hostname) and parsed.scheme != "https")
+    ):
+        raise HTTPException(status_code=503, detail="ZMOVIE_BASE_URL is invalid")
+    return configured
 
 
 @router.get("/health", tags=["system"])
@@ -144,12 +176,19 @@ def bootstrap(payload: BootstrapRequest, request: Request) -> dict[str, object]:
     _enforce_rate_limit(request, name="auth-bootstrap", limit=5)
     if not settings.auth_enabled:
         return {"auth_enabled": False, "message": "authentication is disabled"}
-    if user_count() != 0:
-        raise HTTPException(status_code=409, detail="bootstrap is already complete")
+    peer = request.client.host if request.client else ""
     try:
-        user = create_user(payload.username, payload.password, "admin")
+        peer_is_loopback = ipaddress.ip_address(peer).is_loopback
+    except ValueError:
+        peer_is_loopback = False
+    if not is_loopback_host(settings.host) or not peer_is_loopback:
+        raise HTTPException(status_code=403, detail="bootstrap is available only over a loopback connection")
+    try:
+        user = create_first_admin(payload.username, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if user is None:
+        raise HTTPException(status_code=409, detail="bootstrap is already complete")
     audit("auth.bootstrap", actor=user["username"])
     return {"user": user, "token": issue_token(user)}
 
@@ -184,11 +223,14 @@ async def oauth_login(provider: str, request: Request) -> RedirectResponse:
     provider_obj = mgr.get_provider(provider)
     if not provider_obj:
         raise HTTPException(status_code=404, detail="OAuth provider not found")
-    base = settings.base_url or str(request.base_url).rstrip("/")
+    base = oauth_base_url(request)
     redirect_uri = f"{base}/api/v2/auth/oauth/callback"
     auth_url, state = mgr.create_authorization_url(provider, redirect_uri)
     response = RedirectResponse(url=auth_url)
-    response.set_cookie("oauth_state", state, httponly=True, secure=True, samesite="lax", max_age=600)
+    response.set_cookie(
+        "oauth_state", state, httponly=True, secure=request.url.scheme == "https",
+        samesite="lax", max_age=600, path="/api/v2/auth/oauth/callback",
+    )
     return response
 
 
@@ -198,8 +240,8 @@ async def oauth_callback(
     code: str = "",
     state: str = "",
     error: str = "",
-) -> dict[str, object]:
-    """Handle OAuth callback, create/link user, return JWT."""
+) -> RedirectResponse:
+    """Handle OAuth callback and hand the API token to Studio through a URL fragment."""
     if not settings.auth_enabled or not settings.oauth_enabled:
         raise HTTPException(status_code=404, detail="OAuth not enabled")
     if error:
@@ -213,12 +255,12 @@ async def oauth_callback(
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
     mgr = get_oauth_manager()
-    base = settings.base_url or str(request.base_url).rstrip("/")
+    base = oauth_base_url(request)
     redirect_uri = f"{base}/api/v2/auth/oauth/callback"
 
-    # Extract provider from state store
+    # ป้องกันไม่ให้ login state ถูกใช้กับ callback สำหรับเชื่อมบัญชี
     stored = mgr._state_store.get(state)
-    if not stored:
+    if not stored or stored[3] is not None:
         raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
     provider_name = stored[0]
 
@@ -234,21 +276,18 @@ async def oauth_callback(
     token = issue_token(user)
     audit("auth.oauth.login", actor=user["username"], provider=provider_name)
 
-    response = RedirectResponse(url=f"{base}/studio?oauth=1")
-    response.delete_cookie("oauth_state")
-    return {
-        "user": user,
-        "token": token,
-        "provider": provider_name,
-        "redirect": f"{base}/studio",
-    }
+    response = RedirectResponse(url=f"{base}/studio#oauth_token={token}", status_code=303)
+    response.delete_cookie("oauth_state", path="/api/v2/auth/oauth/callback")
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 @router.post("/auth/oauth/link/{provider}", tags=["auth"])
 async def oauth_link(
     provider: str,
+    request: Request,
     actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+) -> JSONResponse:
     """Link current authenticated user to an OAuth provider."""
     if not settings.auth_enabled or not settings.oauth_enabled:
         raise HTTPException(status_code=404, detail="OAuth not enabled")
@@ -256,11 +295,15 @@ async def oauth_link(
     provider_obj = mgr.get_provider(provider)
     if not provider_obj:
         raise HTTPException(status_code=404, detail="OAuth provider not found")
-    base = settings.base_url or "http://localhost:8080"
+    base = oauth_base_url(request)
     redirect_uri = f"{base}/api/v2/auth/oauth/callback/link"
-    auth_url, state = mgr.create_authorization_url(provider, redirect_uri)
-    # Store state with marker for linking
-    return {"auth_url": auth_url, "state": state}
+    auth_url, state = mgr.create_authorization_url(provider, redirect_uri, subject=actor["username"])
+    response = JSONResponse({"auth_url": auth_url, "state": state})
+    response.set_cookie(
+        "oauth_link_state", state, httponly=True, secure=request.url.scheme == "https",
+        samesite="lax", max_age=600, path="/api/v2/auth/oauth/callback/link",
+    )
+    return response
 
 
 @router.get("/auth/oauth/callback/link", tags=["auth"])
@@ -269,8 +312,7 @@ async def oauth_callback_link(
     code: str = "",
     state: str = "",
     error: str = "",
-    actor: dict[str, str] = Depends(current_actor),
-) -> dict[str, object]:
+) -> RedirectResponse:
     """Handle OAuth link callback."""
     if not settings.auth_enabled or not settings.oauth_enabled:
         raise HTTPException(status_code=404, detail="OAuth not enabled")
@@ -278,16 +320,18 @@ async def oauth_callback_link(
         raise HTTPException(status_code=400, detail=f"OAuth error: {error}")
     if not code or not state:
         raise HTTPException(status_code=400, detail="Missing OAuth code or state")
+    if request.cookies.get("oauth_link_state", "") != state:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
     mgr = get_oauth_manager()
-    base = settings.base_url or str(request.base_url).rstrip("/")
+    base = oauth_base_url(request)
     redirect_uri = f"{base}/api/v2/auth/oauth/callback/link"
 
-    # Extract provider from state store
     stored = mgr._state_store.get(state)
-    if not stored:
+    if not stored or not stored[3]:
         raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
     provider_name = stored[0]
+    username = stored[3]
 
     try:
         result = await mgr.exchange_code_for_provider(provider_name, redirect_uri, code, state)
@@ -299,17 +343,31 @@ async def oauth_callback_link(
     if not sub:
         raise HTTPException(status_code=400, detail="OAuth userinfo missing subject")
 
-    # Link to current user
-    with connect() as conn:
-        conn.execute(
-            """INSERT OR REPLACE INTO oauth_links(user_id, provider, provider_sub)
-               VALUES((SELECT id FROM users WHERE username=?),?,?)""",
-            (actor["username"], provider_name, sub),
-        )
-        conn.commit()
+    try:
+        with connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            user = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+            if user is None:
+                raise HTTPException(status_code=401, detail="OAuth link owner no longer exists")
+            linked = conn.execute(
+                "SELECT user_id FROM oauth_links WHERE provider=? AND provider_sub=?",
+                (provider_name, sub),
+            ).fetchone()
+            if linked and linked["user_id"] != user["id"]:
+                raise HTTPException(status_code=409, detail="OAuth identity is already linked to another account")
+            conn.execute(
+                "INSERT INTO oauth_links(user_id, provider, provider_sub) VALUES(?,?,?) "
+                "ON CONFLICT(user_id, provider) DO UPDATE SET provider_sub=excluded.provider_sub",
+                (user["id"], provider_name, sub),
+            )
+    except sqlite3.IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="OAuth identity is already linked to another account") from exc
 
-    audit("auth.oauth.link", actor=actor["username"], provider=provider_name)
-    return {"linked": True, "provider": provider_name}
+    audit("auth.oauth.link", actor=username, provider=provider_name)
+    response = RedirectResponse(url=f"{base}/studio#oauth_linked=1", status_code=303)
+    response.delete_cookie("oauth_link_state", path="/api/v2/auth/oauth/callback/link")
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 @router.get("/projects", tags=["projects"])

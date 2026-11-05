@@ -17,8 +17,16 @@ function zwpc_register_api_routes() {
         'callback' => 'zwpc_feed_endpoint',
         'permission_callback' => '__return_true',
         'args'     => array(
-            'page'     => array('type' => 'integer', 'default' => 1),
-            'per_page' => array('type' => 'integer', 'default' => 12),
+            'page'     => array(
+                'type' => 'integer',
+                'default' => 1,
+                'validate_callback' => function($value) { return $value >= 1 && $value <= 10000; },
+            ),
+            'per_page' => array(
+                'type' => 'integer',
+                'default' => 12,
+                'validate_callback' => function($value) { return $value >= 1 && $value <= 48; },
+            ),
             'genre'    => array('type' => 'string', 'default' => ''),
             'search'   => array('type' => 'string', 'default' => ''),
         ),

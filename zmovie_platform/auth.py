@@ -81,6 +81,25 @@ def create_user(username: str, password: str, role: str = "admin") -> dict[str, 
         return {"id": cur.lastrowid, "username": username, "role": role}
 
 
+def create_first_admin(username: str, password: str) -> dict[str, Any] | None:
+    """สร้างผู้ดูแลคนแรกแบบ atomic และคืน None หากมีบัญชีอยู่แล้ว."""
+    username = username.strip().lower()
+    if len(username) < 3:
+        raise ValueError("username must contain at least 3 characters")
+    if len(password) < 10:
+        raise ValueError("password must contain at least 10 characters")
+    password_hash = hash_password(password)
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone() is not None:
+            return None
+        cur = conn.execute(
+            "INSERT INTO users(username,password_hash,role) VALUES(?,?,?)",
+            (username, password_hash, "admin"),
+        )
+        return {"id": cur.lastrowid, "username": username, "role": "admin"}
+
+
 def authenticate(username: str, password: str) -> dict[str, Any] | None:
     with connect() as conn:
         row = conn.execute("SELECT id,username,password_hash,role FROM users WHERE username=?", (username.strip().lower(),)).fetchone()
@@ -143,11 +162,8 @@ def decode_media_preview_token(token: str) -> dict[str, Any] | None:
 
 
 def bootstrap_admin_from_env() -> bool:
-    if user_count() > 0:
-        return False
     username = os.getenv("ZMOVIE_ADMIN_USER", "admin").strip() or "admin"
     password = os.getenv("ZMOVIE_ADMIN_PASSWORD", "").strip()
     if not password:
         return False
-    create_user(username, password, "admin")
-    return True
+    return create_first_admin(username, password) is not None

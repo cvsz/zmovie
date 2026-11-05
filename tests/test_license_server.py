@@ -5,6 +5,7 @@ import base64
 import importlib
 import json
 import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -66,10 +67,65 @@ class LicenseServerContractTests(unittest.TestCase):
         from fastapi.testclient import TestClient
 
         client = TestClient(self.mod.app)
-        self.assertEqual(client.post("/v1/admin/revoke", json={"key": "rev-key-001"}, headers=admin).status_code, 200)
+        self.assertTrue(self.mod.store.is_revoked("rev-key-001"))
         resp = client.post("/v1/activate", json={
             "key": "rev-key-001", "product": "zmovie", "site_url": "https://zmovie.zeaz.dev"})
         self.assertEqual(resp.status_code, 404)
+
+    def test_license_state_and_activations_survive_reload(self) -> None:
+        os.environ["LICENSE_SEED_KEYS"] = "persist-key-001"
+        importlib.reload(self.mod)
+        from fastapi.testclient import TestClient
+
+        admin = {"X-License-Admin-Token": "test-admin-token"}
+        client = TestClient(self.mod.app)
+        feature_response = client.post(
+            "/v1/admin/features",
+            json={"key": "persist-key-001", "features": ["favorites"]},
+            headers=admin,
+        )
+        self.assertEqual(feature_response.status_code, 200)
+        expiry_response = client.post(
+            "/v1/admin/expire",
+            json={"key": "persist-key-001", "expires_in_seconds": 300},
+            headers=admin,
+        )
+        self.assertEqual(expiry_response.status_code, 200)
+
+        importlib.reload(self.mod)
+        client = TestClient(self.mod.app)
+        activated = client.post("/v1/activate", json={
+            "key": "persist-key-001", "product": "zmovie", "site_url": "https://zmovie.zeaz.dev"})
+        self.assertEqual(activated.status_code, 200)
+        activation_id = activated.json()["activation_id"]
+        claims_b64 = activated.json()["lease"].split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(claims_b64 + "=" * (-len(claims_b64) % 4)))
+        self.assertEqual(claims["features"], ["favorites"])
+        self.assertEqual(
+            client.get(f"/v1/leases/{activation_id}", headers=admin).json()["key_prefix"],
+            "persist-",
+        )
+
+        self.assertEqual(
+            client.post(
+                "/v1/admin/expire",
+                json={"key": "persist-key-001", "expires_in_seconds": 0},
+                headers=admin,
+            ).status_code,
+            200,
+        )
+        importlib.reload(self.mod)
+        client = TestClient(self.mod.app)
+        expired = client.post("/v1/activate", json={
+            "key": "persist-key-001", "product": "zmovie", "site_url": "https://zmovie.zeaz.dev"})
+        self.assertEqual(expired.status_code, 404)
+
+    def test_key_and_license_database_permissions(self) -> None:
+        self.assertEqual(stat.S_IMODE(self.mod.KEYS_DIR.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(self.mod.PRIVATE_KEY_FILE.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.mod.PUBLIC_KEY_FILE.stat().st_mode), 0o644)
+        self.assertEqual(stat.S_IMODE(self.mod.LICENSE_DB_PATH.stat().st_mode), 0o600)
+        self.assertNotIn(b"test-key-001", self.mod.LICENSE_DB_PATH.read_bytes())
 
     def test_tampered_lease_structure(self) -> None:
         os.environ["LICENSE_SEED_KEYS"] = "test-key-001"
