@@ -5,17 +5,25 @@ from .models import utcnow
 from .storage import connect, ensure_database
 from .studio_cinema import ensure_tables as ensure_cinema_import_tables
 from .ticketing.store import ensure_tables as ensure_ticketing_tables
+from .zeazverse.store import ensure_tables as ensure_zeazverse_tables
 
 # Versioned migration ledger. Each entry is applied idempotently; rollback
 # is performed by restoring the pre-migration backup (see runbooks).
-MIGRATION_VERSIONS = ("v2-base", "cinema-imports", "commerce", "ticketing")
+MIGRATION_VERSIONS = (
+    "v2-base",
+    "cinema-imports",
+    "commerce",
+    "ticketing",
+    "zeazverse",
+)
 
 
 def _record_versions() -> list[str]:
     with connect() as conn:
         conn.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations("
-            "version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)")
+            "version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)"
+        )
         for version in MIGRATION_VERSIONS:
             conn.execute(
                 "INSERT INTO schema_migrations(version, applied_at) VALUES(?, ?)"
@@ -35,6 +43,7 @@ def migrate() -> None:
     ensure_cinema_import_tables()
     ensure_commerce_tables()
     ensure_ticketing_tables()
+    ensure_zeazverse_tables()
     _record_versions()
 
 
