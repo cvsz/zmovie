@@ -9,7 +9,6 @@ publication, analytics, or production readiness.
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any
 
 from zmovie_platform.zeazverse.store import ensure_tables, utcnow
 
@@ -171,21 +170,21 @@ class ChannelSetupDashboard:
         self.compute_stats()
         lines = [
             f"ZEAZVERSE YouTube Channel Setup: {self.channel_handle}",
-            f"",
+            "",
             f"  Total items: {self.total_items}",
             f"  Completed: {self.completed}",
             f"  Verified: {self.verified}",
             f"  Pending: {self.pending}",
             f"  Blocked: {self.blocked}",
             f"  Requires user action: {self.requires_user_action}",
-            f"",
-            f"Status legend:",
-            f"  ✓ COMPLETED - Item fully done",
-            f"  ✓ VERIFIED - Item confirmed/validated",
-            f"  ⏳ PENDING - Awaiting action",
-            f"  ⛔ BLOCKED - Cannot proceed",
-            f"  ⚠ REQUIRES USER ACTION - Needs human interaction",
-            f"",
+            "",
+            "Status legend:",
+            "  ✓ COMPLETED - Item fully done",
+            "  ✓ VERIFIED - Item confirmed/validated",
+            "  ⏳ PENDING - Awaiting action",
+            "  ⛔ BLOCKED - Cannot proceed",
+            "  ⚠ REQUIRES USER ACTION - Needs human interaction",
+            "",
         ]
         # Detail per item
         for item in CHECKLIST:
@@ -198,7 +197,7 @@ class ChannelSetupDashboard:
             }[item.status]
             lines.append(
                 f"  {symbol} Item {item.id}: {item.label}"
-                + (f" (REQUIRES USER ACTION)" if item.requires_user_action else "")
+                + (" (REQUIRES USER ACTION)" if item.requires_user_action else "")
             )
         return "\n".join(lines)
 
@@ -256,7 +255,6 @@ def update_checklist_status(
     updated = False
     for item in CHECKLIST:
         if item.id == item_id:
-            old_status = item.status
             item.status = status
 
             if evidence is not None:
