@@ -174,7 +174,6 @@ def request_import(
             _append_history(conn, row["id"], actor, "requested", "qc_failed", reason[:500])
             audit_write("cinema.import.qc_failed", actor=actor, import_id=row["id"], reason=reason[:500])
             return _record(conn, row["id"]) or row
-        raise ValueError(f"media QC failed: {reason}")
 
     with connect() as conn:
         existing = conn.execute("SELECT * FROM cinema_imports WHERE idempotency_key=?", (key,)).fetchone()
