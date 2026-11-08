@@ -6,6 +6,10 @@ or external publication confirmation.
 
 ## Unreleased
 
+### Fixed
+
+- WordPress Cinema feed contract (issue #34): the `zwpc/v1/feed` endpoint now returns the documented `{ items, films (alias), has_more, total, page, per_page }` envelope; added the `/wp-json/zwpc/v1/films` route alias sharing the same contract; pagination validation and deterministic error responses preserved; added `tests/test_wordpress_feed_contract.py` (populated, empty, invalid pagination, missing config, upstream error, both aliases, invalid structure, credential non-leakage).
+
 ### Added
 
 - First-party License Server, versioned (`services/license-server/`):

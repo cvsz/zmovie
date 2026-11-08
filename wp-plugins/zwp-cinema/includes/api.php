@@ -11,25 +11,35 @@ defined('ABSPATH') || exit;
  * Register custom REST routes.
  */
 function zwpc_register_api_routes() {
-    // Feed endpoint
+    $feed_args = array(
+        'page'     => array(
+            'type' => 'integer',
+            'default' => 1,
+            'validate_callback' => function($value) { return $value >= 1 && $value <= 10000; },
+        ),
+        'per_page' => array(
+            'type' => 'integer',
+            'default' => 12,
+            'validate_callback' => function($value) { return $value >= 1 && $value <= 48; },
+        ),
+        'genre'    => array('type' => 'string', 'default' => ''),
+        'search'   => array('type' => 'string', 'default' => ''),
+    );
+
+    // Feed endpoint (primary alias)
     register_rest_route('zwpc/v1', '/feed', array(
         'methods'  => WP_REST_Server::READABLE,
         'callback' => 'zwpc_feed_endpoint',
         'permission_callback' => '__return_true',
-        'args'     => array(
-            'page'     => array(
-                'type' => 'integer',
-                'default' => 1,
-                'validate_callback' => function($value) { return $value >= 1 && $value <= 10000; },
-            ),
-            'per_page' => array(
-                'type' => 'integer',
-                'default' => 12,
-                'validate_callback' => function($value) { return $value >= 1 && $value <= 48; },
-            ),
-            'genre'    => array('type' => 'string', 'default' => ''),
-            'search'   => array('type' => 'string', 'default' => ''),
-        ),
+        'args'     => $feed_args,
+    ));
+
+    // Feed endpoint (secondary alias: same contract, different path)
+    register_rest_route('zwpc/v1', '/films', array(
+        'methods'  => WP_REST_Server::READABLE,
+        'callback' => 'zwpc_feed_endpoint',
+        'permission_callback' => '__return_true',
+        'args'     => $feed_args,
     ));
 
     // Favorites endpoint
@@ -121,11 +131,20 @@ function zwpc_feed_endpoint($request) {
     }
     wp_reset_postdata();
 
+    $page = max(1, intval($request['page']));
+    $per_page = max(1, intval($request['per_page']));
+    $has_more = (count($films) >= $per_page) || ($query->found_posts > ($page * $per_page));
+
+    // Documented feed envelope: `items` is the consumable film list, with
+    // deterministic pagination (`page`, `per_page`, `total`, `has_more`). The
+    // `films` key is kept as a backward-compatible alias of `items`.
     return new WP_REST_Response(array(
-        'films'     => $films,
-        'total'     => $query->found_posts,
-        'page'      => $request['page'],
-        'per_page'  => $request['per_page'],
+        'items'    => $films,
+        'films'    => $films,
+        'has_more' => $has_more,
+        'total'    => $query->found_posts,
+        'page'     => $page,
+        'per_page' => $per_page,
     ), 200);
 }
 
