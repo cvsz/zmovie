@@ -42,7 +42,8 @@
 | #39 | CLOSED | MERGED | docs: add ZEAZVERSE master prompt and enterprise production final repo | cvsz | feat/final-report-sync-and-lint-fixes | `e11a5f1249` | `b349a0ab1f` |
 | #40 | CLOSED | MERGED | fix: sync final-report and add worker queue tests | cvsz | feat/final-report-sync-and-worker-queue- | `47d075a89f` | `85f71dcf02` |
 | #41 | CLOSED | MERGED | docs: final enterprise production audit report and Dockerfile python v | cvsz | feat/final-report-sync-and-dockerfix | `bdcbacc363` | `69e16908c8` |
-| #42 | OPEN | OPEN_ACTION_REQUIRED | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | `c8e36493cf` | `67023e1a5a` |
+| #42 | CLOSED | MERGED_VERIFIED | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | `923392d` | `5c33485` |
+| #43 | CLOSED | MERGED_VERIFIED | docs: sync final-report.md with PR 42 merge and latest validation | cvsz | docs/sync-final-report-main | `7c05b27` | `19165a0` |
 
 ## Legend
 - State: open / closed

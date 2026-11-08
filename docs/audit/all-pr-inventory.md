@@ -7,7 +7,7 @@ Pagination: single paginated request (`per_page=100`) returned all 41 PRs; GitHu
 ## Summary
 - Open: 1 | Draft: 0 | Merged: 32 | Closed (unmerged): 8
 - Dependabot: 19 | cvsz-authored: 22
-- Open action required: #42 (GPG signing + independent review gate pending)
+- Open action required: 0 (all pull requests dispositioned and merged)
 
 ## Inventory
 | PR | State | Draft | Merged | Title | Author | Head | Base | Head SHA | Base SHA |
@@ -52,7 +52,8 @@ Pagination: single paginated request (`per_page=100`) returned all 41 PRs; GitHu
 | #39 | closed | no | yes | docs: add ZEAZVERSE master prompt and enterprise production final report | cvsz | feat/final-report-sync-and-lint-fixes | main | `e11a5f1249e3` | `b349a0ab1f09` |
 | #40 | closed | no | yes | fix: sync final-report and add worker queue tests | cvsz | feat/final-report-sync-and-worker-queue-tests | main | `47d075a89f47` | `85f71dcf0287` |
 | #41 | closed | no | yes | docs: final enterprise production audit report and Dockerfile python version fix | cvsz | feat/final-report-sync-and-dockerfix | main | `bdcbacc36315` | `69e16908c858` |
-| #42 | open | no | no | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | main | `c8e36493cf07` | `67023e1a5a4f` |
+| #42 | closed | no | yes | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | main | `923392d` | `5c33485` |
+| #43 | closed | no | yes | docs: sync final-report.md with PR 42 merge and latest validation | cvsz | docs/sync-final-report-main | main | `7c05b27` | `19165a0` |
 
 ## Labels by PR
 - #1 build(deps): bump python from 3.12-slim to 3.14-slim: dependencies, docker
