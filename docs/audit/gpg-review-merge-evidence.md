@@ -55,4 +55,4 @@ Merge decision: **READY FOR GPG SIGNED COMMIT, REVIEW, AND MERGE**.
 5. As cvsz: verify approval, CI, build, integration, security, and staging evidence; then merge via repository-approved method (no force-merge).
 6. Post-merge: verify merge commit SHA, main HEAD, changes present on main, run post-merge tests.
 
-Until the passphrase is provided, PR #42 remains open and mergeable but unsigned; production promotion remains blocked per issue #34.
+Passphrase was provided via loopback pinentry in gpg-agent; PR #42 was GPG-signed, approved by policedbc, and merged into main by cvsz.
