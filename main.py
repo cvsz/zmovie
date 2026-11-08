@@ -11,6 +11,7 @@ from zmovie_platform.api_routes import router as v2_router
 from zmovie_platform.cinema_import_routes import router as cinema_import_router
 from zmovie_platform.commerce_routes import router as commerce_router
 from zmovie_platform.config import settings
+from zmovie_platform.kids_routes import router as kids_router
 from zmovie_platform.logging_config import configure_logging
 from zmovie_platform.media_preview import router as media_preview_router
 from zmovie_platform.media_upload_routes import router as media_upload_router
@@ -32,6 +33,7 @@ app.include_router(publisher_router)
 app.include_router(production_router)
 app.include_router(product_router)
 app.include_router(zeazverse_router)
+app.include_router(kids_router)
 
 if settings.cors_origins:
     app.add_middleware(

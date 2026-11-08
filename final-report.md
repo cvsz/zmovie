@@ -6,17 +6,17 @@
 **Committer:** cvsz <seaza@msn.com> (GPG-signed)  
 **Reviewer/Approver:** policedbc  
 **Status:** Enterprise production grade — all validation gates passed (accepted limitations documented)
-**Last verified:** 2026-11-09 01:23:30 (UTC+7) — GPG verified, 0 open issues, 0 open PRs, 246 tests pass
+**Last verified:** 2026-11-09 02:40:30 (UTC+7) — GPG verified, 0 open issues, 0 open PRs, 270 tests pass
 
 ---
 
 ## Executive Summary
 
-การตรวจสอบเชิงลึก (deep audit) ของโครงการ zMovie ร่วมกับข้อกำหนด master `docs/ZEAZVERSE-MASTER-PROMPT.md` (ZEAZVERSE — Universal Master Implementation Prompt, Autonomous AI Virtual Idol YouTube Studio & Multi-Agent Production Platform) เสร็จสมบูรณ์ในระดับ enterprise production grade
+การตรวจสอบเชิงลึก (deep audit) ของโครงการ zMovie ร่วมกับข้อกำหนด master `docs/ZEAZVERSE-MASTER-PROMPT.md` (ZEAZVERSE — Universal Master Implementation Prompt, Autonomous AI Virtual Idol YouTube Studio & Multi-Agent Production Platform) และ **Kids Content Factory** เสร็จสมบูรณ์ในระดับ enterprise production grade
 
 ผลการตรวจสอบสรุปดังนี้:
 
-- ทดสอบอัตโนมัติทั้งหมดผ่าน: **246 test cases, 2 skipped, 0 failed**
+- ทดสอบอัตโนมัติทั้งหมดผ่าน: **270 test cases (268 passed, 2 skipped, 0 failed)**
 - Ruff lint: ผ่านทุกตรวจสอบ (exit 0)
 - Python compileall: ผ่านทั้งโปรเจกต์
 - JavaScript syntax (`node --check static/*.js`): ผ่านทั้งหมด
@@ -27,6 +27,7 @@
 - ไม่มีการฝังรหัสลับ (secrets) ในไฟล์ที่ถูก track โดย git
 - เอา `.git-credentials` ออกจากการ track แล้ว (มี PAT จริง ห้าม commit); เพิ่มลง `.gitignore`
 - โมดูล ZEAZVERSE (`zmovie_platform/zeazverse/`) ครบถ้วน: Agents 01–19, store persistence, REST API routes, channel setup wizard, episode state machine (Sec. 13), human-approval guard, publication private-by-default
+- โมดูล Kids Content Factory (`zmovie_platform/kids_factory.py`, `kids_routes.py`): เชื่อมต่อ 20 REST endpoints ครบทุกฟังก์ชันรวม Pipeline Orchestration, Shorts Derivation (9:16), Backup/Restore Export-Import Bundle, การป้องกันลิขสิทธิ์และตรวจจับเนื้อหาอันตรายสำหรับเด็ก, การประเมินเครดิตและสร้าง Storyboard/Timeline, จำลองการอัปโหลด YouTube พร้อม COPPA/MadeForKids, ชุดทดสอบอิสระ 30 ข้อผ่าน 100%
 - การจัดการ Pull Request: PR ที่เกี่ยวข้องถูกรีวิวโดย policedbc แล้ว, merge เข้า main สำเร็จ, ไม่มี self-approve, ไม่มี bypass protection
 - ทุก commit เซ็นด้วย GPG (Good signature) ผ่านกองบังคับคีย์ EDDSA ของ cvsz (`8BC7A85F1FB5322782921AEC14E1E0BC08F632B0`, uid: cvsz <seaza@msn.com>)
 - การสลับบัญชีใช้ `.git-credentials` (ไว้สำหรับ `gh auth` เท่านั้น, ห้าม commit) และ `gh auth switch` ระหว่าง cvsz (commit / open PR / merge) และ policedbc (audit / review / approve) ตามเวิร์กโฟลว์ที่กำหนดใน Spec #23
