@@ -86,3 +86,11 @@ When a command, API contract, status claim, or user-facing message changes,
 update the relevant canonical guide and its focused deep link. Follow the
 [documentation standard](DOCUMENTATION_STANDARD.md) and the
 [i18n standard](I18N.md).
+
+## Kids Factory
+- [Architecture](kids-factory/ARCHITECTURE.md)
+- [Agent Contracts](kids-factory/AGENT-CONTRACTS.md)
+- [Content Pipeline](kids-factory/CONTENT-PIPELINE.md)
+- [Character Bible](kids-factory/CHARACTER-BIBLE.md)
+- [Operations & Runbook](kids-factory/RUNBOOK.md)
+- [Security](kids-factory/SECURITY.md)
