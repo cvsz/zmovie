@@ -213,7 +213,18 @@ OK (skipped=2)
 
 | PR | ชื่อ | ผู้สร้าง | ผู้รีวิว/อนุมัติ | สถานะ | หมายเหตุ |
 |----|-----|---------|-----------------|-------|---------|
-| #40 | fix: sync final-report and add worker queue tests | cvsz | policedbc ✅ | **MERGED** | ล่าสุด, GPG-signed |
+| #51 | feat(kids-factory): full independent implementation, routes, orchestration and audit | cvsz | policedbc ✅ | **MERGED** | Kids Factory Full Stack (GPG-signed) |
+| #50 | feat(kids-factory): full independent domain implementation and tests in zmovie_platform | cvsz | policedbc ✅ | **MERGED** | Kids Factory Domain (GPG-signed) |
+| #49 | docs: import Kids Factory specification documents from zworkforce | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #48 | docs: add ZEAZVERSE Virtual Idol Studio section to README.md | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #47 | docs(audit): update PR matrices with PRs 44-46 merged status | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #46 | chore(docs): update last verified timestamp in final-report.md | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #45 | docs(audit): update final-report PR matrices and audit findings | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #44 | docs(audit): sync PR audit and verification matrices in final-report.md | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #43 | docs: sync final-report.md with PR #42 remediation | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #42 | fix: remediate verified ZEAZVERSE gaps and hardening | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #41 | docs: final enterprise production audit report update | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #40 | fix: sync final-report and add worker queue tests | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #39 | docs: add ZEAZVERSE master prompt and enterprise production final report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #38 | docs: add ZEAZVERSE master prompt and final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #37 | docs: add comprehensive final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
@@ -292,6 +303,10 @@ OK (skipped=2)
 - ✅ Repository validation audit (`scripts/validate_repo.py`)
 - ✅ ZEAZVERSE SecurityAuditAgent (Agent 18): SSRF check, input validation, webhook verification, human approval enforcement, hash-chained audit trail
 - ✅ ZEAZVERSE publication private-by-default (`privacy: "private"`), idempotency keys prevent duplicate publication
+- ✅ Kids Content Factory Safety Engine: Pure-Python deterministic COPPA safety scanning (`kids_safety_check`), บล็อก Third-party IP, อาวุธ/ความรุนแรง, คำหยาบ, และพฤติกรรมเลียนแบบอันตรายแบบ Fail-Closed
+- ✅ Kids Content Factory YouTube Guard: บังคับ Audience `madeForKids` และ Synthetic Disclosure ห้ามปลดล็อคโดยมิได้รับอนุญาต
+- ✅ Voice Cloning Legal Gate: บังคับตรวจสอบ `rights.consent_ref` เมื่อใช้ cloned voice profile ป้องกันการละเมิดสิทธิ์เสียงบุคคลภายนอก
+- ✅ Music License Provenance: กำกับสิทธิบัตรและลิขสิทธิ์เพลง ไม่ถือว่า AI output ปลอดลิขสิทธิ์โดยพลการ
 
 ### ควรปรับปรุงในอนาคต:
 
