@@ -4,10 +4,10 @@
 
 - Repository: https://github.com/cvsz/zmovie
 - Target branch: main
-- Enumeration: `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — single paginated response returned **40 PRs**; pagination is complete (no further pages).
-- Baseline SHA: `8cd1f8a545420136ac6bd1416a16907f6a1de6e1` (branch `feat/zmovie-enterprise-production-hardening`, 1 commit ahead of `main` `67023e1`).
-- Open: 0 | Draft: 0 | Merged: 32 | Closed without merge: 8.
-- No PR is blocked or inaccessible.
+- Enumeration: `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — single paginated response returned **41 PRs**; pagination is complete (no further pages).
+- Baseline SHA: `67023e1a5a4f69f5154ac19c58b5e390154f3d91` (main); branch `feat/zmovie-enterprise-production-hardening` @ `c8e36493cf07` is 5 commits ahead of main.
+- Open: 1 | Draft: 0 | Merged: 32 | Closed without merge: 8.
+- No PR is blocked or inaccessible. PR #42 is OPEN_ACTION_REQUIRED (GPG signing + fresh independent review gate pending).
 
 ## Findings by category
 
@@ -39,7 +39,13 @@ Closed without merge; substance already present in `main` through a later merge 
 
 ### Open / Draft
 
-None. Every discovered PR has a documented disposition (see all-pr-disposition.md).
+**#42 — OPEN_ACTION_REQUIRED** — `fix: remediate verified ZMovie production findings (issue #34 staging + PR audit)`
+- State: open, not draft, mergeable.
+- All CI checks pass; production-promotion skipped per issue #34.
+- policedbc APPROVED review (on commit `4a2922d`) is now DISMISSED because HEAD advanced to `c8e36493`. Fresh review required against exact HEAD SHA.
+- **Blocker: GPG signing.** `git verify-commit HEAD` fails — signing key EDDSA `14E1E0BC08F632B0` requires a passphrase not available in this environment. No signature fabricated. Merge blocked until GPG-verified HEAD + fresh policedbc approval.
+
+Every discovered PR has a documented disposition (see all-pr-disposition.md).
 
 ### Discrepancy findings
 

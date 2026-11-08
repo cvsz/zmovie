@@ -6,13 +6,23 @@
 |---|---|---|
 | MERGED_VERIFIED | 32 | #1, #2, #3, #4, #5, #6, #7, #8, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #23, #24, #29, #30, #32, #33, #35, #36, #37, #38, #39, #40, #41 |
 | CLOSED_SUPERSEDED | 8 | #9, #21, #22, #25, #26, #27, #28, #31 |
-| OPEN_ACTION_REQUIRED | 0 | — |
+| OPEN_ACTION_REQUIRED | 1 | #42 |
 | DRAFT_INCOMPLETE | 0 | — |
 | DUPLICATE | 0 | — |
 | DEPENDABOT (merged) | 19 | included in MERGED_VERIFIED above |
 | BLOCKED / INACCESSIBLE | 0 | — |
 
 ## Per-PR disposition
+
+### OPEN_ACTION_REQUIRED — open PR, action required before merge
+
+#42 fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) — **OPEN, not merged**.
+- Head: `feat/zmovie-enterprise-production-hardening` @ `c8e36493cf07`, base: `main` @ `67023e1a5a4f`.
+- All CI checks pass (installer-static, php-and-js, secret-scan, sbom-and-manifest, python 3.11-3.14, wordpress-staging-smoke, container-vulnerability-scan, docker, staging-release-gate, quality); production-promotion SKIPPED per issue #34 gate.
+- policedbc review was APPROVED on commit `4a2922d` but is now **DISMISSED** because HEAD advanced to `c8e36493` (2 commits: `9e04a83`, `c8e36493`). Fresh review required targeting exact HEAD SHA.
+- **BLOCKER: GPG signing.** `git verify-commit HEAD` fails — HEAD commit is not GPG signed. The signing key EDDSA `14E1E0BC08F632B0` requires a passphrase that is not available in this environment (`NEED_PASSPHRASE`, `GPG_PASSPHRASE` not set, non-interactive). No signature was fabricated.
+- Until GPG signing is completed and policedbc re-approves the exact HEAD SHA, merge remains blocked. Never commit directly to main; never self-approve; never bypass branch protection.
+- Changes: WordPress feed contract fix (`items`/`films` envelope, `/films` alias, 8 contract tests), Dockerfile `apt-get upgrade` for OS vulnerability patching, docs/audit report set (21 documents), CHANGELOG/INDEX updates.
 
 ### MERGED_VERIFIED — change exists on main, tests and docs verified
 
@@ -69,7 +79,7 @@
 
 ## Verification method
 
-- `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — 40 PRs, complete pagination.
+- `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — 41 PRs, complete pagination.
 - Merged PRs confirmed present in `main` history (`git log main`).
 - Closed-unmerged PRs compared via `git merge-base --is-ancestor <head> main`; substance confirmed present in `main` through `requirements.txt`, `.github/workflows/*`, and source files.
 

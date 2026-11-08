@@ -19,21 +19,22 @@
 
 ## 2. All pull requests (Phase 1)
 
-Enumeration: `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — complete pagination, **40 PRs** discovered (no further page).
+Enumeration: `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — complete pagination, **41 PRs** discovered (no further page).
 
 | Category | Count |
 |---|---|
-| Open | 0 |
+| Open | 1 (#42 — OPEN_ACTION_REQUIRED, GPG + review gate pending) |
 | Draft | 0 |
 | Merged | 32 |
 | Closed without merge | 8 |
 | Dependabot | 19 (all merged or superseded) |
-| cvsz-authored | 21 |
+| cvsz-authored | 22 (includes #42) |
 | Blocked / inaccessible | 0 |
 
 Disposition:
 - **MERGED_VERIFIED: 32** — #1–#8, #10–#16, #17–#20, #23, #24, #29, #30, #32–#41. Each change confirmed present in `main` history; tests and docs verified.
 - **CLOSED_SUPERSEDED: 8** — #9, #21, #22, #25, #26, #27, #28, #31. Closed without merge, but substance already present in `main` via a later merge or direct commit (e.g. `requirements.txt` already at authlib 1.9.1 / uvicorn 0.54.0 / starlette 1.7.0; workflows pin upload-artifact v7.0.2 and sbom-action v0.24.3; durable worker via #11).
+- **OPEN_ACTION_REQUIRED: 1** — #42. Open, mergeable, all CI pass. Blocked by: (a) GPG signing — `git verify-commit HEAD` fails (signing key passphrase unavailable, non-interactive); (b) policedbc review was APPROVED on commit `4a2922d` but is now DISMISSED because HEAD advanced to `c8e36493`; fresh review required against exact HEAD SHA. Never self-approve, never bypass branch protection, never merge unverified candidate.
 - PR #33 noted: title "ZEAZVERSE multi-agent platform (Agents 01-19)" does not match head branch `fix/deps-upgrade-and-workflow-pins` (documented as finding F-01).
 
 Documents: `docs/audit/all-pr-inventory.md`, `all-pr-matrix.md`, `all-pr-review-findings.md`, `all-pr-disposition.md`, `all-pr-dependency-map.md`.
@@ -135,4 +136,4 @@ No tests deleted or warnings globally suppressed to achieve green.
 
 ## 13. Production readiness verdict
 
-**Not yet production-ready.** All local code, test, lint, build, container, and staging-health gates pass, and all 40 PRs are dispositioned. However, production promotion remains correctly blocked by: (a) unverifiable GPG HEAD (passphrase unavailable), (b) CI Trivy gate pending re-run on exact SHA, and (c) required status checks not configured. These are genuine, documented blockers — not concealed.
+**Not yet production-ready.** All local code, test, lint, build, container, and staging-health gates pass, and all 41 PRs are dispositioned. However, production promotion remains correctly blocked by: (a) unverifiable GPG HEAD (passphrase unavailable), (b) CI Trivy gate pending re-run on exact SHA, and (c) required status checks not configured. These are genuine, documented blockers — not concealed.
