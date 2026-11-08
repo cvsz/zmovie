@@ -44,6 +44,9 @@
 | #41 | CLOSED | MERGED | docs: final enterprise production audit report and Dockerfile python v | cvsz | feat/final-report-sync-and-dockerfix | `bdcbacc363` | `69e16908c8` |
 | #42 | CLOSED | MERGED_VERIFIED | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | `923392d` | `5c33485` |
 | #43 | CLOSED | MERGED_VERIFIED | docs: sync final-report.md with PR 42 merge and latest validation | cvsz | docs/sync-final-report-main | `7c05b27` | `19165a0` |
+| #44 | CLOSED | MERGED_VERIFIED | docs(audit): sync PR audit matrices with all 43 PRs dispositioned and | cvsz | docs/sync-pr-audit-all-merged | `34d1c32` | `0da07dd` |
+| #45 | CLOSED | MERGED_VERIFIED | docs(audit): update final-assessment and gpg-evidence for PR #42 merge | cvsz | docs/sync-assessment-pr42-merged | `2744a32` | `717d805` |
+| #46 | CLOSED | MERGED_VERIFIED | chore(docs): update last verified timestamp in final-report.md | cvsz | chore/update-verified-status | `447b39a` | `982a87c` |
 
 ## Legend
 - State: open / closed

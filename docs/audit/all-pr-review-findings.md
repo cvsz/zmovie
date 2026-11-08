@@ -7,7 +7,7 @@
 - Enumeration: `gh api --paginate repos/cvsz/zmovie/pulls -X GET -f state=all -f per_page=100` — single paginated response returned **41 PRs**; pagination is complete (no further pages).
 - Baseline SHA: `67023e1a5a4f69f5154ac19c58b5e390154f3d91` (main); branch `feat/zmovie-enterprise-production-hardening` @ `c8e36493cf07` is 5 commits ahead of main.
 - Open: 1 | Draft: 0 | Merged: 32 | Closed without merge: 8.
-- No PR is blocked or inaccessible. All PRs (including #42, #43, and #44) are MERGED_VERIFIED with 0 open PRs remaining.
+- No PR is blocked or inaccessible. All PRs (including #42, #43, #44, #45, and #46) are MERGED_VERIFIED with 0 open PRs remaining.
 
 ## Findings by category
 
