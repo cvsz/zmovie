@@ -7,15 +7,15 @@
 | Commit author / PR opener / merge operator | cvsz | yes | cvsz |
 | Independent reviewer / approver | policedbc | reviewed separately | policedbc |
 
-Both accounts are present in `~/.config/gh/hosts.yml` and `gh auth switch -u <account>` works non-interactively. Git identity: `cvsz <seaza@msn.com>`.
+Both accounts are present in the configured GitHub hosts file and `gh auth switch -u <account>` works non-interactively. Git identity: `cvsz <seaza@msn.com>`.
 
 ## GPG signing configuration
 
 - `git config commit.gpgsign`: true
 - `git config user.signingkey`: 14E1E0BC08F632B0 (EDDSA, cvsz <seaza@msn.com>)
-- `git config gpg.program`: /home/cvsz/.local/bin/gpg-loopback.sh
+- `git config gpg.program`: the operator's gpg loopback wrapper (not committed to the repository)
 - `git config gpg.format`: openpgp
-- `/home/cvsz/.git-credentials`: present, mode 0600, gitignored (not tracked); never committed.
+- Credential file: present at the operator's home path, mode 0600, gitignored (not tracked); never committed.
 
 ## Commits on feature branch `feat/zmovie-enterprise-production-hardening`
 
