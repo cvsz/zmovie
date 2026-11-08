@@ -55,6 +55,19 @@ provider or publication workflow.
 
 ## Evidence and internal reference
 
+- [Enterprise audit — executive summary](audit/executive-summary.md)
+- [Enterprise audit — staging remediation (issue #34)](audit/staging-remediation.md)
+- [Enterprise audit — test evidence](audit/test-evidence.md)
+- [Enterprise audit — production readiness](audit/production-readiness.md)
+- [Enterprise audit — residual risks](audit/residual-risks.md)
+- [Enterprise audit — security assessment](audit/security-assessment.md)
+- [Enterprise audit — worker queue review](audit/worker-queue-review.md)
+- [Enterprise audit — publishing integrations review](audit/publishing-integrations-review.md)
+- [Enterprise audit — video rendering review](audit/video-rendering-review.md)
+- [Enterprise audit — AI pipeline review](audit/ai-pipeline-review.md)
+- [Enterprise audit — architecture review](audit/architecture-review.md)
+- [Enterprise audit — gap analysis](audit/gap-analysis.md)
+- [Enterprise audit — remediation report](audit/remediation-report.md)
 - [ComfyUI smoke evidence](evidence/2026-09-08-core-comfyui-smoke.md)
 - [Project assembly evidence](evidence/2026-09-08-core-project-assembly.md)
 - [Bilibili live-session evidence](evidence/2026-09-09-core-bilibili-live-session.md)

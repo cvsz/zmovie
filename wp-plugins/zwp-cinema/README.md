@@ -33,7 +33,8 @@ define('ZEAZ_LICENSE_PUBLIC_KEY', getenv('ZEAZ_LICENSE_PUBLIC_KEY'));
 
 | Endpoint | สิทธิ์ | การทำงาน |
 | --- | --- | --- |
-| `GET /wp-json/zwpc/v1/feed?page=1&genre=drama` | Public | แสดงภาพยนตร์ที่ Publish แล้ว ครั้งละ 6 รายการ |
+| `GET /wp-json/zwpc/v1/feed?page=1&genre=drama` | Public | คืน envelope `{ items, films (alias), has_more, total, page, per_page }` ของภาพยนตร์ที่ Publish แล้ว |
+| `GET /wp-json/zwpc/v1/films?page=1` | Public | เส้นทาง alias ของ feed เดียวกันกับ `/feed` คืน envelope รูปแบบเดียวกัน |
 | `GET /wp-json/zwpc/v1/favorites` | Login | ส่งคืน ID ภาพยนตร์ที่บันทึกไว้ |
 | `POST /wp-json/zwpc/v1/favorites/{id}` | Login + WP REST Nonce | เพิ่มหรือลบรายการโปรด |
 
