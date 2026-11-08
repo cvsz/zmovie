@@ -288,10 +288,5 @@ def get_dashboard() -> ChannelSetupDashboard:
     return dashboard
 
 
-# Module-level initialization - ensure tables are available
-ensure_setup_tables()
-
-# Print initialization summary on import (for development visibility)
-if __name__ != "__main__":
-    dashboard = get_dashboard()
-    print(dashboard.get_status_summary())
+# หมายเหตุ: ตารางจะถูกสร้างเมื่อเรียกใช้ฟังก์ชันแต่ละตัวแล้ว (ensure_tables ภายใน)
+# โดยตั้งใจไม่ทำ side effect (เขียน DB / พิมพ์ข้อความ) เวลาที่โมดูลถูก import

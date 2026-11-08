@@ -15,7 +15,7 @@
 
 ผลการตรวจสอบสรุปดังนี้:
 
-- ทดสอบอัตโนมัติทั้งหมดผ่าน: **219 test cases, 2 skipped, 0 failed**
+- ทดสอบอัตโนมัติทั้งหมดผ่าน: **232 test cases, 2 skipped, 0 failed**
 - Ruff lint: ผ่านทุกตรวจสอบ (exit 0)
 - Python compileall: ผ่านทั้งโปรเจกต์
 - JavaScript syntax (`node --check static/*.js`): ผ่านทั้งหมด
@@ -43,7 +43,7 @@
 | Master Prompt | `docs/ZEAZVERSE-MASTER-PROMPT.md` (Sec. 1–24) | อ่านครบ, map กับการ implement จริงแล้ว |
 | ซอร์สโค้ด Python | `zmovie_platform/` รวม `zeazverse/`, `main.py`, `app.py`, `zmovie.py`, `scripts/*.py` | ตรวจสอบครบ, คอมไพล์ผ่าน, ruff ผ่าน |
 | เอกสาร | `docs/` ทั้งหมด, `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md` | ตรวจสอบครบ, ซิงก์แล้ว |
-| การทดสอบ | `tests/` ทั้งหมด (219 test cases) | **ทั้งหมดผ่าน** (2 skipped, 0 failed) |
+| การทดสอบ | `tests/` ทั้งหมด (232 test cases) | **ทั้งหมดผ่าน** (2 skipped, 0 failed) |
 | JavaScript | `static/*.js` | `node --check` ผ่านทั้งหมด |
 | Shell scripts | `install.sh`, `install-docker.sh`, `scripts/*.sh` | `bash -n` ผ่านทั้งหมด |
 | CI Workflows | `.github/workflows/` (7 ไฟล์) | YAML ถูกต้องทั้งหมด (PyYAML parse) |
@@ -78,7 +78,7 @@
 | Sec. 15 | Control Panel | ✅ Implemented | Studio UI (`static/studio.html`), API routes ทั้งหมดใน `main.py` |
 | Sec. 16 | Security Requirements | ✅ Implemented | Auth, RBAC, secret scan, SSRF check (`SecurityAuditAgent`), fail-closed publish |
 | Sec. 17 | DevOps & Deployment | ✅ Implemented | Docker, systemd, migrations, health checks, backup |
-| Sec. 18 | Test Strategy | ✅ Implemented | 219 tests ครบทุกเลเยอร์ (unit, integration, contract, security, e2e, media QA, failure) |
+| Sec. 18 | Test Strategy | ✅ Implemented | 232 tests ครบทุกเลเยอร์ (unit, integration, contract, security, e2e, media QA, failure) |
 | Sec. 19 | Channel Growth & Monetization | ✅ Implemented | `zeazverse/agents/analytics.py`, `growth_experiment.py` (Agent 16, 17) |
 | Sec. 20 | Acceptance Criteria | ✅ Met | Mock production workflow complete, QA enforced, private-by-default, CI pass |
 | Sec. 21 | Implementation Phases | ✅ Phase 0–12 | ZEAZVERSE multi-agent platform complete (commit a0e277e) |
@@ -107,7 +107,7 @@
 ### 3.2 GPG commit signing — แก้ไขแล้ว
 
 **ปัญหาเดิม:** `git commit -S` ล้มเหลวใน batch mode เนื่องจาก GPG agent ต้องการ passphrase และไม่สามารถป้อนแบบ interactive ได้  
-**การแก้ไข:** สร้าง wrapper script `/home/cvsz/.local/bin/gpg-loopback.sh` ใช้ `gpg --batch --pinentry-mode loopback --passphrase-fd 3` แล้วกำหนดให้ `git config gpg.program` ใช้ wrapper นี้  
+**การแก้ไข:** สร้าง wrapper script สำหรับ GPG loopback mode ใช้ `gpg --batch --pinentry-mode loopback --passphrase-fd 3` แล้วกำหนดให้ `git config gpg.program` ใช้ wrapper นี้ (ตัว wrapper จัดเก็บไว้ภายใน home directory ของผู้ดูแลระบบ ไม่ได้ commit ลง repository)  
 **ผลลัพธ์:** Commit เซ็นด้วย GPG สำเร็จ (Good signature, EDDSA key `8BC7A85F1FB5322782921AEC14E1E0BC08F632B0`)  
 **สถานะ:** ใช้งานได้แล้ว, ทุก commit ในรอบนี้เซ็นด้วย GPG
 
@@ -136,7 +136,7 @@
 **ปัญหา:** ไฟล์ `.git-credentials` มี GitHub Personal Access Token (PAT) จริงของบัญชี cvsz กำลังถูก stage เพื่อ commit ลง repository ซึ่งเป็นการเปิดเผยรหัสลับในระบบควบคุมเวอร์ชัน (ต้องห้ามเด็ดขาด)  
 **การแก้ไข:**
 - เอา `.git-credentials` ออกจาก git staging (`git restore --staged`)
-- ลบไฟล์ `.git-credentials` ออกจาก working tree ของ repository (ต้นฉบับยังคงอยู่ที่ `/home/cvsz/.git-credentials` สำหรับใช้กับ `gh auth switch` เท่านั้น)
+- ลบไฟล์ `.git-credentials` ออกจาก working tree ของ repository (ต้นฉบับยังคงอยู่ใน home directory ของผู้ดูแลระบบ สำหรับใช้กับ `gh auth switch` เท่านั้น ไม่ได้ commit ลง repository)
 - เพิ่ม `.git-credentials` และ `*.credentials` ลงใน `.gitignore` เพื่อกันการ track โดยไม่ตั้งใจในอนาคต
 
 **ผลลัพธ์:** ไม่มีรหัสลับใดถูก commit ลง repository, secret scan ผ่าน (scanned 481 tracked files, ไม่พบ active secrets)
@@ -150,6 +150,13 @@
 **การแก้ไข:** ลบบรรทัด `raise ValueError` ที่ unreachable ออก  
 **สถานะ:** แก้ไขแล้ว, ruff ผ่าน, ทดสอบผ่าน
 
+### 3.7 ทดสอบ worker queue ที่เคยว่างเปล่า — เติมเต็มแล้ว (รอบนี้)
+
+**ไฟล์:** `tests/test_worker_queue.py`  
+**ปัญหา:** ไฟล์ `tests/test_worker_queue.py` มีอยู่แล้วแต่ว่างเปล่า (0 บรรทัด) ไม่มีการทดสอบ durable worker queue เลย ซึ่งเป็นส่วนสำคัญของระบบ production (claim/lease/heartbeat/recovery/pause/sanitization)  
+**การแก้ไข:** เขียนทดสอบครบถ้วน 13 test cases ครอบคลุม enqueue/get/list roundtrip, claim และ heartbeat, mark_running/complete, fail (retry และ exhausted), recover_stale (bilibili → recovery_required, render → retry_wait), pause/resume, queue_status shape, และ sanitize_payload ที่ปฏิเสธฟิลด์รหัสลับ (password/token/authorization) และชนิดข้อมูลที่รองรับไม่ได้  
+**สถานะ:** เขียนใหม่แล้ว, ruff ผ่าน, ทดสอบผ่านทั้ง 13 test cases
+
 ---
 
 ## 4. Test Results
@@ -157,12 +164,12 @@
 รันด้วย `.venv/bin/python` (Python 3.14.4, dependencies ครบถ้วน):
 
 ```
-Ran 219 tests in 8.727s
+Ran 232 tests in 10.563s
 OK (skipped=2)
 ```
 
 รายละเอียด:
-- **ผ่านทั้งหมด:** 217 tests
+- **ผ่านทั้งหมด:** 230 tests
 - **ข้าม:** 2 tests
 - **ล้มเหลว:** 0 tests
 
@@ -173,7 +180,7 @@ OK (skipped=2)
 | Python compilation | `python -m compileall -q zmovie.py app.py main.py zmovie_platform tests scripts` | ✅ ผ่าน |
 | Ruff lint | `ruff check app.py main.py zmovie_platform tests scripts/validate_repo.py scripts/check_studio_inline_js.py` | ✅ ผ่าน |
 | JavaScript syntax | `node --check static/*.js` | ✅ ผ่านทั้งหมด |
-| Unit tests | `python -m unittest discover -s tests -v` | ✅ 219 ผ่าน, 2 ข้าม, 0 ล้มเหลว |
+| Unit tests | `python -m unittest discover -s tests -v` | ✅ 232 ผ่าน, 2 ข้าม, 0 ล้มเหลว |
 | Repository audit | `python3 scripts/validate_repo.py` | ✅ AUDIT PASSED (13 ตรวจสอบ) |
 | Shell syntax | `bash -n install.sh install-docker.sh scripts/*.sh` | ✅ ผ่าน |
 | Docker compose config | `docker compose config --quiet` | ไม่ได้รันในเครื่อง (ไม่มี Docker daemon) |
@@ -286,7 +293,7 @@ OK (skipped=2)
 **ขั้นตอนที่ 1 — cvsz (GPG commit + open PR):**
 ```
 gh auth switch -u cvsz
-git config gpg.program=/home/cvsz/.local/bin/gpg-loopback.sh
+git config gpg.program=<gpg-loopback-wrapper-path>
 git config commit.gpgsign true
 git checkout -b feat/zeazverse-master-audit-final-report
 git add docs/ZEAZVERSE-MASTER-PROMPT.md final-report.md
@@ -299,7 +306,7 @@ gh pr create --base main --head feat/zeazverse-master-audit-final-report --title
 ```
 gh auth switch -u policedbc
 python3 scripts/validate_repo.py   → AUDIT PASSED
-python3 -m unittest discover -s tests  → 219 passed, 2 skipped
+python3 -m unittest discover -s tests  → 232 passed, 2 skipped
 gh pr review <PR> --approve  → อนุมัติ PR
 ```
 
@@ -342,7 +349,7 @@ gh pr merge <PR> --merge  → merge เข้า main
 | Python compilation | `python -m compileall -q zmovie.py app.py main.py zmovie_platform tests scripts` | ✅ ผ่าน | — |
 | Ruff lint | `ruff check app.py main.py zmovie_platform tests scripts/validate_repo.py` | ✅ ผ่าน | `ruff.toml` |
 | JavaScript syntax | `node --check static/*.js` | ✅ ผ่านทั้งหมด | `static/` |
-| Unit tests | `python -m unittest discover -s tests` | ✅ 219 ผ่าน, 2 ข้าม, 0 ล้มเหลว | `tests/` |
+| Unit tests | `python -m unittest discover -s tests` | ✅ 232 ผ่าน, 2 ข้าม, 0 ล้มเหลว | `tests/` |
 | Repository audit | `python3 scripts/validate_repo.py` | ✅ AUDIT PASSED (13 ตรวจสอบ) | `scripts/validate_repo.py` |
 | GPG commit signature | `git log -1 --show-signature` | ✅ Good signature (EDDSA 8BC7A85F...) | `.git/` |
 | Docker compose config | `docker compose config --quiet` | ไม่ได้รัน (ไม่มี Docker daemon) | `docker-compose.yml` |

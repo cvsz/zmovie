@@ -141,6 +141,7 @@ def sanitize_storage_state_file(source: Path, output: Path) -> Path:
     try:
         output.chmod(0o600)
     except OSError:
+        # 権限変更に失敗しても処理を続行: state ファイル自体は既に書き込み済み
         pass
     return output
 
