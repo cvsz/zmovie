@@ -550,6 +550,16 @@ Access via:
 sudo zmovie-ctl analytics view
 ```
 
+## Kids Content Factory (Independent Domain & REST API)
+
+zMovie features an autonomous, offline-capable **Kids Content Factory** engine designed for safe, deterministic educational children's video generation:
+
+- **Strict COPPA & Safety Rules:** Pure-Python rule-based safety checking (`kids_safety_check`) rejecting violent or frightening hints, dangerous imitation, and third-party IP references.
+- **Brand & Character Bible:** Versioned character definitions, locked reference checks, and consent-gated voice cloning validations.
+- **Deterministic Storyboard & Timeline:** Structured scene generation with duration control, visual prompts, learning objectives, audio cues, and immutable SHA-256 timeline checksums.
+- **REST Endpoints (`/api/v2/kids/*`):** 16 comprehensive API endpoints covering brands, channels, characters, episodes, scripts, scenes, timelines, voice profiles with pure-sine WAV previews, music license validation, timezone-aware schedules, language variants, captions export (SRT/VTT/JSON), and cost estimation.
+- **Deterministic Mock YouTube Publishing:** Compliance-enforced metadata with mandatory `madeForKids` classification, synthetic content disclosures, and idempotency key mapping.
+
 ## License
 
 zMovie is licensed under the MIT License. See [`LICENSE`](LICENSE).

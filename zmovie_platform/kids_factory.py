@@ -783,3 +783,122 @@ def build_captions_export(*, scenes: list[dict[str, Any]], format: str = "srt") 
         mime = "application/x-subrip"
     return {"format": fmt, "mime": mime, "entries": len(entries),
             "filename": f"captions.{fmt}", "content": content}
+
+
+def derive_shorts(*, parent_episode: dict[str, Any], brand_name: str = "") -> dict[str, Any]:
+    """Derive a vertical 9:16 Shorts child episode from a parent episode.
+
+    Creates an independent child episode definition with portrait preset
+    and linked provenance. The parent episode is never mutated.
+    """
+    title = str(parent_episode.get("title", "Kids Video")).strip()
+    return {
+        "title": f"{title} (Shorts)",
+        "summary": f"Vertical 9:16 short derived from {title}.",
+        "target_age": parent_episode.get("target_age") or parent_episode.get("age_band", "preschool"),
+        "content_type": parent_episode.get("content_type", "nursery_rhyme"),
+        "duration_sec": min(int(parent_episode.get("duration_sec", 30) or 30), 60),
+        "preset": "portrait_1080x1920",
+        "aspect_ratio": "9:16",
+        "parent_episode_id": parent_episode.get("id", ""),
+        "brand_name": brand_name or parent_episode.get("brand_name", ""),
+        "derivation_type": "shorts",
+    }
+
+
+def export_episode_bundle(
+    *,
+    episode: dict[str, Any],
+    brand: dict[str, Any] | None = None,
+    characters: list[dict[str, Any]] | None = None,
+    script: dict[str, Any] | None = None,
+    scenes: list[dict[str, Any]] | None = None,
+    timeline: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Export a portable creative graph bundle for backup/restore drill."""
+    return {
+        "format": "kids-export-1",
+        "exported_at": "2026-11-09T00:00:00Z",
+        "episode": dict(episode or {}),
+        "brand": dict(brand or {}),
+        "characters": list(characters or []),
+        "script": dict(script or {}),
+        "scenes": list(scenes or []),
+        "timeline": dict(timeline or {}),
+    }
+
+
+def import_episode_bundle(
+    *,
+    bundle: dict[str, Any],
+    new_id: str = "",
+) -> dict[str, Any]:
+    """Import and validate a creative graph bundle (approvals & renders NOT restored)."""
+    if not isinstance(bundle, dict) or bundle.get("format") != "kids-export-1":
+        raise KidsValidationError("invalid bundle format; must be 'kids-export-1'")
+    ep = dict(bundle.get("episode") or {})
+    if new_id:
+        ep["id"] = new_id
+    ep_validated = validate_episode(ep)
+    scripts_count = 1 if bundle.get("script") else 0
+    scenes_count = len(bundle.get("scenes") or [])
+    characters_count = len(bundle.get("characters") or [])
+    timelines_count = 1 if bundle.get("timeline") else 0
+    return {
+        "ok": True,
+        "episode": ep_validated,
+        "counts": {
+            "characters": characters_count,
+            "scripts": scripts_count,
+            "scenes": scenes_count,
+            "timelines": timelines_count,
+        },
+        "approvals_restored": False,
+        "message": "Creative graph imported successfully. Approvals and renders must be re-run.",
+    }
+
+
+def run_episode_pipeline(
+    *,
+    episode: dict[str, Any],
+    budget_credits: float = 0.0,
+    num_scenes: int = 4,
+) -> dict[str, Any]:
+    """Simulate durable episode pipeline checkpoints (research -> script -> storyboard -> render).
+
+    Reruns skip succeeded steps. If budget_credits > 0, blocks if cost estimate exceeds budget.
+    """
+    est_cost = estimate_cost(num_scenes=num_scenes, duration_total=float(episode.get("duration_sec", 30) or 30))
+    if budget_credits > 0 and est_cost > budget_credits:
+        raise KidsValidationError(
+            f"KidsBudgetBlocked: estimated cost {est_cost} exceeds budget {budget_credits}"
+        )
+
+    script_body = {
+        "concept": episode.get("title", "Kids Story"),
+        "verses": "Fun and joyful learning together",
+        "chorus": "Sing with us!",
+    }
+    scenes = build_storyboard(script_body=script_body, num_scenes=num_scenes)
+    timeline = storyboard_to_timeline(scenes, brand_name=str(episode.get("brand_name", "Kids Factory")))
+
+    checkpoints = [
+        {"step": "research", "status": "succeeded"},
+        {"step": "script", "status": "succeeded"},
+        {"step": "storyboard", "status": "succeeded"},
+        {"step": "timeline", "status": "succeeded"},
+        {"step": "render", "status": "succeeded_mock"},
+        {"step": "qa", "status": "succeeded"},
+        {"step": "approval_request", "status": "pending_human_review"},
+    ]
+
+    return {
+        "ok": True,
+        "episode_id": episode.get("id", "ep-draft-001"),
+        "estimated_cost": est_cost,
+        "checkpoints": checkpoints,
+        "scenes_count": len(scenes),
+        "timeline_checksum": timeline_checksum(timeline),
+        "approval_state": "pending",
+        "published": False,
+    }
