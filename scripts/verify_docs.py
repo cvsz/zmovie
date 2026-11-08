@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-
 REQUIRED_FILES = (
     "README.md",
     "LICENSE",

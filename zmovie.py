@@ -10,9 +10,8 @@ from __future__ import annotations
 import argparse
 import json
 import random
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from typing import Sequence
-
 
 SETTINGS = [
     "a lavish luxury hotel ballroom with floor-to-ceiling windows overlooking a neon city skyline",

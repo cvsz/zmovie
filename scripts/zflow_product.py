@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
 def load_profile(path: Path) -> ProductProfile:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("product JSON must contain an object")
+        raise TypeError("product JSON must contain an object")
     return ProductProfile.from_dict(payload)
 
 
