@@ -67,5 +67,6 @@ def probe_media(path: str) -> dict[str, Any]:
         try:
             info["probe"] = json.loads(proc.stdout)
         except json.JSONDecodeError:
+            # ffprobe 出力が壊れている場合: フィル情報は記録せず probe データなしで継続
             pass
     return info
