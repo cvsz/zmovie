@@ -54,6 +54,9 @@ Pagination: single paginated request (`per_page=100`) returned all 41 PRs; GitHu
 | #41 | closed | no | yes | docs: final enterprise production audit report and Dockerfile python version fix | cvsz | feat/final-report-sync-and-dockerfix | main | `bdcbacc36315` | `69e16908c858` |
 | #42 | closed | no | yes | fix: remediate verified ZMovie production findings (issue #34 staging + PR audit) | cvsz | feat/zmovie-enterprise-production-hardening | main | `923392d` | `5c33485` |
 | #43 | closed | no | yes | docs: sync final-report.md with PR 42 merge and latest validation | cvsz | docs/sync-final-report-main | main | `7c05b27` | `19165a0` |
+| #44 | closed | no | yes | docs(audit): sync PR audit matrices with all 43 PRs dispositioned and merged | cvsz | docs/sync-pr-audit-all-merged | main | `34d1c32` | `0da07dd` |
+| #45 | closed | no | yes | docs(audit): update final-assessment and gpg-evidence for PR #42 merge | cvsz | docs/sync-assessment-pr42-merged | main | `2744a32` | `717d805` |
+| #46 | closed | no | yes | chore(docs): update last verified timestamp in final-report.md | cvsz | chore/update-verified-status | main | `447b39a` | `982a87c` |
 
 ## Labels by PR
 - #1 build(deps): bump python from 3.12-slim to 3.14-slim: dependencies, docker

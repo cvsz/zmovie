@@ -4,7 +4,7 @@
 
 | Disposition | Count | PRs |
 |---|---|---|
-| MERGED_VERIFIED | 34 | #1, #2, #3, #4, #5, #6, #7, #8, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #23, #24, #29, #30, #32, #33, #35, #36, #37, #38, #39, #40, #41, #42, #43 |
+| MERGED_VERIFIED | 37 | #1, #2, #3, #4, #5, #6, #7, #8, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #23, #24, #29, #30, #32, #33, #35, #36, #37, #38, #39, #40, #41, #42, #43, #44, #45, #46 |
 | CLOSED_SUPERSEDED | 8 | #9, #21, #22, #25, #26, #27, #28, #31 |
 | OPEN_ACTION_REQUIRED | 0 | — |
 | DRAFT_INCOMPLETE | 0 | — |
@@ -28,6 +28,19 @@
 #43 docs: sync final-report.md with PR 42 merge and latest validation — **MERGED_VERIFIED**.
 - GPG signed commit verified.
 - policedbc approved, cvsz merged into main (commit `19165a0`).
+
+#44 docs(audit): sync PR audit matrices with all 43 PRs dispositioned and merged — **MERGED_VERIFIED**.
+- GPG signed commit verified.
+- policedbc approved, cvsz merged into main (commit `0da07dd`).
+
+#45 docs(audit): update final-assessment and gpg-evidence for PR #42 merge — **MERGED_VERIFIED**.
+- GPG signed commit verified.
+- policedbc approved, cvsz merged into main (commit `717d805`).
+
+#46 chore(docs): update last verified timestamp in final-report.md — **MERGED_VERIFIED**.
+- GPG signed commit verified.
+- policedbc approved, cvsz merged into main (commit `982a87c`).
+
 
 ### MERGED_VERIFIED — change exists on main, tests and docs verified
 
