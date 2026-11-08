@@ -28,6 +28,16 @@ This platform implements deep-thinking production workflows with comprehensive f
 - **Advanced Analytics**: Real-time render performance metrics and resource utilization
 - **Deep Context Preservation**: Session-aware project continuity across all production phases
 
+
+## ZEAZVERSE — Virtual Idol Studio & Multi-Agent Production Platform
+
+`zMovie` includes the complete **ZEAZVERSE** platform (`zmovie_platform/zeazverse/`), an enterprise multi-agent virtual idol studio designed for original cinematic content creation and YouTube operations:
+
+- **4 Canonical Characters**: LALIN (The Dreamer), NICHA (The Strategist), PIM (The Rebel), and YADA (The Visionary) with persistent, versioned Character Bibles and strict visual continuity rules.
+- **19 Autonomous Multi-Agents**: Specialized agents covering Channel Setup, Creative Direction, Character Management, Scriptwriting, Storyboarding, Cinematography, Action Choreography, Image/Video/Audio Production, Editing, QA Continuity, YouTube SEO, Policy & Rights, Publishing, Analytics, Growth Experiments, Security & Audit, and Workflow Orchestration.
+- **State Machine & Human Approval**: Strict 12-stage episode progression (`IDEA` → `PUBLISHED`) with private-by-default publishing and mandatory human approval gates.
+- **Master Documentation**: See [ZEAZVERSE Master Implementation Prompt](docs/ZEAZVERSE-MASTER-PROMPT.md) and [Audit Documentation Suite](docs/audit/).
+
 ## ZeaZ Cinema — WordPress Plugin & Theme (Alpha)
 
 โปรเจกต์มีส่วนเสริม WordPress สำหรับแสดงภาพยนตร์และ Trailer แบบ Vertical Swipe ที่พัฒนาขึ้นใหม่โดย ZeaZDev ไม่ใช่ส่วนหนึ่งของ WP-Script และไม่แทนที่ระบบ License ของ WP-Script
