@@ -60,7 +60,7 @@ RUN python -m playwright install-deps chromium \
 # rather than documented.
 RUN rm -rf /usr/local/lib/python3.*/site-packages/pip \
            /usr/local/lib/python3.*/site-packages/pip-*.dist-info \
-    && test ! -d /usr/local/lib/python3.14/site-packages/pip \
+    && test ! -d /usr/local/lib/python3.15/site-packages/pip \
     && python -c "import fastapi, uvicorn, playwright, httpx; print('runtime imports ok')"
 
 RUN useradd --system --uid 10001 --create-home --home-dir /home/zmovie zmovie \

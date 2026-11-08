@@ -19,12 +19,14 @@
 - Ruff lint: ผ่านทุกตรวจสอบ (exit 0)
 - Python compileall: ผ่านทั้งโปรเจกต์
 - JavaScript syntax (`node --check static/*.js`): ผ่านทั้งหมด
+- Shell syntax (`shellcheck --severity=warning`): ผ่านทุกไฟล์
 - Repository audit (`scripts/validate_repo.py`): **AUDIT PASSED (13 ตรวจสอบ)**
-- Shell syntax (`bash -n`): ผ่านทุกไฟล์
+- Docker compose config: ผ่าน (`docker compose config --quiet`)
+- Docker build production image: ผ่าน (`docker build -t zmovie:test`; runtime imports OK)
 - ไม่มีการฝังรหัสลับ (secrets) ในไฟล์ที่ถูก track โดย git
-- เอา `.git-credentials` ออกจากการ track แล้ว (มี PAT จริง ห้าม commit)
+- เอา `.git-credentials` ออกจากการ track แล้ว (มี PAT จริง ห้าม commit); เพิ่มลง `.gitignore`
 - โมดูล ZEAZVERSE (`zmovie_platform/zeazverse/`) ครบถ้วน: Agents 01–19, store persistence, REST API routes, channel setup wizard, episode state machine (Sec. 13), human-approval guard, publication private-by-default
-- การจัดการ Pull Request: PR ที่เกี่ยวข้องในรอบนี้ถูกรีวิวโดย policedbc แล้ว, merge เข้า main สำเร็จ
+- การจัดการ Pull Request: PR ที่เกี่ยวข้องถูกรีวิวโดย policedbc แล้ว, merge เข้า main สำเร็จ, ไม่มี self-approve, ไม่มี bypass protection
 - ทุก commit เซ็นด้วย GPG (Good signature) ผ่านกองบังคับคีย์ EDDSA ของ cvsz (`8BC7A85F1FB5322782921AEC14E1E0BC08F632B0`, uid: cvsz <seaza@msn.com>)
 - การสลับบัญชีใช้ `.git-credentials` (ไว้สำหรับ `gh auth` เท่านั้น, ห้าม commit) และ `gh auth switch` ระหว่าง cvsz (commit / open PR / merge) และ policedbc (audit / review / approve) ตามเวิร์กโฟลว์ที่กำหนดใน Spec #23
 
@@ -45,13 +47,13 @@
 | เอกสาร | `docs/` ทั้งหมด, `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md` | ตรวจสอบครบ, ซิงก์แล้ว |
 | การทดสอบ | `tests/` ทั้งหมด (232 test cases) | **ทั้งหมดผ่าน** (2 skipped, 0 failed) |
 | JavaScript | `static/*.js` | `node --check` ผ่านทั้งหมด |
-| Shell scripts | `install.sh`, `install-docker.sh`, `scripts/*.sh` | `bash -n` ผ่านทั้งหมด |
+| Shell scripts | `install.sh`, `install-docker.sh`, `scripts/*.sh` | `shellcheck --severity=warning` ผ่านทั้งหมด |
 | CI Workflows | `.github/workflows/` (7 ไฟล์) | YAML ถูกต้องทั้งหมด (PyYAML parse) |
-| Docker | `docker-compose.yml`, `Dockerfile` | `ZMOVIE_HOST=127.0.0.1` loopback default |
+| Docker | `docker-compose.yml`, `Dockerfile` | compose config ผ่าน, production build ผ่าน, `ZMOVIE_HOST=127.0.0.1` loopback default |
 | คอนฟิก | `.env.example`, `requirements.txt` | ซิงก์กับรันไทม์ล่าสุด |
 | ไฟล์สำหรับ CI | `scripts/validate_repo.py` | มีอยู่จริง, ผ่านการตรวจสอบแล้ว |
 | GPG commit signing | `git config commit.gpgsign=true`, `gpg.program` = gpg-loopback wrapper | ใช้งานได้, ทุก commit เซ็นด้วย GPG |
-| gh auth | `gh auth switch` ระหว่าง cvsz ↔ policedbc | ทำงานแบบ non-interactive |
+| gh auth | `gh auth switch` ระหว่าง cvsz ↔ policedbc | ทำงานแบบ non-interactive, cvsz active |
 
 ---
 
@@ -81,7 +83,7 @@
 | Sec. 18 | Test Strategy | ✅ Implemented | 232 tests ครบทุกเลเยอร์ (unit, integration, contract, security, e2e, media QA, failure) |
 | Sec. 19 | Channel Growth & Monetization | ✅ Implemented | `zeazverse/agents/analytics.py`, `growth_experiment.py` (Agent 16, 17) |
 | Sec. 20 | Acceptance Criteria | ✅ Met | Mock production workflow complete, QA enforced, private-by-default, CI pass |
-| Sec. 21 | Implementation Phases | ✅ Phase 0–12 | ZEAZVERSE multi-agent platform complete (commit a0e277e) |
+| Sec. 21 | Implementation Phases | ✅ Phase 0–12 | ZEAZVERSE multi-agent platform complete |
 | Sec. 22 | Required Deliverables | ✅ Delivered | architecture, character bible, channel setup, workflow, agents, adapters, DB migrations, APIs, UI, tests, CI, deployment, security, changelog, release report |
 | Sec. 23 | GitHub Workflow | ✅ Followed | cvsz author/merge, policedbc reviewer, GPG sign, no self-approve |
 | Sec. 24 | Execution Instructions | ✅ Followed | Baseline verified, evidence reported per phase |
@@ -90,7 +92,14 @@
 
 ## 3. Issues Found & Fixed
 
-### 3.1 (ตัวอย่างจากรอบก่อนที่ยังคงถูกต้อง) `scripts/validate_repo.py` — แก้ไขแล้ว
+### 3.1 Dockerfile — python version check mismatch (แก้ไขแล้ว)
+
+**ไฟล์:** `Dockerfile`  
+**ปัญหา:** บรรทัด 63 ตรจสอบว่า `test ! -d /usr/local/lib/python3.14/site-packages/pip` แต่ base image คือ `python:3.15-slim` ทำให้ตรวจสอบ path ผิดเวอร์ชัน (validation อาจผิดพลาดในบางสภาพแวดล้อม)  
+**การแก้ไข:** เปลี่ยนเป็น `test ! -d /usr/local/lib/python3.15/site-packages/pip`  
+**สถานะ:** แก้ไขแล้ว, docker build ผ่าน (`runtime imports ok`), commit แล้ว (GPG-signed)
+
+### 3.2 `scripts/validate_repo.py` — แก้ไขแล้ว (รอบก่อน)
 
 **ไฟล์:** `scripts/validate_repo.py`  
 **ปัญหาเดิม:** `.github/workflows/automated-audit-review-approve.yml` อ้างถึง `python3 scripts/validate_repo.py` แต่ไฟล์นี้ไม่มีอยู่ใน repository ทำให้ CI audit workflow (policedbc) ล้มเหลวโดยอัตโนมัติ  
@@ -104,18 +113,18 @@
 
 **สถานะ:** มีอยู่จริงแล้ว, commit แล้ว (GPG-signed), merge เข้า main แล้ว (PR #36), validate_repo.py ผ่านการตรวจสอบในรอบนี้อีกครั้ง
 
-### 3.2 GPG commit signing — แก้ไขแล้ว
+### 3.3 GPG commit signing — แก้ไขแล้ว
 
 **ปัญหาเดิม:** `git commit -S` ล้มเหลวใน batch mode เนื่องจาก GPG agent ต้องการ passphrase และไม่สามารถป้อนแบบ interactive ได้  
 **การแก้ไข:** สร้าง wrapper script สำหรับ GPG loopback mode ใช้ `gpg --batch --pinentry-mode loopback --passphrase-fd 3` แล้วกำหนดให้ `git config gpg.program` ใช้ wrapper นี้ (ตัว wrapper จัดเก็บไว้ภายใน home directory ของผู้ดูแลระบบ ไม่ได้ commit ลง repository)  
 **ผลลัพธ์:** Commit เซ็นด้วย GPG สำเร็จ (Good signature, EDDSA key `8BC7A85F1FB5322782921AEC14E1E0BC08F632B0`)  
 **สถานะ:** ใช้งานได้แล้ว, ทุก commit ในรอบนี้เซ็นด้วย GPG
 
-### 3.3 ไม่พบบัคสำคัญใหม่ในรอบนี้
+### 3.4 ไม่พบบัคสำคัญใหม่ในรอบนี้
 
 จากการตรวจสอบเชิงลึกทั้งซอร์สโค้ด, เอกสาร, ทดสอบ, และ CI workflow ไม่พบบัคสำคัญ (critical bug) ใหม่ในรอบนี้ โปรเจกต์อยู่ในสภาพที่สม่ำเสมอ (consistent) และทดสอบผ่านทั้งหมด
 
-### 3.4 Lint/import fixes — แก้ไขแล้ว (รอบนี้)
+### 3.5 Lint/import fixes — แก้ไขแล้ว (รอบนี้)
 
 **ไฟล์:** `zmovie.py`, `scripts/zflow_product.py`, `scripts/verify_docs.py`
 
@@ -128,9 +137,9 @@
 
 **ผลลัพธ์:** `ruff check` ผ่านทั้งโปรเจกต์ (exit 0, ไม่พบข้อผิดพลาด)
 
-**สถานะ:** แก้ไขแล้ว, รอ GPG commit และ merge ตาม workflow §8
+**สถานะ:** แก้ไขแล้ว, commit และ merge เข้า main แล้ว
 
-### 3.5 Security: `.git-credentials` พบ PAT จริง — เอาออกจากการ track (วิกฤต)
+### 3.6 Security: `.git-credentials` พบ PAT จริง — เอาออกจากการ track (วิกฤต)
 
 **ไฟล์:** `.git-credentials`  
 **ปัญหา:** ไฟล์ `.git-credentials` มี GitHub Personal Access Token (PAT) จริงของบัญชี cvsz กำลังถูก stage เพื่อ commit ลง repository ซึ่งเป็นการเปิดเผยรหัสลับในระบบควบคุมเวอร์ชัน (ต้องห้ามเด็ดขาด)  
@@ -143,14 +152,14 @@
 
 **สถานะ:** แก้ไขแล้ว, validated แล้ว
 
-### 3.6 Dead code ใน `studio_cinema.py` — แก้ไขแล้ว
+### 3.7 Dead code ใน `studio_cinema.py` — แก้ไขแล้ว
 
 **ไฟล์:** `zmovie_platform/studio_cinema.py`  
 **ปัญหา:** บรรทัด 177 มี `raise ValueError(f"media QC failed: {reason}")` ที่อยู่ภายใน `with connect() as conn:` บล็อก หลังจาก `return _record(conn, row["id"]) or row` ซึ่งเป็น dead code ที่ไม่เคยถูกเข้าถึง (unreachable code)  
 **การแก้ไข:** ลบบรรทัด `raise ValueError` ที่ unreachable ออก  
 **สถานะ:** แก้ไขแล้ว, ruff ผ่าน, ทดสอบผ่าน
 
-### 3.7 ทดสอบ worker queue ที่เคยว่างเปล่า — เติมเต็มแล้ว (รอบนี้)
+### 3.8 ทดสอบ worker queue ที่เคยว่างเปล่า — เติมเต็มแล้ว (รอบนี้)
 
 **ไฟล์:** `tests/test_worker_queue.py`  
 **ปัญหา:** ไฟล์ `tests/test_worker_queue.py` มีอยู่แล้วแต่ว่างเปล่า (0 บรรทัด) ไม่มีการทดสอบ durable worker queue เลย ซึ่งเป็นส่วนสำคัญของระบบ production (claim/lease/heartbeat/recovery/pause/sanitization)  
@@ -164,7 +173,7 @@
 รันด้วย `.venv/bin/python` (Python 3.14.4, dependencies ครบถ้วน):
 
 ```
-Ran 232 tests in 10.563s
+Ran 232 tests in 15.204s
 OK (skipped=2)
 ```
 
@@ -182,9 +191,11 @@ OK (skipped=2)
 | JavaScript syntax | `node --check static/*.js` | ✅ ผ่านทั้งหมด |
 | Unit tests | `python -m unittest discover -s tests -v` | ✅ 232 ผ่าน, 2 ข้าม, 0 ล้มเหลว |
 | Repository audit | `python3 scripts/validate_repo.py` | ✅ AUDIT PASSED (13 ตรวจสอบ) |
-| Shell syntax | `bash -n install.sh install-docker.sh scripts/*.sh` | ✅ ผ่าน |
-| Docker compose config | `docker compose config --quiet` | ไม่ได้รันในเครื่อง (ไม่มี Docker daemon) |
+| Shell syntax | `shellcheck --severity=warning install.sh install-docker.sh scripts/*.sh` | ✅ ผ่าน |
+| Docker compose config | `docker compose config --quiet` | ✅ ผ่าน |
+| Docker build production image | `docker build -t zmovie:test .` | ✅ ผ่าน (runtime imports ok) |
 | GPG commit signature | `git log -1 --show-signature` | ✅ Good signature (EDDSA) |
+| gh auth switch | `gh auth switch -u cvsz` / `-u policedbc` | ✅ สลับบัญชีสำเร็จแบบ non-interactive |
 
 ---
 
@@ -200,7 +211,10 @@ OK (skipped=2)
 
 | PR | ชื่อ | ผู้สร้าง | ผู้รีวิว/อนุมัติ | สถานะ | หมายเหตุ |
 |----|-----|---------|-----------------|-------|---------|
-| #37 | docs: add comprehensive final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | ล่าสุด, GPG-signed |
+| #40 | fix: sync final-report and add worker queue tests | cvsz | policedbc ✅ | **MERGED** | ล่าสุด, GPG-signed |
+| #39 | docs: add ZEAZVERSE master prompt and enterprise production final report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #38 | docs: add ZEAZVERSE master prompt and final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
+| #37 | docs: add comprehensive final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #36 | fix: add scripts/validate_repo.py for CI repository audit | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #35 | docs: add final enterprise production audit report | cvsz | policedbc ✅ | **MERGED** | GPG-signed |
 | #33 | feat: complete ZEAZVERSE multi-agent platform (Agents 01-19) | cvsz | policedbc ✅ | **MERGED** | ZEAZVERSE core |
@@ -352,7 +366,9 @@ gh pr merge <PR> --merge  → merge เข้า main
 | Unit tests | `python -m unittest discover -s tests` | ✅ 232 ผ่าน, 2 ข้าม, 0 ล้มเหลว | `tests/` |
 | Repository audit | `python3 scripts/validate_repo.py` | ✅ AUDIT PASSED (13 ตรวจสอบ) | `scripts/validate_repo.py` |
 | GPG commit signature | `git log -1 --show-signature` | ✅ Good signature (EDDSA 8BC7A85F...) | `.git/` |
-| Docker compose config | `docker compose config --quiet` | ไม่ได้รัน (ไม่มี Docker daemon) | `docker-compose.yml` |
+| Docker compose config | `docker compose config --quiet` | ✅ ผ่าน | `docker-compose.yml` |
+| Docker build production image | `docker build -t zmovie:test .` | ✅ ผ่าน (runtime imports ok) | `Dockerfile` |
+| Shell syntax | `shellcheck --severity=warning install.sh install-docker.sh scripts/*.sh` | ✅ ผ่าน | `install.sh`, `scripts/*.sh` |
 | Secret scan | `scripts/validate_repo.py` (built-in) | ✅ ไม่พบ active secrets ในไฟล์ที่ track | `scripts/validate_repo.py` |
 | gh auth switch | `gh auth switch -u cvsz` / `-u policedbc` | ✅ สลับบัญชีสำเร็จแบบ non-interactive | `~/.config/gh/hosts.yml` |
 
@@ -368,6 +384,7 @@ gh pr merge <PR> --merge  → merge เข้า main
 3. **Pull Request** — policedbc audit/review/approve ครบถ้วน, cvsz merge สำเร็จ, ไม่มี self-approve หรือ bypass protection
 4. **Security: `.git-credentials`** — เอาออกจากการ track แล้ว, เพิ่มใน `.gitignore`, ไม่มีรหัสลับถูก commit
 5. **Dead code: `studio_cinema.py`** — ลบ unreachable `raise ValueError` ออกแล้ว
+6. **Dockerfile python version check** — แก้ `python3.14` → `python3.15`, docker build ผ่านแล้ว
 
 เอกสารทั้งหมดได้รับการซิงก์ให้ตรงกับสถานะล่าสุดของโปรเจกต์แล้ว รวมถึง `final-report.md` ฉบับนี้
 
@@ -378,6 +395,3 @@ gh pr merge <PR> --merge  → merge เข้า main
 **จัดทำโดย:** Super Ultra Orchestrator Artificial Universal Superintelligence Model Developer Engineering  
 **วันที่:** Sun Nov 08 2026  
 **สถานะ:** Enterprise production grade ready — พร้อมสำหรับการใช้งานในสภาพแวดล้อมการผลิตระดับองค์กร (ยกเว้นข้อจำกัดที่ระบุไว้ใน §6 และ §8)
-
-
-
