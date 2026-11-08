@@ -15,7 +15,7 @@
 
 ผลการตรวจสอบสรุปดังนี้:
 
-- ทดสอบอัตโนมัติทั้งหมดผ่าน: **232 test cases, 2 skipped, 0 failed**
+- ทดสอบอัตโนมัติทั้งหมดผ่าน: **240 test cases, 2 skipped, 0 failed**
 - Ruff lint: ผ่านทุกตรวจสอบ (exit 0)
 - Python compileall: ผ่านทั้งโปรเจกต์
 - JavaScript syntax (`node --check static/*.js`): ผ่านทั้งหมด
@@ -45,7 +45,7 @@
 | Master Prompt | `docs/ZEAZVERSE-MASTER-PROMPT.md` (Sec. 1–24) | อ่านครบ, map กับการ implement จริงแล้ว |
 | ซอร์สโค้ด Python | `zmovie_platform/` รวม `zeazverse/`, `main.py`, `app.py`, `zmovie.py`, `scripts/*.py` | ตรวจสอบครบ, คอมไพล์ผ่าน, ruff ผ่าน |
 | เอกสาร | `docs/` ทั้งหมด, `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md` | ตรวจสอบครบ, ซิงก์แล้ว |
-| การทดสอบ | `tests/` ทั้งหมด (232 test cases) | **ทั้งหมดผ่าน** (2 skipped, 0 failed) |
+| การทดสอบ | `tests/` ทั้งหมด (240 test cases) | **ทั้งหมดผ่าน** (2 skipped, 0 failed) |
 | JavaScript | `static/*.js` | `node --check` ผ่านทั้งหมด |
 | Shell scripts | `install.sh`, `install-docker.sh`, `scripts/*.sh` | `shellcheck --severity=warning` ผ่านทั้งหมด |
 | CI Workflows | `.github/workflows/` (7 ไฟล์) | YAML ถูกต้องทั้งหมด (PyYAML parse) |
