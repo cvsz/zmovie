@@ -16,7 +16,7 @@
 
 ผลการตรวจสอบสรุปดังนี้:
 
-- ทดสอบอัตโนมัติทั้งหมดผ่าน: **270 test cases (268 passed, 2 skipped, 0 failed)**
+- ทดสอบอัตโนมัติทั้งหมดผ่าน: **270 test cases (270 passed, 0 skipped, 0 failed)**
 - Ruff lint: ผ่านทุกตรวจสอบ (exit 0)
 - Python compileall: ผ่านทั้งโปรเจกต์
 - JavaScript syntax (`node --check static/*.js`): ผ่านทั้งหมด
