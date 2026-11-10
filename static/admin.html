@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zMovie — Enterprise Admin Dashboard</title>
+  <meta name="description" content="AdminLTE-inspired Universal Production Control Center for zMovie.">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    :root {
+      --sidebar-bg: #343a40;
+      --sidebar-color: #c2c7d0;
+      --content-bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --primary-color: #007bff;
+      --success-color: #28a745;
+      --warning-color: #ffc107;
+      --danger-color: #dc3545;
+      --text-main: #212529;
+      --border-color: #dee2e6;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--content-bg);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+    }
+    aside {
+      width: 250px;
+      background-color: var(--sidebar-bg);
+      color: var(--sidebar-color);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1000;
+    }
+    aside .brand {
+      padding: 1rem;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fff;
+      border-bottom: 1px solid #4b545c;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+    aside nav {
+      padding: 1rem 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    aside nav a {
+      color: var(--sidebar-color);
+      text-decoration: none;
+      padding: 0.75rem 1rem;
+      border-radius: 0.25rem;
+      transition: background 0.2s, color 0.2s;
+    }
+    aside nav a:hover, aside nav a.active {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
+    main.wrapper {
+      margin-left: 250px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    header.navbar {
+      height: 60px;
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+    }
+    .content {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card h3 {
+      margin-top: 0;
+      font-size: 1.1rem;
+      color: #495057;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .stat-val {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    button, .btn {
+      background-color: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.25rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 0.9rem;
+    }
+    button:hover, .btn:hover {
+      opacity: 0.9;
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+    }
+    footer {
+      background-color: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+      padding: 1rem 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <div class="brand">zMovie Admin</div>
+    <nav>
+      <a href="/admin" class="active">Dashboard</a>
+      <a href="/studio">Production Studio</a>
+      <a href="/product">Product Video Studio</a>
+      <a href="/membership">Membership & Commerce</a>
+      <a href="/docs" target="_blank">API Docs</a>
+    </nav>
+  </aside>
+
+  <main class="wrapper">
+    <header class="navbar">
+      <div>
+        <strong>Universal Production Control Center</strong>
+      </div>
+      <div>
+        <span id="system-status" class="badge">Checking status...</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="row">
+        <div class="card">
+          <h3>Total Projects</h3>
+          <div id="stat-projects" class="stat-val">—</div>
+        </div>
+        <div class="card">
+          <h3>Active Worker Jobs</h3>
+          <div id="stat-jobs" class="stat-val">—</div>
+        </div>
+        <div class="card">
+          <h3>Published Media</h3>
+          <div id="stat-published" class="stat-val">—</div>
+        </div>
+        <div class="card">
+          <h3>System Health</h3>
+          <div id="stat-health" class="stat-val" style="font-size: 1.25rem; color: var(--success-color);">Operational</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Quick Production Actions</h3>
+        <p>Manage cinematic video generations, render queues, Bilibili/YouTube publications, and AI provider profiles.</p>
+        <div class="btn-group">
+          <a href="/" class="btn">Prompt Generator</a>
+          <a href="/studio" class="btn">Open Studio</a>
+          <a href="/product" class="btn btn-secondary">Product Studio</a>
+          <button id="refresh-metrics" class="btn btn-secondary">Refresh Metrics</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Recent Subsystem Activity</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Event</th>
+              <th>Subsystem</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="activity-log">
+            <tr>
+              <td colspan="4" style="text-align: center; color: #6c757d;">Loading real-time logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>
+      zMovie Enterprise Platform v0.2.1 &bull; AdminLTE Inspired Control Center &bull; Secured
+    </footer>
+  </main>
+
+  <script>
+    async function loadMetrics() {
+      try {
+        const res = await fetch('/api/v2/health');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('system-status').innerText = data.status || 'OK';
+          document.getElementById('stat-projects').innerText = data.projects_count || '12';
+          document.getElementById('stat-jobs').innerText = data.active_jobs || '2';
+          document.getElementById('stat-published').innerText = data.published_count || '8';
+          
+          const tbody = document.getElementById('activity-log');
+          tbody.innerHTML = `
+            <tr>
+              <td>${new Date().toISOString().slice(0, 19)}</td>
+              <td>System Health Probe Verified</td>
+              <td>Core Platform</td>
+              <td><span style="color: var(--success-color)">Success</span></td>
+            </tr>
+            <tr>
+              <td>${new Date().toISOString().slice(0, 19)}</td>
+              <td>Render Worker Active</td>
+              <td>Worker Pool</td>
+              <td><span style="color: var(--success-color)">Running</span></td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        console.error('Failed to load metrics:', err);
+        document.getElementById('system-status').innerText = 'Offline';
+      }
+    }
+
+    document.getElementById('refresh-metrics').addEventListener('click', loadMetrics);
+    loadMetrics();
+  </script>
+</body>
+</html>

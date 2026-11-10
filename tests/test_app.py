@@ -42,6 +42,15 @@ class AppTests(unittest.TestCase):
         self.assertEqual(history["count"], 1)
         self.assertEqual(history["items"][0]["seed"], 7)
 
+    def test_admin_dashboard_route(self) -> None:
+        from fastapi.testclient import TestClient
+
+        import main
+        client = TestClient(main.app)
+        response = client.get("/admin")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Enterprise Admin Dashboard", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

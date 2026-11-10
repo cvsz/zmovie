@@ -78,6 +78,11 @@ def membership() -> HTMLResponse:
     return HTMLResponse(Path("static/membership.html").read_text(encoding="utf-8"))
 
 
+@app.get("/admin", include_in_schema=False)
+def admin_dashboard() -> HTMLResponse:
+    return HTMLResponse(Path("static/admin.html").read_text(encoding="utf-8"))
+
+
 def _legal_page(filename: str) -> HTMLResponse:
     path = Path(__file__).resolve().parent / "static" / filename
     return HTMLResponse(path.read_text(encoding="utf-8"))
