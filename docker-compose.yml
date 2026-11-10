@@ -8,6 +8,7 @@ services:
       ZMOVIE_HOST: "127.0.0.1"
       ZMOVIE_BASE_URL: "${ZMOVIE_BASE_URL:-}"
       ZMOVIE_DB_PATH: /app/data/zmovie.db
+      ZMOVIE_PG_DSN: "${ZMOVIE_PG_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-zmovie-secure-password}@zpostgressql:5432/zmovie}"
       ZMOVIE_MEDIA_ROOT: /app/data/media
       ZMOVIE_EXPORT_ROOT: /app/data/exports
       ZMOVIE_PUBLISH_ROOT: /app/data/publish
@@ -44,6 +45,9 @@ services:
       ZMOVIE_BILIBILI_BROWSER_CHANNEL: "${ZMOVIE_BILIBILI_BROWSER_CHANNEL:-}"
       ZMOVIE_BILIBILI_TIMEOUT_MS: "${ZMOVIE_BILIBILI_TIMEOUT_MS:-120000}"
       ZMOVIE_BILIBILI_UPLOAD_URL: "${ZMOVIE_BILIBILI_UPLOAD_URL:-}"
+    depends_on:
+      zpostgressql:
+        condition: service_healthy
     volumes:
       - zmovie-data:/app/data
       - ./workflows/comfyui:/app/workflows/comfyui:ro
@@ -63,5 +67,24 @@ services:
       retries: 3
       start_period: 15s
 
+  zpostgressql:
+    image: postgres:18-alpine
+    container_name: zpostgressql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zmovie
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zmovie-secure-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d zmovie"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   zmovie-data:
+  postgres-data:
