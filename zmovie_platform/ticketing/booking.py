@@ -237,6 +237,7 @@ def check_in(*, qr_payload: str, qr_signature: str, actor: str) -> dict[str, Any
         conn.execute("UPDATE ticket_tickets SET status='checked_in', checked_in_at=? WHERE id=?", (now, tkt["id"]))
         updated = store._row(conn, "SELECT * FROM ticket_tickets WHERE id=?", (tkt["id"],))
         assert updated is not None
-        result = {"status": "checked_in", "ticket": updated}
+        ticket_data: dict[str, Any] = updated
+        result: dict[str, Any] = {"status": "checked_in", "ticket": ticket_data}
     store.audit("ticket.checked_in", actor=actor, ticket_id=result["ticket"]["id"])
     return result

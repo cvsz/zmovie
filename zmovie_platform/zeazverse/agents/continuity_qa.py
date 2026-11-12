@@ -108,8 +108,8 @@ class ContinuityQAAgent:
 
     def run_qa_checks(
         self, scene_id: str, character_id: str,
-        reference_hashes: dict[str, str] = None,
-        current_assets: dict[str, Any] = None,
+        reference_hashes: dict[str, str] | None = None,
+        current_assets: dict[str, Any] | None = None,
     ) -> QAReport:
         """Run all QA checks for a scene."""
 
@@ -118,34 +118,36 @@ class ContinuityQAAgent:
         rendering_defects = RenderingDefects(scene_id=scene_id)
 
         # Character identity check
+        assets = current_assets or {}
+        ref_hashes = reference_hashes or {}
         char_check = self._check_character_identity(
-            character_id, reference_hashes.get("character", ""), current_assets
+            character_id, ref_hashes.get("character", ""), assets
         )
         continuity_issues.add_issue(char_check)
 
         # Anatomy check
-        anatomy_check = self._check_anatomy(character_id, current_assets)
+        anatomy_check = self._check_anatomy(character_id, assets)
         continuity_issues.add_issue(anatomy_check)
 
         # Object placement check
-        object_check = self._check_object_placement(current_assets)
+        object_check = self._check_object_placement(assets)
         continuity_issues.add_issue(object_check)
 
         # Temporal consistency check
-        temporal_check = self._check_temporal_consistency(scene_id, current_assets)
+        temporal_check = self._check_temporal_consistency(scene_id, assets)
         continuity_issues.add_issue(temporal_check)
 
         # Rendering defect checks
-        rendering_checks = self._check_rendering_defects(character_id, current_assets)
+        rendering_checks = self._check_rendering_defects(character_id, assets)
         for check in rendering_checks:
             rendering_defects.add_defect(check)
 
         # Lighting consistency check
-        lighting_check = self._check_lighting_consistency(current_assets)
+        lighting_check = self._check_lighting_consistency(assets)
         continuity_issues.add_issue(lighting_check)
 
         # Accessory consistency check
-        accessory_check = self._check_accessory_consistency(character_id, current_assets)
+        accessory_check = self._check_accessory_consistency(character_id, assets)
         continuity_issues.add_issue(accessory_check)
 
         # Compile report

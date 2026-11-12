@@ -651,18 +651,18 @@ def execute_action(
         }
 
     elif action == "resolve_incident":
-        result = agent_obj.resolve_incident(
+        resolution_result = agent_obj.resolve_incident(
             incident_id=kwargs.get("incident_id", ""),
             resolution_notes=kwargs.get("resolution_notes", ""),
         )
         return {
             "agent": agent_obj.AGENT_ID,
             "action": "resolve_incident",
-            **result,
+            **resolution_result,
         }
 
     elif action == "validate_input":
-        result = agent_obj.validate_input(
+        validation_result = agent_obj.validate_input(
             input_id=kwargs.get("input_id", ""),
             input_type=kwargs.get("input_type", ""),
             content=kwargs.get("content", ""),
@@ -671,16 +671,16 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "validate_input",
             "status": "completed",
-            "input_id": result.input_id,
-            "input_type": result.input_type,
-            "is_valid": result.is_valid,
-            "sanitized": result.sanitized,
-            "threats_detected": result.threats_detected,
-            "violations": result.violations,
+            "input_id": validation_result.input_id,
+            "input_type": validation_result.input_type,
+            "is_valid": validation_result.is_valid,
+            "sanitized": validation_result.sanitized,
+            "threats_detected": validation_result.threats_detected,
+            "violations": validation_result.violations,
         }
 
     elif action == "verify_webhook":
-        result = agent_obj.verify_webhook(
+        webhook_result = agent_obj.verify_webhook(
             webhook_id=kwargs.get("webhook_id", ""),
             source=kwargs.get("source", ""),
             signature=kwargs.get("signature", ""),
@@ -691,14 +691,14 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "verify_webhook",
             "status": "completed",
-            "webhook_id": result.webhook_id,
-            "source": result.source,
-            "signature_valid": result.signature_valid,
-            "verified": result.verified,
+            "webhook_id": webhook_result.webhook_id,
+            "source": webhook_result.source,
+            "signature_valid": webhook_result.signature_valid,
+            "verified": webhook_result.verified,
         }
 
     elif action == "check_ssrf":
-        result = agent_obj.check_ssrf(
+        ssrf_result = agent_obj.check_ssrf(
             url=kwargs.get("url", ""),
             allowed_domains=kwargs.get("allowed_domains"),
         )
@@ -706,9 +706,9 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "check_ssrf",
             "status": "completed",
-            "url": result.url,
-            "is_safe": result.is_safe,
-            "blocked_reasons": result.blocked_reasons,
+            "url": ssrf_result.url,
+            "is_safe": ssrf_result.is_safe,
+            "blocked_reasons": ssrf_result.blocked_reasons,
         }
 
     elif action == "enforce_human_approval":
@@ -724,10 +724,11 @@ def execute_action(
         }
 
     elif action == "get_audit_trail":
+        event_type_raw = kwargs.get("event_type")
+        event_type = AuditEventType[str(event_type_raw)] if event_type_raw else None
         trail = agent_obj.get_audit_trail(
             limit=kwargs.get("limit", 50),
-            event_type=AuditEventType[kwargs.get("event_type")]
-            if kwargs.get("event_type") else None,
+            event_type=event_type,
         )
         return {
             "agent": agent_obj.AGENT_ID,

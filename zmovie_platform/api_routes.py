@@ -530,3 +530,57 @@ def pipeline(payload: PipelineRequest, actor: dict[str, str] = Depends(current_a
     increment("pipeline.completed" if result["render"]["status"] == "completed" else "pipeline.failed")
     audit("pipeline.run", actor=actor["username"], project_id=result["project"]["id"], provider=payload.provider)
     return result
+
+
+v1_router = APIRouter(prefix="/v1", tags=["openai-v1"])
+
+
+@v1_router.get("/models")
+def list_v1_models() -> dict[str, Any]:
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "wan-3.0-cinematic",
+                "object": "model",
+                "created": 1710000000,
+                "owned_by": "zmovie-zeazverse",
+            },
+            {
+                "id": "comfyui-render-engine",
+                "object": "model",
+                "created": 1710000000,
+                "owned_by": "zmovie-production",
+            },
+            {
+                "id": "zmovie-prod-v2",
+                "object": "model",
+                "created": 1710000000,
+                "owned_by": "zmovie-platform",
+            },
+        ],
+    }
+
+
+@v1_router.post("/chat/completions")
+def v1_chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
+    messages = payload.get("messages", [])
+    prompt = messages[-1].get("content", "") if messages else "Generate cinematic action prompt."
+    return {
+        "id": "chatcmpl-zmovie",
+        "object": "chat.completion",
+        "created": 1710000000,
+        "model": payload.get("model", "wan-3.0-cinematic"),
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": f"[zMovie v1 AI Gateway] Cinematic prompt generated for: {prompt}",
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+    }
+

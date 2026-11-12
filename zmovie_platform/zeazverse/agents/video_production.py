@@ -140,13 +140,13 @@ class VideoProductionAgent:
 
     def create_render_job(
         self, scene_id: str, character_id: str,
-        resolution: VideoResolution = None,
-        format: VideoFormat = None,
+        resolution: VideoResolution | None = None,
+        format: VideoFormat | None = None,
         duration: float = 30.0,
         frame_rate: float = 30.0,
-        prompt: str = None,
-        negative_prompt: str = None,
-        model_adapter: str = None,
+        prompt: str | None = None,
+        negative_prompt: str | None = None,
+        model_adapter: str | None = None,
     ) -> RenderJob:
         """Create a new rendering job for a scene."""
 
@@ -192,8 +192,8 @@ class VideoProductionAgent:
         return job
 
     def update_render_status(self, job_id: str, status: RenderStatus,
-                             progress: float = None,
-                             error_message: str = None) -> RenderJob:
+                             progress: float | None = None,
+                             error_message: str | None = None) -> RenderJob:
         """Update rendering job status (mock implementation)."""
         # In production, this would query the actual job status
         # or interface with the video model adapter
@@ -257,8 +257,8 @@ class VideoProductionAgent:
 
     def create_editing_plan(
         self, input_assets: list[str],
-        operations: list[str] = None,
-        output_path: str = None,
+        operations: list[str] | None = None,
+        output_path: str | None = None,
         **ffmpeg_params: Any,
     ) -> EditingTask:
         """Create an FFmpeg-based editing plan."""
@@ -292,8 +292,8 @@ class VideoProductionAgent:
         self, scene_id: str, character_id: str,
         theme: str = "original_story",
         duration: float = 30.0,
-        resolution: VideoResolution = None,
-        format: VideoFormat = None,
+        resolution: VideoResolution | None = None,
+        format: VideoFormat | None = None,
     ) -> VideoProductionOutput:
         """Generate complete video output for a scene."""
 
@@ -392,6 +392,7 @@ def execute_action(
         character_id = kwargs.get("character_id", "lalin")
         # Convert string to enum if needed
         resolution_raw = kwargs.get("resolution")
+        resolution: VideoResolution
         if isinstance(resolution_raw, str):
             resolution_map = {
                 "RES_480P": VideoResolution.RES_480P,
@@ -399,10 +400,13 @@ def execute_action(
                 "RES_1080P": VideoResolution.RES_1080P,
             }
             resolution = resolution_map.get(resolution_raw.upper(), VideoResolution.RES_1080P)
-        else:
+        elif isinstance(resolution_raw, VideoResolution):
             resolution = resolution_raw
+        else:
+            resolution = VideoResolution.RES_1080P
         # Convert string to enum if needed
         format_raw = kwargs.get("format")
+        format_: VideoFormat
         if isinstance(format_raw, str):
             format_map = {
                 "MP4": VideoFormat.MP4,
@@ -411,8 +415,10 @@ def execute_action(
                 "AVI": VideoFormat.AVI,
             }
             format_ = format_map.get(format_raw.upper(), VideoFormat.MP4)
-        else:
+        elif isinstance(format_raw, VideoFormat):
             format_ = format_raw
+        else:
+            format_ = VideoFormat.MP4
         duration = kwargs.get("duration", 30.0)
         frame_rate = kwargs.get("frame_rate", 30.0)
         prompt = kwargs.get("prompt")
@@ -453,17 +459,21 @@ def execute_action(
         character_id = kwargs.get("character_id", "lalin")
         # Convert string to enum if needed
         resolution_raw = kwargs.get("resolution")
+        resolution_val: VideoResolution
         if isinstance(resolution_raw, str):
             resolution_map = {
                 "RES_480P": VideoResolution.RES_480P,
                 "RES_720P": VideoResolution.RES_720P,
                 "RES_1080P": VideoResolution.RES_1080P,
             }
-            resolution = resolution_map.get(resolution_raw.upper(), VideoResolution.RES_1080P)
+            resolution_val = resolution_map.get(resolution_raw.upper(), VideoResolution.RES_1080P)
+        elif isinstance(resolution_raw, VideoResolution):
+            resolution_val = resolution_raw
         else:
-            resolution = resolution_raw
+            resolution_val = VideoResolution.RES_1080P
         # Convert string to enum if needed
         format_raw = kwargs.get("format")
+        format_val: VideoFormat
         if isinstance(format_raw, str):
             format_map = {
                 "MP4": VideoFormat.MP4,
@@ -471,9 +481,11 @@ def execute_action(
                 "MOV": VideoFormat.MOV,
                 "AVI": VideoFormat.AVI,
             }
-            format_ = format_map.get(format_raw.upper(), VideoFormat.MP4)
+            format_val = format_map.get(format_raw.upper(), VideoFormat.MP4)
+        elif isinstance(format_raw, VideoFormat):
+            format_val = format_raw
         else:
-            format_ = format_raw
+            format_val = VideoFormat.MP4
         theme = kwargs.get("theme", "original_story")
         duration = kwargs.get("duration", 30.0)
 
@@ -482,8 +494,8 @@ def execute_action(
             character_id=character_id,
             theme=theme,
             duration=duration,
-            resolution=resolution,
-            format=format_,
+            resolution=resolution_val,
+            format=format_val,
         )
 
         return {

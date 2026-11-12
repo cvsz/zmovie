@@ -175,7 +175,7 @@ class CinematographerAgent:
     ) -> CameraSpec:
         """Design camera specification for the scene."""
         # Base parameters per style
-        style_params = {
+        style_params: dict[CinematographyStyle, dict[str, object]] = {
             CinematographyStyle.DREAMY: {
                 "camera_type": "steadycam",
                 "framing": "soft-focus close-up",
@@ -257,38 +257,62 @@ class CinematographerAgent:
 
         base = style_params.get(style, style_params[CinematographyStyle.CINEMATIC])
 
+        # Extract and cast values
+        def _as_float(val: object) -> float:
+            if isinstance(val, (int, float)):
+                return float(val)
+            if isinstance(val, str):
+                try:
+                    return float(val)
+                except ValueError:
+                    return 0.0
+            return 0.0
+
+        def _as_str(val: object) -> str:
+            return str(val) if val is not None else ""
+
+        camera_type = _as_str(base.get("camera_type"))
+        framing = _as_str(base.get("framing"))
+        movement = _as_str(base.get("movement"))
+        speed = _as_float(base.get("speed"))
+        acceleration = _as_float(base.get("acceleration"))
+        color_temp = _as_float(base.get("color_temp"))
+        iris = _as_float(base.get("iris"))
+        focal_length = _as_float(base.get("focal_length"))
+        focus_distance = _as_float(base.get("focus_distance"))
+
         # Adjust for action sequences
         if is_action:
-            base["speed"] = min(base["speed"] * 1.5, 1.0)
-            base["acceleration"] = min(base["acceleration"] * 1.5, 1.0)
-            if base["camera_type"] == "steadycam":
-                base["camera_type"] = "steadycam with motion blur"
+            speed = min(speed * 1.5, 1.0)
+            acceleration = min(acceleration * 1.5, 1.0)
+            if camera_type == "steadycam":
+                camera_type = "steadycam with motion blur"
 
         # Adjust for character count
         if character_count > 2:
-            base["framing"] = "group-shot"
-            base["focal_length"] = base["focal_length"] * 0.7
+            framing = "group-shot"
+            focal_length = focal_length * 0.7
 
         return CameraSpec(
             camera_id=f"cam_{uuid4().hex[:8]}",
-            camera_type=base["camera_type"],
-            framing=base["framing"],
-            movement=base["movement"],
+            camera_type=camera_type,
+            framing=framing,
+            movement=movement,
             duration=30.0,  # default per spec
-            speed=base["speed"],
-            acceleration=base["acceleration"],
+            speed=speed,
+            acceleration=acceleration,
             stabilization=True,
-            color_temperature=base["color_temp"],
-            iris=base["iris"],
-            focal_length=base["focal_length"],
-            focus_distance=base["focus_distance"],
+            color_temperature=color_temp,
+            iris=iris,
+            focal_length=focal_length,
+            focus_distance=focus_distance,
         )
 
     def _design_lighting_spec(self, theme: str, style: CinematographyStyle,
                               is_action: bool) -> LightingSpec:
         """Design lighting specification for the scene."""
         # Base lighting per style
-        style_lighting = {
+        style_lighting: dict[CinematographyStyle, dict[str, object]] = {
             CinematographyStyle.DREAMY: {
                 "key": {"direction": "45-degree", "intensity": 0.3, "color": "warm-white"},
                 "fill": {"direction": "opposite-key", "intensity": 0.5, "color": "soft-white"},
@@ -326,22 +350,46 @@ class CinematographerAgent:
 
         base = style_lighting.get(style, style_lighting[CinematographyStyle.CINEMATIC])
 
+        # Extract and cast values
+        def _get_dict(val: object, default: dict[str, object]) -> dict[str, object]:
+            return val if isinstance(val, dict) else default
+
+        def _as_float(val: object, default: float) -> float:
+            if isinstance(val, (int, float)):
+                return float(val)
+            if isinstance(val, str):
+                try:
+                    return float(val)
+                except ValueError:
+                    return default
+            return default
+
+        def _as_str(val: object, default: str) -> str:
+            return str(val) if val is not None else default
+
+        key = _get_dict(base.get("key"), {})
+        fill = _get_dict(base.get("fill"), {})
+        back = _get_dict(base.get("back"), {})
+        ambient = _get_dict(base.get("ambient"), {})
+
         # Adjust for action sequences
         if is_action:
-            base["key"]["intensity"] = min(base["key"]["intensity"] * 1.3, 1.0)
+            key_intensity = _as_float(key.get("intensity"), 0.6)
+            key["intensity"] = min(key_intensity * 1.3, 1.0)
             base["shadows"] = "hard"
-            base["contrast"] = min(base["contrast"] * 1.2, 1.0)
+            contrast = _as_float(base.get("contrast"), 0.6)
+            base["contrast"] = min(contrast * 1.2, 1.0)
 
         return LightingSpec(
-            key_light=base["key"],
-            fill_light=base["fill"],
-            back_light=base["back"],
-            ambient_light=base["ambient"],
-            color_temperature=base["temp"],
-            intensity=base["intensity"],
-            shadows=base["shadows"],
-            highlights=base["highlights"],
-            contrast=base["contrast"],
+            key_light=key,
+            fill_light=fill,
+            back_light=back,
+            ambient_light=ambient,
+            color_temperature=_as_float(base.get("temp"), 5600.0),
+            intensity=_as_float(base.get("intensity"), 0.7),
+            shadows=_as_str(base.get("shadows"), "mixed"),
+            highlights=_as_str(base.get("highlights"), "controlled"),
+            contrast=_as_float(base.get("contrast"), 0.6),
         )
 
     def _generate_positive_prompt(self, theme: str, style: CinematographyStyle,

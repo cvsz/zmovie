@@ -111,9 +111,9 @@ class VideoEditorAgent:
 
     def edit_scene_sequence(
         self, scene_assets: list[str],
-        operations: list[EditOperation] = None,
-        output_format: VideoFormat = None,
-        output_resolution: VideoResolution = None,
+        operations: list[EditOperation] | None = None,
+        output_format: VideoFormat | None = None,
+        output_resolution: VideoResolution | None = None,
         add_subtitles: bool = True,
         subtitle_language: str = "en",
     ) -> VideoEditorOutput:

@@ -200,6 +200,8 @@ def public_health_report(report: dict[str, object] | None = None) -> dict[str, o
         ):
             if key in raw_sdcpp:
                 sdcpp[key] = raw_sdcpp[key]
+    production_backends_raw = source.get("production_backends")
+    production_backends: list[str] = list(production_backends_raw) if isinstance(production_backends_raw, list) else []
     return {
         "status": source.get("status", "unknown"),
         "service": "zmovie",
@@ -210,5 +212,5 @@ def public_health_report(report: dict[str, object] | None = None) -> dict[str, o
         "sdcpp": sdcpp,
         "render_ready": bool(source.get("render_ready")),
         "production_video_ready": bool(source.get("production_video_ready")),
-        "production_backends": list(source.get("production_backends") or []),
+        "production_backends": production_backends,
     }

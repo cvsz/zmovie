@@ -21,6 +21,8 @@ def _resumable_render_job(project_id: str, shot_id: str, provider_id: str):
         if str(item.get("shot_id") or "") != shot_id or str(item.get("provider") or "") != provider_id:
             continue
         metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+        if not isinstance(metadata, dict):
+            metadata = {}
         if str(metadata.get("comfyui_prompt_id") or "").strip() and str(item.get("status") or "") in {"running", "failed"}:
             return get_job(str(item["id"]))
     return None

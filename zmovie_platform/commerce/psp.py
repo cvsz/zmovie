@@ -72,7 +72,7 @@ class SandboxPSP(BasePSP):
 
 
 def get_psp(name: str | None = None) -> BasePSP:
-    selected = (name or os.getenv("ZMOVIE_PSP", "sandbox")).strip().lower()
+    selected = (name or os.getenv("ZMOVIE_PSP", "sandbox") or "sandbox").strip().lower()
     if selected != "sandbox":
         # ปิดกั้น PSP จริงจนกว่าจะมี approved secret-management workflow
         raise ValueError("only sandbox PSP is enabled (live payments require explicit operator approval)")

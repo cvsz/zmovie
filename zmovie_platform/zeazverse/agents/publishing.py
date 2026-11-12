@@ -697,8 +697,8 @@ def execute_action(
         }
 
     elif action == "get_record":
-        record = agent_obj.get_record(kwargs.get("episode_id", ""))
-        if record is None:
+        record_data = agent_obj.get_record(kwargs.get("episode_id", ""))
+        if record_data is None:
             return {
                 "agent": agent_obj.AGENT_ID,
                 "action": "get_record",
@@ -709,7 +709,7 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "get_record",
             "status": "completed",
-            "record": record,
+            "record": record_data,
         }
 
     elif action == "status_check":

@@ -1,1619 +1,1635 @@
-# ZMOVIE — UNIVERSAL ENTERPRISE ADMIN DASHBOARD MASTER PROMPT
-## AdminLTE-Inspired Full Independent Implementation
+# ZMOVIE — UNIVERSAL SUPERIOR ENTERPRISE UI/UX, DESIGN SYSTEM & FULL-STACK REFACTOR MASTER PROMPT
 
-PROJECT: zMovie
-REPOSITORY: https://github.com/cvsz/zmovie
-DESIGN REFERENCE: https://github.com/ColorlibHQ/AdminLTE
-PRIMARY BRANCH: main
-APPLICATION: AI Movie Production and Content Automation Platform
-
-MISSION:
-
-Independently audit, design, implement, integrate, upgrade, test, secure, and complete the zMovie Enterprise Admin Dashboard.
-
-Build a professional Production Control Center inspired by AdminLTE.
-
-This is a full implementation assignment. Do not stop at design recommendations, screenshots, mockups, static HTML, or documentation.
-
-Implement the actual working application using the existing repository architecture and backend APIs.
-
-The dashboard must provide unified operational visibility and control over every supported zMovie subsystem.
+**Repository:** https://github.com/cvsz/zmovie  
+**Primary branch:** main  
+**Design reference:** https://github.com/ColorlibHQ/AdminLTE  
+**Product:** zMovie — Self-Hosted AI Video Production Platform  
+**Scope:** Entire frontend, backend, dashboard, design system, themes, UI/UX, APIs, workflows, feature integration, testing, deployment and documentation.
 
 ---
 
-# 0. NON-NEGOTIABLE REPOSITORY RULES
+# MISSION
 
-Read and obey:
+Act as the principal software architect, senior product designer, design-system engineer, frontend architect, backend architect, UX researcher, security engineer, QA engineer, and DevOps engineer.
+
+Your mission is to perform a complete independent assessment and implementation of the zMovie platform.
+
+Refactor and modernize ALL user-facing and operator-facing interfaces.
+
+Transform the application into a unified, modern, responsive, cinematic, enterprise-grade AI content production platform.
+
+The work includes:
+
+1. Complete visual redesign.
+2. Complete theme and design-system refactor.
+3. Complete UI/UX improvement.
+4. Frontend architecture refactor.
+5. Backend/API integration improvements.
+6. Administrative dashboard reconstruction.
+7. All existing feature integration.
+8. Media and workflow management improvements.
+9. Production operations and monitoring UI.
+10. Security, accessibility and performance.
+11. Comprehensive validation.
+12. Documentation and deployment completion.
+
+This is an execution assignment.
+
+DO NOT stop after research, screenshots, architecture proposals, wireframes, or documentation.
+
+Inspect, implement, test, integrate, and verify actual functionality.
+
+The target is a coherent end-to-end application, not a collection of disconnected pages.
+
+# PHASE 0 — REPOSITORY AUDIT AND GOVERNANCE
+
+Read all governing files before implementation.
+
+Mandatory:
 
 - AGENTS.md
 - README.md
 - SECURITY.md
 - CONTRIBUTING.md
+- CHANGELOG.md
+- SUPPORT.md
 - docs/INDEX.md
 - docs/ARCHITECTURE.md
 - docs/API.md
+- docs/CONFIGURATION.md
 - docs/OPERATIONS.md
 - docs/TESTING.md
+- docs/RELEASE.md
+- docs/I18N.md
 - docs/STATUS.md
-- docs/CONFIGURATION.md
-- docs/RUNTIME_EVIDENCE.md
-- docs/LONG_RUNNING_RENDER_WORKER.md
-- docs/BACKUP_AND_RECOVERY.md
-- docs/BILIBILI_PUBLISHING.md
-- docs/BILIBILI_PRODUCTION_COMPLETION.md
-- docs/production/CURRENT_STATE.md
-- docs/production/FEATURE_MATRIX.md
+- relevant docs and agent instructions under every affected module.
 
-Also inspect:
-- `zmovie_platform/README_API_V2.md`
-- `zmovie_platform/README_API_AUTH.md`
-- `zmovie_platform/README_WORKERS.md`
-- `zmovie_platform/README_SECURITY.md`
-- `zmovie_platform/README_OBSERVABILITY.md`
-- `zmovie_platform/zeazverse/`
-- `docs/kids-factory/`
+Follow repository instructions.
 
-Repository instructions have precedence over this prompt when they establish a more restrictive safety or security boundary.
+IMPORTANT LANGUAGE CONTRACT:
 
-Communication and documentation must follow repository language requirements: Thai for human-facing explanations and documentation; English for source code, identifiers, routes and configuration.
+- Developer documentation and explanations: Thai.
+- Source code, identifiers, routes, schemas and configuration: English.
+- Preserve existing English technical terminology.
 
-Preserve existing architecture, contracts, functionality and backward compatibility.
+Inspect the complete repository and determine:
 
-Do not remove existing functionality to simplify the dashboard.
+- Actual frontend technology.
+- Existing static HTML pages.
+- JavaScript modules.
+- CSS architecture.
+- FastAPI routers.
+- Pydantic schemas.
+- Database models and migrations.
+- Authentication.
+- Authorization.
+- Media-processing pipeline.
+- Queue and worker lifecycle.
+- Rendering provider integrations.
+- Publishing providers.
+- Membership and commerce.
+- Kids Content Factory.
+- Analytics and monitoring.
+- Deployment infrastructure.
+- Existing tests and quality gates.
 
-Do not create a third application or a parallel backend without demonstrating a necessary architectural reason.
+Do not assume a feature is complete because a route, navigation item or README mentions it.
 
----
+Trace each important workflow from UI → API → service → persistence → worker/provider → observable result.
 
-# 1. REPOSITORY BASELINE AUDIT
+Build a feature inventory and classify capabilities:
 
-Inspect the complete repository.
+- IMPLEMENTED
+- PARTIALLY_IMPLEMENTED
+- EXPERIMENTAL
+- BLOCKED
+- NOT_IMPLEMENTED
+- EXTERNAL_DEPENDENCY
+- DEPRECATED
 
-Core application:
-- `app.py`
-- `main.py`
-- `zmovie.py`
-- `zmovie_platform/`
+Never misrepresent feature status.
 
-Current frontend:
-- `static/index.html`
-- `static/style.css`
-- `static/app.js`
-- `static/studio.html`
-- `static/studio-preview.js`
-- `static/product.html`
-- `static/product.css`
-- `static/product.js`
-- `static/durable-worker.js`
-- `static/hyperframes-studio.js`
-- `static/membership.html`
-- `static/membership.js`
+## Existing application surfaces to investigate
 
-Backend modules:
-- `api_routes.py`
-- `api_schemas.py`
-- `auth.py`
-- `audit.py`
-- `health.py`
-- `metrics.py`
-- `runtime.py`
-- `runtime_ops.py`
-- `worker.py`
-- `worker_queue.py`
-- `production.py`
-- `storyboard.py`
-- `content_storyboard.py`
-- `media.py`
-- `media_pipeline.py`
-- `media_preview.py`
-- `media_upload_routes.py`
-- `product_routes.py`
-- `product_video.py`
-- `publisher_routes.py`
-- `publishers/`
-- `kids_factory.py`
-- `kids_routes.py`
-- `zeazverse/`
-- `zflow.py`
-- `commerce/`
-- `studio_cinema.py`
-- `privacy.py`
-- `privacy_routes.py`
+- `/`
+- `/studio`
+- `/product`
+- `/membership`
+- `/admin`
+- legal pages
+- existing static routes and mounted assets
+- API v1/v2
+- creator/publishing workflows
+- all module-specific routes.
 
-Infrastructure:
-- Dockerfile
-- docker-compose.yml
-- install.sh
-- install-docker.sh
-- deploy/
-- scripts/
-- systemd service definitions
-- backup and restore scripts
-- GitHub workflows
+Preserve legacy API compatibility unless a documented migration and compatibility strategy is implemented.
 
-Inspect every existing dashboard-related route, API contract, JavaScript module, stylesheet, and test before deciding the implementation strategy.
+## Repository documentation
 
-Produce a baseline matrix showing:
-- Existing functionality.
-- Existing UI.
-- API readiness.
-- Authentication requirements.
-- Permissions.
-- Data source.
-- Test coverage.
-- Missing capability.
-- Risk level.
+Create or update:
 
-Do not infer live operational status from old documentation or previously generated reports. Verify current code and runtime evidence separately.
+- docs/UI-UX-TRANSFORMATION.md
+- docs/DESIGN-SYSTEM.md
+- docs/FRONTEND-ARCHITECTURE.md
+- docs/FRONTEND-ROUTES.md
+- docs/COMPONENT-INVENTORY.md
+- docs/API-INTEGRATION-MATRIX.md
+- docs/BACKEND-REFACTOR.md
+- docs/UX-ACCESSIBILITY.md
+- docs/UI-TEST-PLAN.md
+- docs/UI-IMPLEMENTATION-REPORT.md
+
+Update docs/INDEX.md.
 
 ---
 
-# 2. DESIGN SYSTEM — ADMINLTE-INSPIRED ZMOVIE
+# PHASE 1 — DESIGN DIRECTION AND PRODUCT IDENTITY
 
-Reference: https://github.com/ColorlibHQ/AdminLTE
+## 1.1 AdminLTE reference
 
-Review the current AdminLTE release and choose a compatible, maintained implementation approach.
+Use:
 
-Do not assume version-specific APIs or dependencies.
+https://github.com/ColorlibHQ/AdminLTE
 
-Inspect the repository license and any assets before reuse.
+Study the actual AdminLTE source, current supported version, component organization, dashboard layouts and licensing.
 
-Implement an original zMovie visual identity using AdminLTE-inspired dashboard patterns.
+Use its general enterprise-admin design patterns:
 
-## 2.1 Visual direction
+- Sidebar.
+- Navbar.
+- Dashboard widgets.
+- Cards.
+- Breadcrumbs.
+- Tables.
+- Forms.
+- Buttons.
+- Dialogs.
+- Tabs.
+- Navigation.
+- Charts.
+- Responsive grids.
 
-Style:
-- Premium professional media-production SaaS.
-- Dark charcoal sidebar.
-- Clean light content surface.
-- Optional dark theme.
-- Professional blue primary actions.
-- Restrained status colors.
-- High-quality media thumbnails.
-- Clear status indicators.
+Do not copy the AdminLTE logo, proprietary brand identity or unrelated example content.
+
+Respect the applicable upstream license and asset attribution requirements.
+
+Build an original zMovie design identity.
+
+## 1.2 Product identity
+
+Brand:
+
+zMovie — AI Cinematic Production Studio
+
+Visual direction:
+
+- Premium.
+- Cinematic.
+- Creative.
+- Modern.
+- Professional.
+- Technical.
+- Media-centric.
+- Minimal but powerful.
+- High-quality typography.
+- Rich preview surfaces.
 - Consistent information hierarchy.
-- Compact but readable operational density.
 
-Design should feel suitable for a professional creative-production team.
+Avoid:
 
-Avoid excessive gradients, oversized hero content, decorative animations and unnecessary card nesting.
+- Excessive gradients.
+- Excessive glassmorphism.
+- Overly bright neon.
+- Excessive border decorations.
+- Too many cards nested inside cards.
+- Unnecessary animations.
+- Inconsistent icons.
+- Generic SaaS template appearance.
+- Decorative controls without functionality.
 
-## 2.2 Design tokens
+## 1.3 Theme architecture
 
-Create centralized tokens for:
-- Color.
+Implement three user-selectable modes:
+
+1. Dark.
+2. Light.
+3. System preference.
+
+Persist user preference safely.
+
+Support automatic system preference detection.
+
+Prevent theme flashing during application startup.
+
+Ensure every component supports both dark and light modes.
+
+Establish a single source of truth for design tokens.
+
+## 1.4 Color system
+
+Build semantic tokens for:
+
+- Background.
+- Surface.
+- Elevated surface.
+- Primary.
+- Secondary.
+- Accent.
+- Text primary.
+- Text secondary.
+- Muted.
+- Borders.
+- Focus.
+- Success.
+- Warning.
+- Danger.
+- Information.
+- Disabled.
+- Overlay.
+
+Recommended direction:
+
+Dark:
+- Deep charcoal and blue-black base.
+- Elevated neutral surfaces.
+- Warm white text.
+- Restrained violet/cyan or cinematic indigo accents.
+- Clear status colors.
+
+Light:
+- Neutral white and soft grey surfaces.
+- High contrast text.
+- Restrained brand accents.
+- Subtle dividers.
+
+Do not hardcode theme-specific values throughout application components.
+
+---
+
+# PHASE 2 — DESIGN SYSTEM
+
+Create a centralized and reusable design system.
+
+## 2.1 Foundations
+
+Implement:
+
+- Color tokens.
 - Typography.
+- Font weights.
+- Font sizes.
+- Line heights.
 - Spacing.
-- Border radius.
-- Elevation.
-- Shadows.
-- Status colors.
+- Layout containers.
+- Grid.
 - Breakpoints.
-- Z-index.
+- Border radii.
+- Shadows.
+- Elevation.
 - Motion.
+- Z-index.
+- Icon sizing.
 - Chart palette.
 
-Support:
-- Light theme.
-- Dark theme.
-- Theme persistence.
-- Accessible contrast.
-- Reduced-motion preference.
+## 2.2 Components
 
-## 2.3 Application shell
+Build a reusable component library.
+
+### Navigation
+- AppSidebar
+- SidebarGroup
+- SidebarItem
+- SidebarSubmenu
+- TopNavbar
+- Breadcrumbs
+- MobileDrawer
+- UserMenu
+- CommandPalette
+
+### Buttons
+- PrimaryButton
+- SecondaryButton
+- GhostButton
+- DangerButton
+- IconButton
+- SplitButton
+- ButtonGroup
+
+### Feedback
+- Toast
+- Alert
+- StatusBadge
+- ProgressBar
+- Spinner
+- Skeleton
+- EmptyState
+- ErrorState
+- LoadingOverlay
+- ConfirmationDialog
+
+### Data
+- DataTable
+- SearchField
+- FilterBar
+- Pagination
+- SortHeader
+- StatisticCard
+- MetricTrend
+- ChartContainer
+
+### Forms
+- TextInput
+- TextArea
+- NumberInput
+- Select
+- MultiSelect
+- DatePicker
+- Checkbox
+- RadioGroup
+- Switch
+- FileUploader
+- FormSection
+- FormErrorSummary
+
+### Media
+- MediaCard
+- MediaGrid
+- MediaPlayer
+- VideoPreview
+- AudioPlayer
+- Thumbnail
+- AssetInspector
+- Timeline
+- SceneCard
+- StoryboardCard
+- RenderProgress
+- ProviderBadge
+
+### Layout
+- AppShell
+- PageHeader
+- PageContainer
+- ContentGrid
+- SettingsLayout
+- SplitPanel
+- ResizablePanel
+- EmptyPanel
+
+All components must be consistent and documented.
+
+Avoid redundant one-off implementations.
+
+---
+
+# PHASE 3 — UNIFIED APPLICATION SHELL
+
+Build one consistent application shell across all protected product and admin experiences.
+
+## Sidebar sections
+
+### WORKSPACE
+- Overview
+- Projects
+- My Workspace
+- Recent Activity
+
+### CREATE
+- Main Studio
+- Story Development
+- Storyboard
+- Scene Editor
+- Timeline Editor
+- AI Prompt Generator
+- Product Video Studio
+- Kids Content Factory
+
+### PRODUCTION
+- Render Queue
+- Production Jobs
+- Workers
+- Render Providers
+- Media Library
+- Assets
+- Audio
+- Subtitles
+- Final Cut / Assembly
+
+### PUBLISH
+- Publishing Dashboard
+- Publishing Accounts
+- Publishing Calendar
+- Publication History
+- Platform Integrations
+
+### BUSINESS
+- Product Catalog
+- Product Campaigns
+- Membership
+- Commerce
+- Subscription History
+
+### ANALYTICS
+- Dashboard Analytics
+- Production Analytics
+- Usage
+- Costs
+- Performance
+- Content Quality
+
+### ADMINISTRATION
+- Admin Dashboard
+- Users
+- Roles and Permissions
+- Audit Logs
+- System Health
+- Configuration
+- Feature Availability
+- Security
+
+Navigation must be based on verified implemented capabilities and user permissions.
+
+Unavailable features must be visibly marked as unavailable or planned, not presented as functional.
+
+## Header
+
+Implement:
+
+- Sidebar toggle.
+- Breadcrumbs.
+- Global command/search.
+- Quick create.
+- Notification center.
+- Production queue summary.
+- Worker health.
+- Theme selector.
+- Language selector.
+- Account menu.
+
+## Main content
+
+Implement:
+
+- Consistent page headings.
+- Description and contextual help.
+- Primary actions.
+- Toolbar.
+- Filters.
+- Responsive layout.
+- Loading states.
+- Error handling.
+- Empty states.
+- Pagination where relevant.
+
+## Responsive behavior
+
+Desktop:
+- Persistent collapsible sidebar.
+- Full dashboard layout.
+
+Tablet:
+- Compact sidebar or drawer.
+- Adaptive grid.
+
+Mobile:
+- Off-canvas navigation.
+- Touch-friendly controls.
+- Single-column cards.
+- Responsive media previews.
+- No horizontal overflow.
+
+---
+
+# PHASE 4 — COMPLETE PRODUCT FEATURE INTEGRATION
+
+Refactor all existing features into the unified experience.
+
+Do not remove working business logic.
+
+Do not replace real workflows with mock UI.
+
+## 4.1 Main Studio
+
+Implement or refactor:
+
+- Project creation.
+- Project list.
+- Project overview.
+- Creative brief.
+- Script development.
+- Scene planning.
+- Storyboard.
+- Timeline.
+- Generation prompts.
+- Render configuration.
+- Preview.
+- Final assembly.
+- Production status.
+- Project history.
+
+Provide a clear guided production flow.
+
+## 4.2 AI Prompt Studio
+
+Support existing capabilities:
+
+- Cinematic prompt generation.
+- Deterministic generation.
+- Seed management.
+- Creative styles.
+- Camera and lighting parameters.
+- Visual direction.
+- Scene constraints.
+- Prompt history.
+- Copy/export.
+- Reproducibility.
+
+Preserve original deterministic behavior.
+
+Make generated prompt components editable without silently changing stored history.
+
+## 4.3 Story Development
+
+Integrate:
+
+- Topic.
+- Audience.
+- Genre.
+- Tone.
+- Narrative.
+- Story structure.
+- Characters.
+- Scenes.
+- Learning or campaign objectives.
+- Script generation.
+- Revisions.
+- Version history.
+
+Display the distinction between AI-generated output and human-approved content.
+
+## 4.4 Storyboard and Timeline
+
+Implement:
+
+- Scene sequence.
+- Scene duration.
+- Visual prompt.
+- Camera directions.
+- Character references.
+- Audio cues.
+- Subtitles.
+- Learning objectives.
+- Timeline preview.
+- Scene status.
+- Validation warnings.
+- Versioning.
+
+Provide a useful storyboard-to-render workflow.
+
+## 4.5 Rendering and Production
+
+Integrate:
+
+- Production jobs.
+- Durable queues.
+- Worker status.
+- Queue depth.
+- Retry status.
+- Render providers.
+- Provider health.
+- Render configuration.
+- Progress events.
+- Logs.
+- Preview.
+- Failure diagnosis.
+- Final assembly.
+
+Render states must correspond to durable backend state.
+
+Never fabricate completion percentages.
+
+Implement retry and cancellation only where the backend supports safe state transitions.
+
+Make idempotency and duplicate-job prevention visible in the design and API contracts.
+
+## 4.6 ComfyUI and External Render Providers
+
+Implement provider management:
+
+- Provider registry.
+- Provider type.
+- Provider health.
+- Endpoint status.
+- Available capabilities.
+- Model availability.
+- Queue status.
+- Render history.
+- Error information.
+- Configuration validation.
+
+Never expose provider passwords or API tokens.
+
+## 4.7 Media Library
 
 Build:
 
-A. Sidebar:
-- Brand logo.
-- Collapsible state.
-- Nested sections.
-- Active route indicator.
-- Navigation badges.
-- Tooltips in collapsed mode.
-- Mobile off-canvas behavior.
-- Permission-aware navigation.
+- Media asset explorer.
+- Folder navigation.
+- Search.
+- Tags.
+- Collections.
+- Asset metadata.
+- Thumbnails.
+- Preview.
+- Video playback.
+- Audio playback.
+- Download where authorized.
+- Delete where authorized.
+- Storage information.
+- Usage references.
+- Asset versioning where supported.
 
-B. Navbar:
-- Sidebar toggle.
-- Breadcrumbs.
-- Global search.
-- Notifications.
-- System status.
-- User menu.
-- Theme switch.
-- Quick-create actions.
+Protect media access through server-side ownership and authorization.
 
-C. Content:
-- Page title.
-- Breadcrumb.
-- Description.
-- Action toolbar.
-- Responsive grid.
-- Cards.
-- Tables.
-- Forms.
-- Charts.
-- Status feedback.
+Do not accept arbitrary filesystem paths from browser input.
 
-D. Footer:
-- Application version.
-- Environment.
-- API health.
-- Worker availability.
-- Latest successful synchronization time.
+## 4.8 Product Video Studio
 
-Status values must come from actual APIs.
+Integrate:
 
----
-
-# 3. COMPLETE INFORMATION ARCHITECTURE
-
-Implement routes based on verified functionality.
-
-## 3.1 Main Dashboard
-
-Route: `/admin`
-
-Executive production overview.
-
-KPI cards:
-- Total projects.
-- Active projects.
-- Production runs.
-- Active worker jobs.
-- Completed renders.
-- Failed jobs.
-- Assets produced.
-- Pending QC.
-- Pending approvals.
-- Published media.
-- Storage utilization.
-- Recent production cost when reliably available.
-
-Dashboard charts:
-- Production jobs over time.
-- Render success/failure ratio.
-- Queue depth.
-- Average render duration.
-- Worker utilization.
-- Provider distribution.
-- Media production volume.
-- Publication status.
-
-Recent activities:
-- Project created.
-- Storyboard generated.
-- Render queued.
-- Render completed.
-- QC rejected.
-- Export completed.
-- Approval submitted.
-- Publication confirmed.
-- Worker recovered.
-
-Every metric must include a valid source, unit and timestamp.
-
-Never show fabricated production statistics as live data.
-
-## 3.2 Production Studio
-
-Route: `/admin/studio`
-
-Integrate the existing `/studio` application.
-
-Features:
-- Project browser.
-- Project creation.
-- Content brief.
-- Storyboard.
-- Character Bible.
-- Scene management.
-- Shot management.
-- Continuity checks.
-- Production readiness.
-- Render configuration.
-- Production runs.
-- Asset previews.
-- Run status.
-- Error diagnosis.
-- Export and handoff.
-
-Preserve the existing production workflow.
-
-Do not replace its established functionality with dashboard-only placeholders.
-
-## 3.3 Product Video Studio
-
-Route: `/admin/products`
-
-Integrate the existing `/product` application.
-
-Features:
-- Product catalog.
-- Product details.
+- Product information.
 - Brand.
 - Category.
 - Audience.
 - Features.
 - Benefits.
 - Pricing.
-- Currency.
-- Creative direction.
-- Suitability scoring.
-- AI production plan.
-- Prompt generation.
-- Storyboard handoff.
-- Production history.
-
-Product claims must be grounded in the provided product evidence.
-
-Never manufacture unsupported product claims, prices, discounts or endorsements.
-
-## 3.4 Project Management
-
-Route: `/admin/projects`
-
-Implement:
-- Projects list.
-- Project details.
-- Status.
-- Owner.
-- Created date.
-- Last modified.
-- Production progress.
-- Character relationships.
-- Scene count.
-- Shot count.
-- Assets.
-- Run history.
-- Search and filters.
-- Pagination.
-- Ownership enforcement.
-
-Support safe project archival only if the backend defines the operation.
-
-## 3.5 Storyboards
-
-Route: `/admin/storyboards`
-
-Implement:
-- Storyboard list.
-- Scene sequence.
-- Shot sequence.
-- Character continuity.
-- Scene duration.
-- Camera direction.
-- Visual prompt.
-- Negative prompt.
-- Voice-over.
-- Soundtrack cues.
-- Storyboard version history.
-- Continuity validation.
-- Timeline checksum.
-
-Display validation failures without automatically changing the approved storyboard.
-
-## 3.6 Character Bible
-
-Route: `/admin/characters`
-
-Implement:
-- Character catalog.
-- Character details.
-- Reference images.
-- Visual identity.
-- Personality.
-- Voice profile.
-- Continuity rules.
-- Locked attributes.
-- Version history.
-- Character usage across projects.
-
-Support ZEAZVERSE character profiles.
-
-Never infer consent for voice cloning or impersonation.
-
-Use verified permissions and consent records from the backend.
-
-## 3.7 Render Queue
-
-Route: `/admin/queue`
-
-This is a critical operations page.
-
-Implement:
-- Pending jobs.
-- Running jobs.
-- Completed jobs.
-- Failed jobs.
-- Retrying jobs.
-- Worker leases.
-- Heartbeats.
-- Attempt count.
-- Retry schedule.
-- Provider.
-- Remote prompt identity.
-- Job age.
-- Queue depth.
-- Priority where supported.
-- Worker assignment.
-- Error details.
-
-Controls:
-- Pause queue.
-- Resume queue.
-- Cancel job when safely supported.
-- Retry according to backend policy.
-- Inspect job.
-- Inspect recovery history.
-
-All actions must use existing authorized backend endpoints.
-
-Never implement queue mutation directly in browser JavaScript or by writing SQLite.
-
-## 3.8 Worker Operations
-
-Route: `/admin/workers`
-
-Implement:
-- Worker inventory.
-- Worker health.
-- Heartbeat.
-- Active lease.
-- Job assignment.
-- CPU/RAM metrics.
-- GPU availability.
-- Vulkan device information.
-- Render backend.
-- Provider health.
-- Worker errors.
-- Recovery activity.
-- Worker version.
-
-Support:
-- Native systemd worker.
-- Docker deployment.
-- Remote ComfyUI integration.
-- stable-diffusion.cpp CPU/Vulkan.
-
-Distinguish application health from actual GPU/model readiness.
-
-Do not label a worker GPU-ready based only on device detection.
-
-Do not restart a worker simply because a model is missing.
-
-## 3.9 AI Providers
-
-Route: `/admin/providers`
-
-Implement:
-- Provider inventory.
-- Provider category.
-- Configuration presence.
-- Health.
-- Availability.
-- Capability.
-- Model metadata.
-- Timeout.
-- Queue latency.
-- Provider errors.
-- Last successful operation.
-
-Support only verified provider integrations:
-- ComfyUI.
-- stable-diffusion.cpp.
-- Generic HTTP gateway.
-- Other adapters found in the actual repository.
-
-Never expose provider tokens or credential values.
-
-Distinguish configured, connected, tested and production-verified provider states.
-
-The mock provider must be explicitly marked as a dry-run/test provider and rejected as production AI evidence.
-
-## 3.10 Render Jobs and Media
-
-Routes:
-- `/admin/renders`
-- `/admin/media`
-
-Implement:
-- Render jobs.
-- Output assets.
-- MP4 previews.
-- Thumbnails.
-- Audio.
-- Image assets.
-- Metadata.
-- Duration.
-- Resolution.
-- Frame rate.
-- Codec.
-- File size.
-- Hash.
-- Storage location metadata.
-- Asset relationships.
-- Preview history.
-- Export history.
-
-Use managed short-lived media preview URLs.
-
-Never accept arbitrary filesystem paths from browser requests.
-
-Do not expose internal storage paths.
-
-Support:
-- Search.
-- Type filter.
-- Project filter.
-- Date filter.
+- CTA.
+- Visual constraints.
+- Creative plan.
+- Storyboard.
+- Product video project creation.
+- Render.
 - Preview.
-- Download with authorization.
-- Safe deletion only where explicitly supported.
+- Export.
 
-## 3.11 Quality Control
+Preserve factual product claims and input accuracy.
 
-Route: `/admin/qc`
+Do not invent product certifications, specifications or endorsements.
 
-Implement:
-- QC overview.
-- Media validation.
-- FFprobe results.
-- Duration verification.
-- Resolution.
-- Frame integrity.
-- Audio verification.
-- Continuity checks.
-- Required asset validation.
-- Manifest validation.
-- ML score where supported.
-- Production readiness.
+## 4.9 Membership and Commerce
 
-Clearly distinguish:
-- Passed.
-- Failed.
-- Warning.
-- Blocked.
-- Pending.
-- Not tested.
+Integrate:
 
-A successful mock render must never pass the real-media production gate.
+- Membership dashboard.
+- Subscription status.
+- Plans.
+- Usage limits.
+- Entitlements.
+- Transactions.
+- Product commerce.
+- Campaigns.
+- Billing information where implemented.
 
-A project must not become production-ready merely because an AI score is high.
+Use verified backend billing state.
 
-## 3.12 Timeline and Assembly
+Never treat browser-provided pricing or entitlement information as authoritative.
 
-Route: `/admin/timeline`
+## 4.10 Kids Content Factory
 
-Implement:
-- Scene timeline.
-- Shot timeline.
-- Asset assignment.
-- Duration.
-- Transitions.
-- Audio tracks.
-- Subtitle tracks.
-- Assembly configuration.
-- FFmpeg assembly status.
-- Final validation.
-- Versioned exports.
+Keep this as a dedicated product domain.
 
-Use existing Hyperframes and assembly integrations.
+Preserve and integrate:
 
-Do not build a complete non-linear editing engine unless a real product requirement and technical specification justify it.
-
-## 3.13 Exports
-
-Route: `/admin/exports`
-
-Implement:
-- Export jobs.
-- ZIP package.
-- Manifest.
-- Production assets.
-- Media integrity.
-- File hash.
-- Creation date.
-- Download status.
-- Expiration where applicable.
-- Audit trail.
-
-Downloads must be authorization-checked.
-
-## 3.14 Publication Center
-
-Route: `/admin/publishing`
-
-Implement Bilibili publishing operations:
-
-- Creator Center session status.
-- Publication candidates.
-- Publication package.
-- Exact package hash.
-- Metadata.
-- Cover.
-- Description.
-- Tags.
-- Content category.
-- Schedule.
-- Approval.
-- Preflight.
-- Submission state.
-- Public URL.
-- Remote confirmation.
-- Publication history.
-- Audit evidence.
-
-Maintain the exact workflow:
-
-PREPARED
-→ HUMAN APPROVAL
-→ PREFLIGHT
-→ EXPLICIT SUBMISSION
-→ REMOTE CONFIRMATION
-→ PUBLISHED
-
-Critical safeguards:
-
-1. `ZMOVIE_BILIBILI_AUTO_PUBLISH=false` remains the default.
-2. Publishing must never be triggered by render completion.
-3. Exact-package approval must bind to the exact package version/hash.
-4. Approval cannot be reused for a changed package.
-5. Do not blindly retry ambiguous external submission.
-6. `submitted` does not mean `published`.
-7. A genuine public URL and remote confirmation are required for publication completion.
-8. The dashboard must not manufacture successful publication status.
-9. Google passwords and 2FA secrets must never be requested or stored.
-10. Browser session state is a sensitive credential and must remain protected.
-
-All external publication actions require explicit human authorization.
-
-## 3.15 ZEAZVERSE
-
-Route: `/admin/zeazverse`
-
-Integrate the existing virtual idol and multi-agent production domain.
-
-Implement:
-- Channel overview.
+- Brand management.
 - Character Bible.
-- Episode management.
-- Agent inventory.
-- Agent execution status.
-- Scriptwriting.
-- Storyboards.
-- Cinematography.
-- Video production.
-- Audio production.
-- Editing.
-- Continuity QA.
-- SEO.
-- Policy and rights review.
-- Publishing workflow.
-- Analytics.
-- Human approval gates.
-
-Represent the canonical episode state machine accurately.
-
-Do not independently implement another workflow engine.
-
-All agents must obey the current backend contracts and publishing permissions.
-
-## 3.16 Kids Content Factory
-
-Route: `/admin/kids`
-
-Integrate `/api/v2/kids/*`.
-
-Implement:
-- Brands.
-- Channels.
-- Characters.
 - Episodes.
 - Scripts.
-- Scenes.
+- Scene generation.
 - Timeline.
 - Voice profiles.
-- Consent validation.
 - Music license validation.
-- Captions.
+- Schedules.
 - Language variants.
-- Educational objectives.
-- Safety analysis.
-- Publishing metadata.
+- Captions.
+- Creative bundle import/export.
 - Cost estimation.
+- Publishing metadata.
 
-Strict safety requirements:
-- Preserve COPPA-related controls.
-- Preserve age-appropriate content gates.
-- Do not weaken prohibited-content checks.
-- Preserve made-for-kids classification.
-- Preserve synthetic-content disclosures.
-- Enforce voice cloning consent.
-- Do not expose child personal data unnecessarily.
-- Keep YouTube mock publishing distinct from real publication.
+Keep the existing safety checks and consent requirements intact.
 
-## 3.17 Cinema and WordPress
+For children-directed experiences, preserve appropriate safety restrictions and mandatory content classification.
 
-Route: `/admin/cinema`
+Never allow the UI to bypass backend safety enforcement.
 
-Integrate the existing:
-- ZeaZ Cinema plugin.
-- ZeaZ Cinema theme.
-- WordPress feed integration.
-- Moderated creator submissions.
-- Favorites.
-- Film catalog.
-- Creator pages.
-- Licensing workflows.
+## 4.11 Publishing
 
-Keep Studio, Cinema, Commerce and ticketing domain boundaries intact.
+Integrate all implemented publishing workflows:
 
-Do not bypass the two required human approvals in the Studio-to-Cinema boundary.
+- Provider connections.
+- Account configuration.
+- Content metadata.
+- Thumbnail selection.
+- Captions.
+- Scheduling.
+- Approval.
+- Submission.
+- Publication state.
+- Remote confirmation.
+- Publication history.
+- Error recovery.
 
-Do not automatically publish completed renders to WordPress.
+Keep the states distinct:
 
-## 3.18 Commerce and Membership
+- Draft.
+- Prepared.
+- Validated.
+- Approved.
+- Submitted.
+- Published.
+- Remotely confirmed.
+- Failed.
 
-Routes:
-- `/admin/commerce`
-- `/admin/membership`
-- `/admin/licenses`
+A successful API submission is not proof of public publication.
 
-Inspect existing commerce, ticketing, license and membership routes.
+External publication requires genuine provider confirmation.
 
-Implement only capabilities supported by actual backend contracts.
+Never trigger a real external publication from development preview or isolated tests.
 
-Support:
-- Product/catalog information.
-- Membership.
-- Subscription status where implemented.
-- License status.
-- Orders.
-- Payment status.
-- Entitlements.
-- Ticketing where implemented.
-- Operational audit.
-
-Never display payment success without backend confirmation.
-
-Never expose payment secrets or full sensitive payment identifiers.
-
-Keep financial transactions separate from video publication approval.
-
-## 3.19 Analytics
-
-Route: `/admin/analytics`
+## 4.12 Analytics and Monitoring
 
 Implement:
-- Project throughput.
-- Production completion rate.
-- Render success rate.
-- Render failure rate.
-- Average render time.
-- Queue wait time.
-- Worker availability.
-- Provider performance.
+
+- Queue depth.
+- Processing rate.
+- Job success/failure.
+- Render duration.
+- Worker utilization.
+- Provider uptime.
 - Storage usage.
-- Media volume.
-- QC pass rate.
-- Export history.
-- Publication conversion.
-- Cost analytics where actual cost data exists.
+- Production cost.
+- Media throughput.
+- Publication completion.
+- Audio verification results.
+- Resource utilization.
+- Operational alerts.
 
-Charts should include:
-- Time-series line.
-- Bar charts.
-- Donut charts.
-- Provider comparison.
-- Production funnel.
-- Queue activity.
+Use actual measurements.
 
-Use real aggregation APIs or introduce tested backend read models.
+Clearly mark unavailable metrics.
 
-Never invent cost or usage metrics.
-
-## 3.20 System Health
-
-Route: `/admin/system`
-
-Implement:
-- API.
-- Database.
-- Worker.
-- Queue.
-- ComfyUI.
-- stable-diffusion.cpp.
-- FFmpeg.
-- GPU/Vulkan.
-- Storage.
-- Backup.
-- Watchdog.
-- Scheduler.
-- External service dependencies.
-
-Show:
-- Current state.
-- Last check.
-- Response time.
-- Error.
-- Last successful operation.
-- Diagnostic link.
-
-## 3.21 Audit and Security
-
-Routes:
-- `/admin/audit`
-- `/admin/security`
-
-Implement:
-- Audit log.
-- Actor.
-- Action.
-- Entity.
-- Timestamp.
-- Request ID.
-- Result.
-- Evidence hash.
-- Security event.
-- Authentication event.
-- Authorization denial.
-- Session activity.
-- Sensitive operation history.
-
-Audit records must be immutable through the dashboard.
-
-Do not reveal session tokens, secrets or sensitive request bodies.
-
-## 3.22 Administration
-
-Routes:
-- `/admin/users`
-- `/admin/roles`
-- `/admin/settings`
-- `/admin/integrations`
-- `/admin/preferences`
-
-Implement only actual supported backend permissions and operations.
-
-Never use hidden frontend links as a security boundary.
-
-Every sensitive action requires server-side authorization.
+Do not insert fabricated production values.
 
 ---
 
-# 4. API INTEGRATION
+# PHASE 5 — ADMINLTE-INSPIRED ADMIN DASHBOARD
 
-Use the real existing FastAPI backend.
+Build a comprehensive operator dashboard.
 
-Inspect the current API contracts from code and the deployed API's OpenAPI specification when available.
+## Main route
 
-Important existing route groups include:
+`/admin`
 
-Platform:
-- `/api/health`
-- `/api/v2/health`
-- `/api/v2/capabilities`
-- `/api/v2/analytics/overview`
+### Overview page
 
-Authentication:
-- `/api/v2/auth/login`
-- Existing session and OAuth routes.
+KPI widgets:
 
-Projects:
-- `/api/v2/projects`
+- Total users.
+- Active users.
+- Total projects.
+- Active projects.
+- Production jobs.
+- Queue depth.
+- Running workers.
+- Failed jobs.
+- Render success rate.
+- Media storage.
+- Provider availability.
+- Publication status.
 
-Content:
-- `/api/v2/content/storyboard`
-- `/api/v2/content/storyboard/analyze`
+Visualizations:
 
-Product:
-- `/api/v2/products/plan`
-- `/api/v2/products/analyze`
+- Production activity.
+- Render duration.
+- Job outcomes.
+- Provider utilization.
+- Storage usage.
+- Service health.
+- Usage over time.
 
-Production:
-- `/api/v2/projects/{id}/production/readiness`
-- `/api/v2/projects/{id}/production/render`
-- `/api/v2/projects/{id}/production/run`
-- `/api/v2/projects/{id}/production/runs/{run_id}`
-- `/api/v2/projects/{id}/production/runs/{run_id}/deep-status`
-- `/api/v2/projects/{id}/production/assemble`
-- `/api/v2/projects/{id}/production/export`
+### User Management
 
-Worker:
-- `/api/v2/worker/status`
-- `/api/v2/worker/jobs/{worker_job_id}`
-- `/api/v2/worker/performance`
+- User directory.
+- Search.
+- Filters.
+- User details.
+- Account status.
+- Role assignments.
+- Entitlements.
+- Activity.
+- Sessions.
+- Suspension where authorized.
 
-Publication:
-- `/api/v2/publish/bilibili/session`
-- `/api/v2/projects/{id}/publish/bilibili/prepare`
-- `/api/v2/publish/jobs/{id}/approve`
-- `/api/v2/publish/jobs/{id}/publish`
-- `/api/v2/publish/jobs/{id}`
-- `/api/v2/publish/jobs/{id}/audit-trail`
+### Roles and Permissions
 
-Other domains:
-- `/api/v2/kids/*`
-- Commerce and ticketing routes.
-- Media upload and preview.
-- Privacy.
-- ZEAZVERSE.
-- Cinema integration.
-- Legacy prompt generation and history.
+- Role list.
+- Permission matrix.
+- User role assignments.
+- Administrative changes.
+- Audit history.
 
-Do not assume that these examples cover all routes or describe exact payload shapes.
+Authorization must remain backend-authoritative.
 
-Verify each endpoint and schema before connecting UI controls.
+### Project Administration
 
-## API client
+- All projects.
+- Owner.
+- Status.
+- Creation date.
+- Production state.
+- Media usage.
+- Error state.
+- Administrative inspection.
 
-Implement a typed API layer with:
-- Centralized base URL.
+### Queue and Worker Administration
+
+- Queue list.
+- Job status.
+- Worker list.
+- Worker heartbeat.
+- Worker capacity.
+- Processing rate.
+- Retry state.
+- Dead-letter handling if supported.
+- Job detail.
+- Error logs.
+
+### Provider Administration
+
+- Provider registry.
+- Health.
+- Endpoint reachability.
+- Capabilities.
+- Configuration.
+- Usage.
+- Last successful execution.
+
+### Media Administration
+
+- Storage overview.
+- Asset inventory.
+- Orphan detection where implemented.
+- Usage references.
+- Capacity.
+- Retention policies.
+- Access history.
+
+### Publishing Administration
+
+- Publication attempts.
+- Approval state.
+- External status.
+- Error reports.
+- Integration health.
+
+### Security and Audit
+
+- Audit log.
+- Security events.
+- Authentication attempts.
+- Access denials.
+- Role changes.
+- Administrative activity.
+- Session revocations.
+
+### System Administration
+
+- Application health.
+- Database health.
+- Queue health.
+- Worker health.
+- External providers.
+- Configuration status.
+- Background services.
+- Deployment version.
+
+Sensitive settings must never be displayed as plaintext secrets.
+
+---
+
+# PHASE 6 — FRONTEND ARCHITECTURE REFACTOR
+
+First determine whether a framework migration is genuinely required.
+
+Evaluate:
+
+- Existing FastAPI-served static architecture.
+- Existing HTML and JavaScript assets.
+- Current browser compatibility.
+- Existing dependencies.
+- Existing tests.
+- CSP and security-header constraints.
+- Deployment and reverse-proxy behavior.
+
+Prefer progressive modernization where suitable.
+
+If introducing a React/TypeScript frontend, use a deliberate migration:
+
+- Reuse FastAPI routes and service contracts.
+- Preserve legacy endpoints.
+- Separate frontend build from backend runtime.
+- Integrate static output and routing safely.
+- Maintain production deployment and authentication compatibility.
+
+Do not create multiple competing frontend applications.
+
+Establish:
+
+- Shared application shell.
+- Route architecture.
+- API client.
+- Domain modules.
+- Component library.
+- Theme provider.
+- Localization provider.
+- Error boundaries.
+- Typed state.
+- Form validation.
+- Query lifecycle.
+- Real-time subscriptions.
+
+Use strict TypeScript if React is introduced.
+
+Avoid large unnecessary dependencies.
+
+Avoid duplicate implementations of the same product feature.
+
+Separate presentation state from domain and server state.
+
+---
+
+# PHASE 7 — BACKEND AND API REFACTOR
+
+Inspect existing FastAPI structure.
+
+Preserve existing modular routers and service boundaries.
+
+Review:
+
+- API versioning.
 - Authentication.
-- CSRF.
+- Authorization.
+- Pydantic validation.
+- Database transactions.
+- Queue integration.
+- Durable job processing.
+- Media access.
+- Provider abstraction.
+- Publication state machines.
+- Audit records.
+- Error contracts.
+- Rate limiting.
+- Observability.
+
+Implement improvements only where supported by evidence.
+
+## API contracts
+
+Create an integration matrix mapping:
+
+Frontend route → API endpoint → service → data model → authorization → tests.
+
+For every endpoint verify:
+
+- Input schema.
+- Output schema.
+- Authentication requirement.
+- Permission.
+- Validation.
+- Error behavior.
+- Rate limits.
+- Idempotency.
+- Persistence.
+- Audit requirements.
+
+Do not create frontend assumptions that disagree with actual server schemas.
+
+## Background processing
+
+Preserve the durable queue architecture.
+
+Implement correct:
+
+- State transitions.
+- Retry rules.
+- Lease ownership.
+- Worker heartbeats.
+- Recovery.
+- Idempotency.
+- Cancellation.
+- Error reporting.
+- Persistence.
+
+Avoid retry storms.
+
+Ensure worker failures cannot silently lose jobs or incorrectly mark work complete.
+
+## Database
+
+Preserve existing SQLite compatibility and migration history unless a deliberate database migration is justified.
+
+Review:
+
+- Schema consistency.
+- Transactions.
+- Indexing.
+- Foreign keys.
+- Data lifecycle.
+- Backup.
+- Restore.
+- Concurrency.
+- Migration rollback.
+- Data integrity.
+
+Never delete existing user projects or media during the visual refactor.
+
+---
+
+# PHASE 8 — API CLIENT AND REAL-TIME UX
+
+Implement a centralized typed API client.
+
+Requirements:
+
+- Base URL configuration.
+- Authentication handling.
+- Request correlation.
 - Timeouts.
 - Request cancellation.
 - Structured errors.
-- Response validation.
-- Pagination.
-- Filtering.
-- Correlation IDs.
-- Safe retries for idempotent reads.
-- Cache invalidation.
-- Version compatibility.
+- Schema-safe response handling.
+- Bounded retry for safe GET requests.
+- Server-side authorization.
+- No browser secrets.
 
-Do not retry non-idempotent production or publishing actions blindly.
+Implement server-supported WebSocket or SSE events where they exist.
 
-Do not store access tokens in unsafe browser persistence.
+If no transport exists, choose bounded polling for appropriate resources.
 
-Keep secrets server-side.
+Real-time features:
 
----
-
-# 5. REAL-TIME OPERATIONS
-
-Inspect existing WebSocket and event transport implementations.
-
-Implement real-time operational updates for:
-- Queue.
+- Queue progress.
 - Worker heartbeat.
-- Job status.
-- Render progress.
-- Production stages.
-- QC.
-- Exports.
-- Notifications.
-- Publishing state.
+- Job transitions.
+- Render updates.
+- Alerts.
+- Provider status.
+- Publication transitions.
 
-Requirements:
-- Connection management.
-- Bounded exponential retry.
-- Stale connection detection.
-- Heartbeats.
-- Event ordering.
-- Duplicate event protection.
-- Reconnect reconciliation.
-- Subscription cleanup.
-- Visibility-aware updates.
+Handle:
 
-A reconnect must reconcile current state with the authoritative backend.
+- Reconnection.
+- Duplicate events.
+- Event order.
+- Stale data.
+- Offline behavior.
+- Cleanup on route changes.
 
-Never infer a completed job from a missing heartbeat.
+Never invent live events.
 
 ---
 
-# 6. FORM ENGINEERING
+# PHASE 9 — FORMS AND USER INTERACTIONS
 
-Implement reusable forms with:
-- Typed field schemas.
-- Validation.
-- Field-level errors.
-- Error summaries.
-- Loading states.
-- Confirmation.
-- Cancel.
-- Server error handling.
-- Accessible descriptions.
-- Success feedback based on server confirmation.
+All forms must be real, validated and connected to actual business workflows.
 
-Required forms:
-- Create project.
-- Edit project metadata.
-- Create storyboard.
-- Product analysis.
-- Production configuration.
-- Render submission.
-- Queue action confirmation.
+Implement:
+
+- Project creation.
+- Creative brief.
+- Story generation.
+- Storyboard editing.
+- Scene configuration.
+- Render configuration.
+- Product planning.
 - Provider configuration.
-- QC review.
-- Export request.
-- Publication package.
-- Publication approval.
-- Publishing preflight.
-- User preferences.
-- Membership and commerce settings where supported.
+- Media metadata.
+- Publishing metadata.
+- Scheduling.
+- Membership preferences.
+- User management.
+- Role management.
+- Settings.
 
-Dangerous and externally visible actions must require explicit confirmation.
+Every form must include:
 
-Never allow the user interface to bypass backend state machines.
+- Correct types.
+- Field validation.
+- Server validation.
+- Error handling.
+- Loading states.
+- Success states.
+- Disabled state.
+- Accessible labels.
+- Confirmation for destructive actions.
+- Cancellation.
 
----
+Never show an artificial success message before server confirmation.
 
-# 7. MEDIA-FIRST UX
+No decorative buttons.
 
-zMovie is a cinematic production application.
+No forms that silently discard edits.
 
-The visual experience must prioritize actual production media.
-
-Implement:
-- Poster grids.
-- Project cards.
-- Storyboard galleries.
-- Character reference galleries.
-- Video preview.
-- Audio preview.
-- Asset viewer.
-- Scene timeline.
-- Production progress.
-- Media detail drawers.
-- Export packages.
-
-Video playback must use managed, authorized preview URLs.
-
-Handle unsupported codecs, expired URLs, deleted assets and failed downloads gracefully.
-
-Provide image/video loading skeletons.
-
-Do not use arbitrary filesystem paths or long-lived public storage URLs.
+Protect unsaved work with clear warnings where appropriate.
 
 ---
 
-# 8. RESPONSIVE COMPONENTS
-
-Build reusable components:
-
-Layout:
-- AdminAppShell
-- AdminSidebar
-- AdminNavbar
-- AdminBreadcrumb
-- PageHeader
-- PageToolbar
-- ContentGrid
-
-Widgets:
-- InfoBox
-- SmallBox
-- StatCard
-- StatusCard
-- ActivityTimeline
-- SystemHealthCard
-- QueueSummary
-
-Media:
-- ProjectCard
-- VideoPlayer
-- MediaGallery
-- AssetCard
-- CharacterCard
-- StoryboardCard
-- TimelineView
-
-Data:
-- DataTable
-- Pagination
-- SearchFilter
-- DateFilter
-- StatusBadge
-- EmptyState
-- ErrorState
-- LoadingSkeleton
-
-Production:
-- ProductionProgress
-- RenderJobCard
-- WorkerCard
-- ProviderCard
-- QcReport
-- ApprovalPanel
-- PublicationTimeline
-
-Forms:
-- FormField
-- FormSection
-- ValidationSummary
-- ConfirmDialog
-- ActionMenu
-
-Avoid redundant abstractions.
-
----
-
-# 9. AUTHENTICATION AND AUTHORIZATION
-
-Use the existing auth implementation and documented session contracts.
-
-Implement:
-- Secure login.
-- Logout.
-- Session expiration.
-- OAuth where supported.
-- Permission-aware navigation.
-- Protected routes.
-- Project ownership.
-- Role-based controls.
-- CSRF protection.
-- Audit logging.
-
-Never trust frontend role data without backend authorization.
-
-Never expose:
-- Admin bootstrap password.
-- Signing secret.
-- OAuth client secret.
-- Provider tokens.
-- Bilibili storage state.
-- Google credentials.
-- 2FA secrets.
-- Arbitrary filesystem locations.
-
-Do not place private secrets into localStorage, sessionStorage, query strings, telemetry, screenshots or logs.
-
-Use short-lived, scoped media URLs.
-
----
-
-# 10. SAFETY AND HUMAN APPROVAL BOUNDARIES
-
-These constraints override dashboard requirements.
-
-## Production rendering
-
-A render action must:
-1. Verify project ownership.
-2. Validate production configuration.
-3. Verify provider readiness.
-4. Pass backend production gates.
-5. Enqueue durable work.
-6. Return the authoritative job identifier.
-7. Reconcile status from the queue.
-
-Do not execute multi-hour AI inference inside a FastAPI request handler.
-
-## Production media
-
-A production media asset must pass strict FFprobe and assembly validation.
-
-The mock provider is dry-run only.
-
-Never label mock output as production media.
-
-## External publishing
-
-A render must never automatically publish externally.
-
-Maintain exact-package human approval.
-
-Maintain explicit submission confirmation.
-
-Handle ambiguous external state without blind retries.
-
-Published status requires genuine remote confirmation.
-
-## Kids content
-
-Preserve all age-appropriate content, privacy, COPPA-related, classification and consent boundaries.
-
-Do not weaken deterministic safety checks for UI convenience.
-
-## Commerce
-
-All financial actions require backend authorization and transaction confirmation.
-
----
-
-# 11. PERFORMANCE
-
-Implement:
-- Route-level code splitting.
-- Lazy-loaded charts.
-- Media lazy loading.
-- Efficient DOM updates.
-- Pagination.
-- Server-side filtering.
-- Request cancellation.
-- Bounded event subscriptions.
-- Efficient image previews.
-- Avoidance of unnecessary polling.
-- Memory leak prevention.
-
-Target:
-- No horizontal overflow.
-- Responsive mobile navigation.
-- Fast page transitions.
-- No duplicate real-time subscriptions.
-- Stable video previews.
-- Controlled chart update frequency.
-
-Measure actual performance rather than claiming improvements without evidence.
-
----
-
-# 12. ACCESSIBILITY
+# PHASE 10 — ACCESSIBILITY AND LOCALIZATION
 
 Target WCAG 2.2 AA.
 
 Implement:
-- Semantic elements.
-- Accessible navigation.
-- Keyboard operation.
-- Visible focus.
-- Dialog focus management.
-- Accessible forms.
-- Descriptive errors.
-- Screen reader status.
-- Sufficient contrast.
+
+- Keyboard navigation.
+- Screen-reader labels.
+- Focus management.
+- Accessible modals.
+- Contrast.
+- Form semantics.
 - Reduced motion.
-- Accessible chart summaries.
-- Captions/subtitle metadata where available.
+- Media controls.
+- Accessible status reporting.
 
-Never communicate status using color alone.
+Localization:
 
----
+- Thai.
+- English.
 
-# 13. OBSERVABILITY
+Use BCP 47 locale identifiers:
 
-Integrate with existing metrics and diagnostics.
+- th-TH
+- en-US
 
-Track:
-- Dashboard load performance.
-- API failures.
-- Request latency.
-- Render job updates.
-- Queue refresh errors.
-- Worker connection.
-- Media preview errors.
-- Authentication failures.
-- Publication state errors.
-- Frontend exceptions.
+The existing I18N documentation is the starting contract.
 
-Include correlation IDs.
+Do not simply translate static labels while leaving errors, forms and dynamic messages untranslated.
 
-Do not log credentials or media-access tokens.
+Ensure:
 
----
+- Date formatting.
+- Number formatting.
+- Timezones.
+- Currency.
+- Text direction compatibility.
+- Consistent language preference.
 
-# 14. TESTING
-
-Use the repository's existing test ecosystem.
-
-Backend:
-- Python unittest and pytest where configured.
-- FastAPI TestClient.
-- Existing integration tests.
-
-Frontend:
-- JavaScript syntax checks.
-- Existing Studio/Product compatibility checks.
-- Playwright where configured.
-- Browser-based responsive testing.
-
-Required scenarios:
-
-1. Admin login.
-2. Invalid credentials.
-3. Unauthorized access.
-4. Session expiration.
-5. Project listing.
-6. Project creation.
-7. Storyboard viewing.
-8. Product analysis.
-9. Render queue.
-10. Worker status.
-11. Worker heartbeat loss.
-12. Render failure.
-13. Render recovery.
-14. Media preview authorization.
-15. QC failure.
-16. Export download.
-17. Bilibili package preparation.
-18. Approval for the exact package.
-19. Changed package invalidates prior approval.
-20. Ambiguous submission state.
-21. Genuine publication confirmation.
-22. Kids safety rejection.
-23. Consent validation.
-24. Theme preference.
-25. Mobile navigation.
-26. Empty states.
-27. Backend unavailable.
-28. Duplicate real-time events.
-29. Real-time reconnect.
-30. No secret disclosure in browser or logs.
-
-Test both success and failure paths.
-
-Mock external rendering and publishing in normal CI.
-
-Do not perform real external publication during automated tests.
+Keep technical identifiers and API contracts independent of display language.
 
 ---
 
-# 15. SECURITY AUDIT
+# PHASE 11 — MEDIA UX AND PERFORMANCE
 
-Perform a dedicated audit covering:
+Optimize image and video workflows.
 
-- Authentication bypass.
-- Authorization bypass.
+Implement:
+
+- Responsive media thumbnails.
+- Lazy loading.
+- Safe preview URLs.
+- Appropriate poster frames.
+- Video metadata loading.
+- Thumbnail fallback.
+- Asset pagination.
+- Large-file upload progress.
+- Cancellation where supported.
+- Retry where safe.
+- Storage usage visibility.
+
+Do not load every media asset into browser memory.
+
+Do not expose internal absolute paths.
+
+Use authenticated media delivery where required.
+
+Respect content type and file size limits.
+
+Use efficient playback and preview strategies.
+
+---
+
+# PHASE 12 — SECURITY
+
+Review:
+
+- Authentication.
+- Authorization.
 - CSRF.
 - XSS.
-- SQL injection.
-- Path traversal.
 - SSRF.
-- Open redirect.
-- Media URL leakage.
-- Insecure file access.
-- Session fixation.
-- Unsafe browser storage.
-- Credential leakage.
-- Missing rate limits.
-- Unsafe upload handling.
-- ZIP extraction traversal.
-- Content metadata injection.
-- Publication approval reuse.
-- Duplicate publication.
-- Queue race conditions.
-- Unsafe filesystem permissions.
-- Backup exposure.
-- Worker privilege escalation.
-- Untrusted external data.
+- Open redirects.
+- CORS.
+- CSP.
+- File upload attacks.
+- Path traversal.
+- Arbitrary file access.
+- Malformed media.
+- Secret exposure.
+- Session handling.
+- OAuth callbacks.
+- Rate limits.
+- SQL injection.
+- Webhook verification.
+- Administrative privilege escalation.
 
-Preserve existing security controls.
+Never expose:
 
-Do not disable checks or loosen policy to achieve successful tests.
+- Provider credentials.
+- API tokens.
+- OAuth refresh tokens.
+- Database paths.
+- Private filesystem information.
+- Internal service secrets.
 
-Record unresolved risks explicitly.
+Preserve least-privilege access.
+
+For administrative actions, require explicit permission and durable audit events.
+
+Do not weaken existing security headers to make new UI assets work.
+
+Resolve CSP compatibility safely.
+
+Preserve Kids Content Factory's safety and consent checks.
+
+Preserve publication approval and explicit confirmation boundaries.
 
 ---
 
-# 16. DEPLOYMENT
+# PHASE 13 — OBSERVABILITY
 
-Support both documented deployment modes:
+Implement consistent frontend and backend observability.
 
-A. Native systemd:
-- Existing FastAPI service.
-- Dedicated worker.
-- Watchdog.
-- Backup timer.
-- Persistent application data.
+Track:
 
-B. Docker:
-- Existing Docker image.
-- Existing Docker Compose.
-- Persistent data volume.
+- API request latency.
+- HTTP error rates.
+- Worker health.
+- Queue latency.
+- Job failures.
+- Provider errors.
+- Render duration.
+- Media processing failures.
+- Storage pressure.
+- Authentication failures.
+- Frontend runtime failures.
+- Publication transitions.
+
+Use structured logs and correlation identifiers.
+
+Do not log tokens, secrets, full private media URLs or sensitive user content.
+
+Provide actionable error details without disclosing internal infrastructure.
+
+---
+
+# PHASE 14 — VALIDATION AND AUTOMATED TESTING
+
+Review and expand repository-native validation.
+
+Run the documented existing commands.
+
+Baseline checks include:
+
+```bash
+python3 -m compileall -q zmovie.py app.py main.py zmovie_platform tests
+python3 -m unittest discover -s tests -v
+python3 scripts/verify_docs.py
+node --check static/durable-worker.js
+node --check static/product.js
+shellcheck --severity=warning install.sh install-docker.sh scripts/*.sh
+docker compose config --quiet
+docker build -t zmovie:test .
+```
+
+Also run the repository's supported pytest, JavaScript tests, frontend builds and browser tests.
+
+Do not assume commands from older documentation still match the current implementation.
+
+Verify scripts and package definitions before modifying the validation pipeline.
+
+## Unit testing
+
+Test:
+
+- Components.
+- Theme switching.
+- Theme persistence.
+- Navigation.
+- Forms.
+- Validation.
+- Formatting.
+- State transitions.
+- API response normalization.
+- Error handling.
+
+## Integration testing
+
+Test:
+
+- Authentication.
+- Project creation.
+- Storyboard.
+- Job queue.
+- Worker progress.
+- Render provider integration using mocks.
+- Media access.
+- Product Studio.
+- Membership entitlements.
+- Publishing approval lifecycle.
+- Kids content safety rules.
+- Audit logging.
+
+## Browser E2E
+
+Verify:
+
+1. Application loads.
+2. Sidebar works.
+3. Navigation works.
+4. Dark mode works.
+5. Light mode works.
+6. System mode works.
+7. Mobile layout works.
+8. Project creation works.
+9. Storyboard workflow works.
+10. Media Library works.
+11. Video preview works.
+12. Render job status works.
+13. Form errors render correctly.
+14. Authentication works.
+15. Unauthorized access is denied.
+16. Admin controls are permission-protected.
+17. Thai and English locale changes work.
+18. Keyboard navigation works.
+19. Failed API responses are handled.
+20. Empty states are correct.
+
+Mock providers only for isolated tests.
+
+Use separate integration and UAT evidence for actual provider execution.
+
+No tests should publish real content or consume production credentials.
+
+---
+
+# PHASE 15 — DEPLOYMENT AND BACKWARD COMPATIBILITY
+
+Preserve both existing supported deployment modes:
+
+- Docker Compose.
+- Native systemd.
+
+Inspect the real deployment configuration before making changes.
+
+Requirements:
+
+- Correct application entrypoint.
+- Production static assets.
+- API routing.
+- Reverse proxy.
+- Secure headers.
 - Health checks.
-- Secure container configuration.
+- Resource limits.
+- Graceful shutdown.
+- Environment validation.
+- Correct file permissions.
+- Non-root execution where practical.
+- Persistent database.
+- Durable queue.
+- Media storage.
+- Backup and restore.
+- Upgrade and rollback.
 
-Preserve the production ports, reverse proxy and existing public URLs unless a verified architecture change is required.
+Do not break:
 
-The dashboard must work through the existing:
-`https://zmovie.zeaz.dev`
-
-Inspect the current routes before choosing an integration strategy.
-
-Recommended dashboard routes:
-- `/admin`
-- `/admin/projects`
-- `/admin/studio`
-- `/admin/products`
-- `/admin/queue`
-- `/admin/workers`
-- `/admin/providers`
-- `/admin/media`
-- `/admin/qc`
-- `/admin/publishing`
-- `/admin/zeazverse`
-- `/admin/kids`
-- `/admin/cinema`
-- `/admin/analytics`
-- `/admin/system`
-- `/admin/audit`
-- `/admin/settings`
-
-Preserve:
+- `/api/*`
+- `/api/v2/*`
 - `/studio`
 - `/product`
 - `/membership`
-- `/terms`
-- `/privacy`
-- Existing API routes.
+- `/admin`
+- media-serving routes.
+- existing API clients.
+- worker startup.
+- scheduled operations.
 
-Validate reverse proxy behavior, cookie security and authenticated media playback.
+Where URL behavior must change, preserve compatibility using explicit redirects and tests.
 
----
-
-# 17. IMPLEMENTATION WORKFLOW
-
-Use dependency-ordered vertical slices.
-
-Stage 1: Repository audit and requirements traceability.
-
-Stage 2: AdminLTE reference review and design tokens.
-
-Stage 3: Shared application shell and navigation.
-
-Stage 4: Authentication and authorization.
-
-Stage 5: Executive dashboard.
-
-Stage 6: Project and Production Studio integration.
-
-Stage 7: Product Video Studio.
-
-Stage 8: Queue and Worker Operations.
-
-Stage 9: AI Provider Operations.
-
-Stage 10: Media and QC.
-
-Stage 11: Timeline and exports.
-
-Stage 12: Publishing Center.
-
-Stage 13: ZEAZVERSE and Kids Content Factory.
-
-Stage 14: Cinema, commerce and membership.
-
-Stage 15: Analytics, health and audit.
-
-Stage 16: Real-time updates.
-
-Stage 17: Responsive and accessibility review.
-
-Stage 18: Security audit.
-
-Stage 19: Automated testing.
-
-Stage 20: Deployment validation and documentation.
-
-Each vertical slice must be usable end to end.
-
-Do not implement every route as an empty page.
-
-When a capability is missing, show an honest unsupported/unavailable state and document the dependency.
-
-Do not invent backend APIs to make the interface look functional.
+Never deploy automatically to production as part of UI development.
 
 ---
 
-# 18. MULTI-AGENT EXECUTION
+# PHASE 16 — MULTI-AGENT IMPLEMENTATION
 
-Use specialized agents for independent workstreams.
+Use specialist agents when helpful.
 
-Suggested roles:
+Assign bounded responsibilities:
 
-1. Architecture and Repository Audit.
-2. AdminLTE Design System.
-3. Dashboard Shell and Navigation.
-4. Production Studio Integration.
-5. Project and Product Studio.
-6. Queue and Worker Operations.
-7. Media and QC.
-8. Publishing and Approval.
-9. ZEAZVERSE and Kids Factory.
-10. API and Authentication.
-11. Security Review.
-12. Testing and Browser QA.
-13. Deployment and Operations.
-14. Independent Code Review.
+1. Architecture Agent — full audit and integration design.
+2. Design System Agent — visual tokens and reusable components.
+3. Frontend Agent — app shell, pages and interactions.
+4. Backend Agent — FastAPI contracts and integration.
+5. Media Agent — upload, preview and media workflows.
+6. Production Agent — queue and workers.
+7. Publishing Agent — approval and external publishing flows.
+8. Kids Factory Agent — child-content workflow and safety.
+9. Security Agent — independent security inspection.
+10. Testing Agent — unit, integration and E2E coverage.
+11. DevOps Agent — Docker/systemd and deployment compatibility.
+12. Independent Review Agent — final implementation review.
 
-Each agent must have explicit file ownership and acceptance criteria.
+Agent rules:
 
-Avoid concurrent modification of shared files.
-
-Establish shared route and component contracts before parallel implementation.
-
-Use available model/provider fallbacks for implementation work where needed.
-
-Never treat automated agent agreement as independent security approval.
-
----
-
-# 19. REQUIRED DOCUMENTATION
-
-Create or update:
-
-- `docs/admin-dashboard/INDEX.md`
-- `docs/admin-dashboard/REQUIREMENTS.md`
-- `docs/admin-dashboard/ARCHITECTURE.md`
-- `docs/admin-dashboard/DESIGN-SYSTEM.md`
-- `docs/admin-dashboard/ROUTES.md`
-- `docs/admin-dashboard/API-MAPPING.md`
-- `docs/admin-dashboard/COMPONENTS.md`
-- `docs/admin-dashboard/SECURITY.md`
-- `docs/admin-dashboard/TEST-PLAN.md`
-- `docs/admin-dashboard/DEPLOYMENT.md`
-- `docs/admin-dashboard/IMPLEMENTATION-REPORT.md`
-
-Update `docs/INDEX.md` and the production feature matrix.
-
-Documentation must distinguish:
-- Implemented.
-- Tested.
-- CI verified.
-- Runtime verified.
-- Production verified.
-- Pending external validation.
+- Define file ownership.
+- Avoid simultaneous changes to shared files.
+- Agree on API contracts before parallel integration.
+- Keep shared domain logic authoritative.
+- Avoid duplicate components.
+- Integrate changes in dependency order.
+- Require tests and evidence from each agent.
+- Never treat multiple AI approvals as independent security review.
 
 ---
 
-# 20. DEFINITION OF DONE
+# PHASE 17 — KNOWN REPOSITORY ISSUE: P1
 
-The implementation is complete only when:
+Investigate and resolve the currently reported issue:
 
-- Dashboard layout is implemented.
-- Sidebar and navigation work.
-- All implemented pages are functional.
-- Existing Studio and Product Studio are integrated.
-- Existing backend remains authoritative.
-- Real data is displayed with accurate status.
-- Queue and worker monitoring work.
-- Media previews are secure.
-- QC evidence is displayed accurately.
-- Publication approval is safe.
-- Kids content safety is preserved.
-- Commerce and privacy boundaries are preserved.
-- Authentication is enforced.
-- Permissions are tested.
-- Responsive views work.
-- Accessibility is reviewed.
-- Security tests pass.
-- Existing tests pass.
-- Frontend tests pass.
-- Docker configuration is valid.
-- Native deployment compatibility is preserved.
-- Documentation is complete.
-- Outstanding blockers are accurately reported.
+https://github.com/cvsz/zmovie/issues/58
 
-Do not claim 100% production readiness based on static source inspection or mocked tests.
+Reported problems on Main include:
 
-External publication, production GPU execution, model weights, live provider credentials, production-host reboot tests and independent approvals must be reported separately.
+1. Documentation validation fails due to a private machine-specific path in `docs/ZMOVIE-FULL-MASTER.md`.
+2. Docker builder fails because Playwright installation cannot load `libatomic.so.1`.
+3. Supply-chain diagnostic workflow invokes Trivy even when its prerequisites failed.
+4. Docker build, vulnerability scanning and SBOM production do not currently establish a passing evidence chain.
+
+Read the issue and verify the actual current branch before making changes.
+
+Do not assume historical issue evidence still describes the current file contents.
+
+Acceptance:
+
+- Documentation validation passes.
+- Builder dependencies are correctly installed in the builder stage.
+- Docker builds.
+- Trivy availability is explicitly verified.
+- Security scan and SBOM generation are validated.
+- Failed prerequisites remain a failure.
+- Diagnostic artifacts are retained.
+- All relevant tests pass on the exact candidate commit.
+
+Do not update any external parent-repository submodule pointer until its package release gates are satisfied.
 
 ---
 
-# 21. FINAL IMPLEMENTATION REPORT
+# PHASE 18 — EXECUTION ORDER
 
-Provide:
+Execute as a dependency-aware refactor:
+
+Stage 1 — Full repository audit and baseline.
+
+Stage 2 — Product and UX inventory.
+
+Stage 3 — Design tokens and themes.
+
+Stage 4 — Unified application shell.
+
+Stage 5 — Shared components.
+
+Stage 6 — Frontend architecture.
+
+Stage 7 — API client and state lifecycle.
+
+Stage 8 — Main Studio.
+
+Stage 9 — Project, storyboard and timeline.
+
+Stage 10 — Media Library.
+
+Stage 11 — Production and render monitoring.
+
+Stage 12 — Product Video Studio.
+
+Stage 13 — Publishing.
+
+Stage 14 — Kids Content Factory.
+
+Stage 15 — Membership and commerce.
+
+Stage 16 — AdminLTE-inspired administration.
+
+Stage 17 — Analytics and observability.
+
+Stage 18 — Security and accessibility.
+
+Stage 19 — Backend compatibility and deployment.
+
+Stage 20 — Comprehensive automated validation.
+
+Stage 21 — Independent review.
+
+Stage 22 — Documentation, release and rollback preparation.
+
+Implement functional vertical slices, not empty UI scaffolding.
+
+Do not postpone every backend integration until after the pages have been designed.
+
+---
+
+# PHASE 19 — DEFINITION OF DONE
+
+A feature is complete when:
+
+- Its UI exists.
+- Its design is consistent.
+- Its interactions work.
+- Its backend API exists.
+- Its API permissions work.
+- Its data is persisted where required.
+- Its failure paths are handled.
+- Its tests exist.
+- Its logs are useful.
+- Its documentation exists.
+- Its responsive behavior is verified.
+- Its security requirements are met.
+
+The platform is considered refactored only when:
+
+1. All existing product features have been inventoried.
+2. Every implemented feature has a consistent navigation and user experience.
+3. All major user workflows work end-to-end.
+4. Administrative functionality is authorization-protected.
+5. Media previews and production jobs work.
+6. Dark, light and system themes work.
+7. Thai and English localization are implemented consistently.
+8. The interface is responsive.
+9. Existing backend APIs retain compatibility.
+10. Security constraints remain enforced.
+11. Tests and builds pass.
+12. Deployment paths remain supported.
+13. Documentation and evidence are updated.
+
+Never claim 100% completion without evidence.
+
+External provider availability, real model weights, hardware acceleration, OAuth credentials and external publication confirmation must remain separate acceptance gates.
+
+---
+
+# PHASE 20 — FINAL IMPLEMENTATION REPORT
+
+Produce:
 
 1. Executive summary.
-2. Initial repository state.
-3. Architecture decisions.
-4. AdminLTE reference adaptation.
-5. Implemented routes.
-6. Implemented components.
-7. Backend integration.
-8. Real-time implementation.
-9. Media and rendering features.
-10. Publishing safeguards.
-11. Security improvements.
-12. Test execution results.
-13. Build and deployment results.
-14. Browser QA.
-15. Accessibility results.
-16. Performance measurements.
-17. Files changed.
-18. Remaining defects.
-19. External dependencies.
-20. Commit SHAs.
-21. Pull request URL.
-22. Rollback procedure.
+2. Existing architecture findings.
+3. UI/UX before-and-after assessment.
+4. New design system.
+5. Theme implementation.
+6. Frontend architecture changes.
+7. Backend changes.
+8. Routes and pages implemented.
+9. Features completed.
+10. Features blocked or deferred.
+11. API contracts changed.
+12. Database migrations.
+13. Security improvements.
+14. Accessibility findings.
+15. Performance results.
+16. Unit test results.
+17. Integration test results.
+18. Browser E2E results.
+19. Docker validation.
+20. systemd compatibility validation.
+21. Known issue #58 resolution evidence.
+22. Files changed.
+23. Commit hashes.
+24. PR URL.
+25. Deployment and rollback instructions.
 
-Execute the complete implementation independently.
+All claims must be supported by reproducible evidence.
 
-Make engineering decisions based on the existing code and contracts.
+# FINAL EXECUTION DIRECTIVE
 
-Do not stop after the design or audit phase.
+Independently inspect, refactor, implement, integrate, validate and complete the entire zMovie platform within the existing repository architecture.
 
-Deliver working, tested, documented code with evidence for every completion claim.
+Prioritize maintainability, visual consistency, functional completeness, production safety, performance, accessibility and long-term extensibility.
+
+Use AdminLTE as the design reference and create an original premium zMovie experience.
+
+Do not stop at the design stage.
+
+Do not stop at the planning stage.
+
+Do not replace functional features with placeholders.
+
+Do not break existing production capabilities.
+
+Continue until every achievable implementation and validation requirement is completed, and explicitly report any external blocker that cannot be resolved within the repository.

@@ -352,7 +352,8 @@ class StoryboardDirectorAgent:
                 "Nothing will ever be the same.",
             ],
         }
-        dialogues = themes_dialogue.get(idx, ["..."])
+        theme = str(concept.get("theme", ""))
+        dialogues = themes_dialogue.get(theme, ["..."])
         return dialogues[idx % len(dialogues)] if dialogues else "..."
 
     def _audio_for_theme(self, theme: str) -> str:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from typing import Any
 
 from .pipeline import run_end_to_end
 from .providers import provider_specs
@@ -29,6 +30,7 @@ def main() -> int:
     inspect.add_argument("project_id")
 
     args = parser.parse_args()
+    result: Any
     if args.command == "run":
         result = run_end_to_end(name=args.name, concept=args.concept, genre=args.genre, visual_style=args.style, aspect_ratio=args.aspect_ratio, target_duration_seconds=args.duration, provider=args.provider)
     elif args.command == "providers":

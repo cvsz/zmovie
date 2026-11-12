@@ -584,7 +584,7 @@ Use the repository's established contribution and release conventions.
 
 The environment may contain:
 
-`/home/cvsz/.git-credentials`
+`~/.git-credentials`
 
 Treat this as sensitive credential material.
 

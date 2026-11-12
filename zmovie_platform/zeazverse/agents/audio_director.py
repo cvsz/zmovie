@@ -104,9 +104,9 @@ class AudioDirectorAgent:
 
     def plan_audio_for_scene(
         self, scene_id: str, character_id: str,
-        dialogue: list[str] = None,
-        music_theme: str = None,
-        sfx_requirements: list[str] = None,
+        dialogue: list[str] | None = None,
+        music_theme: str | None = None,
+        sfx_requirements: list[str] | None = None,
     ) -> AudioOutput:
         """Plan audio production for a scene."""
 

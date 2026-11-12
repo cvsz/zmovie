@@ -185,7 +185,7 @@ class StoryWriterAgent:
 
         for i, sc in enumerate(scene_configs[:scene_count]):
             scene_id = f"scene_{uuid4().hex[:4]}"
-            time_range = sc["range"]
+            time_range = str(sc["range"])
 
             # Determine focus based on story theme
             focus_char = concept.character_focus[0] if concept.character_focus else "lalin"
