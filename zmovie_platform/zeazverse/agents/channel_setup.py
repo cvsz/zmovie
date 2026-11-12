@@ -70,7 +70,7 @@ class ChannelSetup:
 
 
 # The 15 required setup checklist items per Spec #5
-SETUP_CHECKLIST_TEMPLATE = [
+SETUP_CHECKLIST_TEMPLATE: list[dict[str, object]] = [
     {
         "number": 1,
         "title": "Secure Google account ownership",
@@ -237,12 +237,12 @@ class ChannelSetupAgent:
 
         items = [
             ChecklistItem(
-                item_id=f"item_{item['number']:02d}",
-                item_number=item["number"],
-                title=item["title"],
-                description=item["description"],
+                item_id=f"item_{int(str(item['number'])):02d}",
+                item_number=int(str(item["number"])),
+                title=str(item["title"]),
+                description=str(item["description"]),
                 status=ItemStatus.PENDING,
-                requires_user_action=item["requires_user_action"],
+                requires_user_action=bool(item["requires_user_action"]),
             )
             for item in SETUP_CHECKLIST_TEMPLATE
         ]
@@ -551,8 +551,8 @@ def execute_action(
         }
 
     elif action == "get_setup":
-        setup = agent_obj.get_setup(kwargs.get("setup_id", ""))
-        if setup is None:
+        setup_data = agent_obj.get_setup(kwargs.get("setup_id", ""))
+        if setup_data is None:
             return {
                 "agent": agent_obj.AGENT_ID,
                 "action": "get_setup",
@@ -563,7 +563,7 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "get_setup",
             "status": "completed",
-            "setup": setup,
+            "setup": setup_data,
         }
 
     elif action == "get_status_dashboard":

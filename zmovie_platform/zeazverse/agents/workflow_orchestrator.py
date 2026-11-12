@@ -674,8 +674,8 @@ def execute_action(
         }
 
     elif action == "get_workflow":
-        workflow = agent_obj.get_workflow(kwargs.get("workflow_id", ""))
-        if workflow is None:
+        workflow_data = agent_obj.get_workflow(kwargs.get("workflow_id", ""))
+        if workflow_data is None:
             return {
                 "agent": agent_obj.AGENT_ID,
                 "action": "get_workflow",
@@ -686,7 +686,7 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "get_workflow",
             "status": "completed",
-            "workflow": workflow,
+            "workflow": workflow_data,
         }
 
     elif action == "status_check":

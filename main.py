@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 from app import app
 from zmovie_platform.api_routes import router as v2_router
+from zmovie_platform.api_routes import v1_router
 from zmovie_platform.cinema_import_routes import router as cinema_import_router
 from zmovie_platform.commerce_routes import router as commerce_router
 from zmovie_platform.config import settings
@@ -24,6 +25,7 @@ from zmovie_platform.zeazverse.routes import router as zeazverse_router
 
 configure_logging()
 app.include_router(v2_router)
+app.include_router(v1_router)
 app.include_router(cinema_import_router)
 app.include_router(commerce_router)
 app.include_router(media_upload_router)

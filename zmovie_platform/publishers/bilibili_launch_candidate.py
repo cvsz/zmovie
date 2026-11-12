@@ -190,8 +190,8 @@ def _probe_media(ffprobe: str, output: Path) -> dict[str, Any]:
     )
     data = json.loads(probe.stdout or "{}")
     streams = data.get("streams") or []
-    video = next((item for item in streams if item.get("codec_type") == "video"), {})
-    audio = next((item for item in streams if item.get("codec_type") == "audio"), {})
+    video: dict[str, Any] = next((item for item in streams if item.get("codec_type") == "video"), {})
+    audio: dict[str, Any] = next((item for item in streams if item.get("codec_type") == "audio"), {})
     fmt = data.get("format") or {}
     return {
         "codec": str(video.get("codec_name") or ""),

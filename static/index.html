@@ -14,8 +14,10 @@
       <h1>Cinematic Prompt Generator</h1>
       <p>Generate reproducible 20-second continuous long-take action prompts for Wan 3.0-style workflows.</p>
       <div class="hero-actions">
-        <a class="nav-link" href="/product">Open Product Video Studio</a>
-        <a class="nav-link secondary-link" href="/studio">Open Production Studio</a>
+        <a class="nav-link" href="/product">Product Video Studio</a>
+        <a class="nav-link secondary-link" href="/studio">Production Studio</a>
+        <a class="nav-link secondary-link" href="/admin">Admin Dashboard</a>
+        <button id="theme-toggle" class="nav-link secondary-link" style="cursor: pointer;">Toggle Theme</button>
       </div>
     </header>
 
@@ -50,6 +52,20 @@
       <div id="history-list" class="history-list"></div>
     </section>
   </main>
+  <script>
+    const savedTheme = localStorage.getItem('zmovie_theme') || 'dark';
+    if (savedTheme === 'light') {
+      document.body.classList.add('light-mode');
+    }
+    const themeBtn = document.getElementById('theme-toggle');
+    if (themeBtn) {
+      themeBtn.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        localStorage.setItem('zmovie_theme', isLight ? 'light' : 'dark');
+      });
+    }
+  </script>
   <script src="/static/app.js" defer></script>
 </body>
 </html>

@@ -92,7 +92,7 @@ class ActionChoreographerAgent:
 
     def choreograph_action(
         self, character_id: str, action_type: ActionType,
-        duration: float, scene_context: dict[str, Any] = None
+        duration: float, scene_context: dict[str, Any] | None = None
     ) -> ChoreographyOutput:
         """Choreograph a safe action sequence for a character."""
 
@@ -254,7 +254,7 @@ class ActionChoreographerAgent:
         return phases_list
 
     def _validate_safety(self, phases: list[ActionPhase], character_id: str,
-                         scene_context: dict[str, Any] = None) -> dict[str, bool]:
+                         scene_context: dict[str, Any] | None = None) -> dict[str, bool]:
         """Validate safety for all action phases."""
         safety_results = {
             "overall_safe": True,

@@ -326,29 +326,14 @@ class AnalyticsAgent:
             for c in characters[:limit]
         ]
 
-    def get_latest_snapshot(self, channel_id: str) -> dict[str, Any] | None:
+    def get_latest_snapshot(self, channel_id: str) -> AnalyticsSnapshot | None:
         """Get the most recent analytics snapshot for a channel."""
         snapshots = [
             s for s in self._snapshots.values() if s.channel_id == channel_id
         ]
         if not snapshots:
             return None
-        latest = max(snapshots, key=lambda s: s.collected_at)
-        return {
-            "snapshot_id": latest.snapshot_id,
-            "period_start": latest.period_start,
-            "period_end": latest.period_end,
-            "views": latest.views,
-            "engaged_views": latest.engaged_views,
-            "watch_time_minutes": latest.watch_time_minutes,
-            "average_view_duration_seconds": latest.average_view_duration_seconds,
-            "audience_retention_percentage": latest.audience_retention_percentage,
-            "subscribers_gained": latest.subscribers_gained,
-            "traffic_sources": latest.traffic_sources,
-            "viewer_geography": latest.viewer_geography,
-            "returning_viewers": latest.returning_viewers,
-            "collected_at": latest.collected_at,
-        }
+        return max(snapshots, key=lambda s: s.collected_at)
 
     def get_status(self) -> dict[str, Any]:
         """Return agent status."""
@@ -432,7 +417,7 @@ def execute_action(
         }
 
     elif action == "record_character_performance":
-        performance = agent_obj.record_character_performance(
+        char_performance = agent_obj.record_character_performance(
             character_id=kwargs.get("character_id", ""),
             character_name=kwargs.get("character_name", ""),
             episodes_featured=kwargs.get("episodes_featured", 0),
@@ -443,12 +428,12 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "record_character_performance",
             "status": "completed",
-            "character_id": performance.character_id,
-            "character_name": performance.character_name,
-            "episodes_featured": performance.episodes_featured,
-            "total_views": performance.total_views,
-            "average_views_per_episode": performance.average_views_per_episode,
-            "subscriber_impact": performance.subscriber_impact,
+            "character_id": char_performance.character_id,
+            "character_name": char_performance.character_name,
+            "episodes_featured": char_performance.episodes_featured,
+            "total_views": char_performance.total_views,
+            "average_views_per_episode": char_performance.average_views_per_episode,
+            "subscriber_impact": char_performance.subscriber_impact,
         }
 
     elif action == "assess_monetization_readiness":
@@ -499,10 +484,10 @@ def execute_action(
         }
 
     elif action == "get_latest_snapshot":
-        snapshot = agent_obj.get_latest_snapshot(
+        snapshot_data = agent_obj.get_latest_snapshot(
             kwargs.get("channel_id", "channel_default")
         )
-        if snapshot is None:
+        if snapshot_data is None:
             return {
                 "agent": agent_obj.AGENT_ID,
                 "action": "get_latest_snapshot",
@@ -513,7 +498,7 @@ def execute_action(
             "agent": agent_obj.AGENT_ID,
             "action": "get_latest_snapshot",
             "status": "completed",
-            "snapshot": snapshot,
+            "snapshot": snapshot_data,
         }
 
     elif action == "status_check":

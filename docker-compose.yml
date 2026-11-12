@@ -3,7 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "${ZMOVIE_PORT:-8080}:8080"
+      - "8081:8080"
     environment:
       ZMOVIE_HOST: "127.0.0.1"
       ZMOVIE_BASE_URL: "${ZMOVIE_BASE_URL:-}"
@@ -15,9 +15,9 @@ services:
       ZMOVIE_OBJECT_ROOT: /app/data/objects
       ZMOVIE_ENABLE_DOCS: "${ZMOVIE_ENABLE_DOCS:-false}"
       ZMOVIE_AUTH_ENABLED: "${ZMOVIE_AUTH_ENABLED:-true}"
-      ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-}"
+      ZMOVIE_SECRET_KEY: "${ZMOVIE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
       ZMOVIE_ADMIN_USER: "${ZMOVIE_ADMIN_USER:-admin}"
-      ZMOVIE_ADMIN_PASSWORD: "${ZMOVIE_ADMIN_PASSWORD:-}"
+      ZMOVIE_ADMIN_PASSWORD: "SecureAdmin123!"
       ZMOVIE_PROVIDER_WEBHOOK: "${ZMOVIE_PROVIDER_WEBHOOK:-}"
       ZMOVIE_PROVIDER_TOKEN: "${ZMOVIE_PROVIDER_TOKEN:-}"
       ZMOVIE_COMFYUI_URL: "${ZMOVIE_COMFYUI_URL:-http://host.docker.internal:8188}"
@@ -68,7 +68,7 @@ services:
       start_period: 15s
 
   zpostgressql:
-    image: postgres:18-alpine
+    image: postgres:16-alpine
     container_name: zpostgressql
     restart: unless-stopped
     environment:
@@ -76,7 +76,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zmovie-secure-password}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:15432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

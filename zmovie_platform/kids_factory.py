@@ -763,7 +763,8 @@ def build_captions_export(*, scenes: list[dict[str, Any]], format: str = "srt") 
             start, end = _caption_span(caption, cursor, duration)
             if start is None:
                 continue
-            entries.append({"start": round(start, 3), "end": round(max(end, start + 0.5), 3),
+            end_val = end if end is not None else start + 0.5
+            entries.append({"start": round(start, 3), "end": round(max(end_val, start + 0.5), 3),
                             "text": text[:160], "scene_id": scene.get("id", "")})
         cursor += duration
     if fmt == "json":

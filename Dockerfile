@@ -8,6 +8,28 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 COPY requirements.txt ./
 
+# Install system dependencies required for Playwright Chromium in the builder stage
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libatomic1 \
+        libnss3 \
+        libnspr4 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpango-1.0-0 \
+        libcairo2 \
+        libatspi2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install into an isolated prefix so the runtime image never receives pip
 # itself. Trivy reports pip's vendored msgpack 1.1.2 (GHSA-6v7p-g79w-8964)
 # and setuptools 70.3.0 (CVE-2025-47273) as fixable HIGH findings; both are

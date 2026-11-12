@@ -114,7 +114,8 @@ def save_generation(item: dict[str, Any], seed: int | None) -> int:
             (now, seed, str(item["title"]), json.dumps(item, ensure_ascii=False)),
         )
         conn.commit()
-        return int(cursor.lastrowid)
+        rowid = cursor.lastrowid
+        return int(rowid) if rowid is not None else 0
 
 
 @app.get("/", include_in_schema=False)

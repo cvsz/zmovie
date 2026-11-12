@@ -42,7 +42,7 @@ def _public_publish_job(job: dict[str, object]) -> dict[str, object]:
 
 
 def _public_session_status(status: dict[str, object]) -> dict[str, object]:
-    result = {
+    result: dict[str, object] = {
         field: status[field]
         for field in ("configured", "authenticated", "checked", "headless", "studio_url")
         if field in status
