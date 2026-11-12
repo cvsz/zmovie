@@ -57,7 +57,7 @@ def ensure_tables() -> None:
         conn.executescript(TABLE_SQL)
 
 
-def _row(conn: Any, query: str, params: tuple = ()) -> dict[str, Any] | None:
+def _row(conn: Any, query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
     row = conn.execute(query, params).fetchone()
     return dict(row) if row else None
 

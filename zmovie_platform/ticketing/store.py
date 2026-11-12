@@ -127,6 +127,6 @@ def audit(event: str, actor: str = "", **details: Any) -> None:
         raise last_exc
 
 
-def _row(conn: Any, query: str, params: tuple = ()) -> dict[str, Any] | None:
+def _row(conn: Any, query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
     row = conn.execute(query, params).fetchone()
     return dict(row) if row else None

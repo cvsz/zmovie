@@ -167,7 +167,7 @@ class YouTubePublishPayload(BaseModel):
 
 
 @router.post("/brands/validate")
-def validate_brand_endpoint(payload: BrandPayload):
+def validate_brand_endpoint(payload: BrandPayload) -> dict[str, Any]:
     try:
         return {"ok": True, "brand": validate_brand(payload.model_dump())}
     except KidsValidationError as err:
@@ -175,7 +175,7 @@ def validate_brand_endpoint(payload: BrandPayload):
 
 
 @router.post("/channels/validate")
-def validate_channel_endpoint(payload: ChannelPayload):
+def validate_channel_endpoint(payload: ChannelPayload) -> dict[str, Any]:
     try:
         return {"ok": True, "channel": validate_channel(payload.model_dump())}
     except KidsValidationError as err:
@@ -183,7 +183,7 @@ def validate_channel_endpoint(payload: ChannelPayload):
 
 
 @router.post("/characters/validate")
-def validate_character_endpoint(payload: CharacterPayload):
+def validate_character_endpoint(payload: CharacterPayload) -> dict[str, Any]:
     try:
         return {"ok": True, "character": validate_character(payload.model_dump())}
     except KidsValidationError as err:
@@ -191,7 +191,7 @@ def validate_character_endpoint(payload: CharacterPayload):
 
 
 @router.post("/episodes/validate")
-def validate_episode_endpoint(payload: EpisodePayload):
+def validate_episode_endpoint(payload: EpisodePayload) -> dict[str, Any]:
     try:
         return {"ok": True, "episode": validate_episode(payload.model_dump())}
     except KidsValidationError as err:
@@ -199,7 +199,7 @@ def validate_episode_endpoint(payload: EpisodePayload):
 
 
 @router.post("/scripts/validate")
-def validate_script_endpoint(payload: ScriptPayload):
+def validate_script_endpoint(payload: ScriptPayload) -> dict[str, Any]:
     try:
         return {"ok": True, "script": validate_script(payload.model_dump())}
     except KidsValidationError as err:
@@ -207,7 +207,7 @@ def validate_script_endpoint(payload: ScriptPayload):
 
 
 @router.post("/scenes/validate")
-def validate_scene_endpoint(payload: ScenePayload):
+def validate_scene_endpoint(payload: ScenePayload) -> dict[str, Any]:
     try:
         return {"ok": True, "scene": validate_scene(payload.model_dump())}
     except KidsValidationError as err:
@@ -215,7 +215,7 @@ def validate_scene_endpoint(payload: ScenePayload):
 
 
 @router.post("/timelines/validate")
-def validate_timeline_endpoint(payload: TimelinePayload):
+def validate_timeline_endpoint(payload: TimelinePayload) -> dict[str, Any]:
     try:
         validated = validate_timeline(payload.model_dump())
         checksum = timeline_checksum(validated["tracks"])
@@ -225,7 +225,7 @@ def validate_timeline_endpoint(payload: TimelinePayload):
 
 
 @router.post("/voices/validate")
-def validate_voice_endpoint(payload: VoiceProfilePayload):
+def validate_voice_endpoint(payload: VoiceProfilePayload) -> dict[str, Any]:
     try:
         return {"ok": True, "voice": validate_voice_profile(payload.model_dump())}
     except KidsValidationError as err:
@@ -233,7 +233,7 @@ def validate_voice_endpoint(payload: VoiceProfilePayload):
 
 
 @router.post("/voices/preview")
-def preview_voice_endpoint(payload: VoicePreviewPayload):
+def preview_voice_endpoint(payload: VoicePreviewPayload) -> dict[str, Any]:
     try:
         wav_bytes = synth_preview_wav(
             text=payload.text,
@@ -251,7 +251,7 @@ def preview_voice_endpoint(payload: VoicePreviewPayload):
 
 
 @router.post("/music/validate")
-def validate_music_endpoint(payload: MusicTrackPayload):
+def validate_music_endpoint(payload: MusicTrackPayload) -> dict[str, Any]:
     try:
         return {"ok": True, "music": validate_music_track(payload.model_dump())}
     except KidsValidationError as err:
@@ -259,7 +259,7 @@ def validate_music_endpoint(payload: MusicTrackPayload):
 
 
 @router.post("/providers/routes/validate")
-def validate_provider_route_endpoint(payload: ProviderRoutePayload):
+def validate_provider_route_endpoint(payload: ProviderRoutePayload) -> dict[str, Any]:
     try:
         validated = validate_provider_route(
             capability=payload.capability,
@@ -275,7 +275,7 @@ def validate_provider_route_endpoint(payload: ProviderRoutePayload):
 
 
 @router.post("/schedules/slots/validate")
-def validate_schedule_slot_endpoint(payload: ScheduleSlotPayload):
+def validate_schedule_slot_endpoint(payload: ScheduleSlotPayload) -> dict[str, Any]:
     try:
         return {
             "ok": True,
@@ -289,7 +289,7 @@ def validate_schedule_slot_endpoint(payload: ScheduleSlotPayload):
 
 
 @router.post("/media/validate")
-def validate_media_endpoint(payload: MediaUploadPayload):
+def validate_media_endpoint(payload: MediaUploadPayload) -> dict[str, Any]:
     try:
         validate_media_upload(
             filename=payload.filename,
@@ -303,7 +303,7 @@ def validate_media_endpoint(payload: MediaUploadPayload):
 
 
 @router.post("/variants/draft")
-def draft_variant_endpoint(payload: LanguageVariantPayload):
+def draft_variant_endpoint(payload: LanguageVariantPayload) -> dict[str, Any]:
     try:
         return {
             "ok": True,
@@ -317,7 +317,7 @@ def draft_variant_endpoint(payload: LanguageVariantPayload):
 
 
 @router.post("/marketing/suggest")
-def suggest_marketing_endpoint(payload: MarketingPayload):
+def suggest_marketing_endpoint(payload: MarketingPayload) -> dict[str, Any]:
     try:
         return {
             "ok": True,
@@ -331,12 +331,12 @@ def suggest_marketing_endpoint(payload: MarketingPayload):
 
 
 @router.post("/safety/check")
-def check_safety_endpoint(payload: SafetyCheckPayload):
+def check_safety_endpoint(payload: SafetyCheckPayload) -> dict[str, Any]:
     return kids_safety_check(age_band=payload.age_band, text=payload.text)
 
 
 @router.post("/storyboard/generate")
-def generate_storyboard_endpoint(payload: StoryboardGeneratePayload):
+def generate_storyboard_endpoint(payload: StoryboardGeneratePayload) -> dict[str, Any]:
     try:
         script_body = {"title": payload.title, "beats": payload.beats}
         scenes = build_storyboard(script_body=script_body, num_scenes=payload.num_scenes)
@@ -347,7 +347,7 @@ def generate_storyboard_endpoint(payload: StoryboardGeneratePayload):
 
 
 @router.post("/captions/export")
-def export_captions_endpoint(payload: CaptionsPayload):
+def export_captions_endpoint(payload: CaptionsPayload) -> dict[str, Any]:
     try:
         return build_captions_export(scenes=payload.scenes, format=payload.format)
     except Exception as err:
@@ -359,13 +359,13 @@ def estimate_cost_endpoint(
     num_scenes: int = Query(4, ge=1, le=100),
     duration_total: float = Query(30.0, ge=1.0, le=3600.0),
     provider: str = Query("mock"),
-):
+) -> dict[str, Any]:
     cost = estimate_cost(num_scenes=num_scenes, duration_total=duration_total, provider=provider)
     return {"ok": True, "estimated_credits": cost, "provider": provider}
 
 
 @router.post("/youtube/mock-upload")
-def mock_upload_endpoint(payload: YouTubePublishPayload):
+def mock_upload_endpoint(payload: YouTubePublishPayload) -> dict[str, Any]:
     try:
         meta = prepare_youtube_metadata(title=payload.title, description=payload.description)
         result = mock_youtube_upload(
@@ -405,7 +405,7 @@ class BundleImportPayload(BaseModel):
 
 
 @router.post("/episodes/pipeline")
-def run_pipeline_endpoint(payload: PipelineRunPayload):
+def run_pipeline_endpoint(payload: PipelineRunPayload) -> dict[str, Any]:
     try:
         return run_episode_pipeline(
             episode=payload.episode,
@@ -417,7 +417,7 @@ def run_pipeline_endpoint(payload: PipelineRunPayload):
 
 
 @router.post("/episodes/shorts")
-def derive_shorts_endpoint(payload: ShortsDerivePayload):
+def derive_shorts_endpoint(payload: ShortsDerivePayload) -> dict[str, Any]:
     try:
         return {
             "ok": True,
@@ -431,7 +431,7 @@ def derive_shorts_endpoint(payload: ShortsDerivePayload):
 
 
 @router.post("/episodes/bundle/export")
-def export_bundle_endpoint(payload: BundleExportPayload):
+def export_bundle_endpoint(payload: BundleExportPayload) -> dict[str, Any]:
     try:
         bundle = export_episode_bundle(
             episode=payload.episode,
@@ -447,7 +447,7 @@ def export_bundle_endpoint(payload: BundleExportPayload):
 
 
 @router.post("/episodes/bundle/import")
-def import_bundle_endpoint(payload: BundleImportPayload):
+def import_bundle_endpoint(payload: BundleImportPayload) -> dict[str, Any]:
     try:
         return import_episode_bundle(
             bundle=payload.bundle,

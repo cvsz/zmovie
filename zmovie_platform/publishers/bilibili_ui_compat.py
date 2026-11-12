@@ -52,7 +52,9 @@ def _roots(page: Any) -> list[Any]:
 
 def _visible(locator: Any) -> bool:
     try:
-        return locator.count() > 0 and locator.first.is_visible()
+        count: int = locator.count()
+        visible: bool = locator.first.is_visible()
+        return count > 0 and visible
     except Exception:
         return False
 
