@@ -168,7 +168,7 @@ class PublishingAgent:
         PublicationState.APPROVED,
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
         self._records: dict[str, PublicationRecord] = {}
@@ -328,22 +328,27 @@ class PublishingAgent:
 
         record = self._records[episode_id]
 
+        # Idempotency: check if already uploading or uploaded
+        if record.current_state in {
+            PublicationState.UPLOADING,
+            PublicationState.PRIVATE_UPLOADED,
+            PublicationState.PUBLISHED,
+        }:
+            return {
+                "status": "blocked",
+                "error": (
+                    f"Upload already processed for {episode_id}. "
+                    f"Current state: {record.current_state.name}, "
+                    f"Idempotency key: {record.idempotency_key}"
+                ),
+            }
+
         if record.current_state != PublicationState.APPROVED:
             return {
                 "status": "blocked",
                 "error": (
                     f"Episode must be APPROVED before upload. Current: "
                     f"{record.current_state.name}"
-                ),
-            }
-
-        # Idempotency: check if already uploading or uploaded with same key
-        if record.current_state == PublicationState.UPLOADING:
-            return {
-                "status": "blocked",
-                "error": (
-                    f"Upload already in progress for {episode_id}. "
-                    f"Idempotency key: {record.idempotency_key}"
                 ),
             }
 

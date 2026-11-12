@@ -14,7 +14,7 @@ from .storyboard import create_storyboard, production_manifest
 MEDIA_ROOT = Path(os.getenv("ZMOVIE_MEDIA_ROOT", "data/media"))
 
 
-def _resumable_render_job(project_id: str, shot_id: str, provider_id: str):
+def _resumable_render_job(project_id: str, shot_id: str, provider_id: str) -> Any | None:
     if provider_id != "comfyui":
         return None
     for item in list_jobs(project_id, limit=5000):

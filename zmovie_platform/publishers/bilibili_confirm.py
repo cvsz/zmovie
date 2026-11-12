@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from ..models import utcnow
 from . import bilibili as legacy
 
 _NOT_PUBLIC_MARKERS = (
@@ -115,7 +116,7 @@ def confirm_publication(
     metadata.update(
         {
             "remote_confirmation": True,
-            "remote_confirmed_at": legacy.utcnow(),
+            "remote_confirmed_at": utcnow(),
             "remote_confirmation_source": "public_url_probe" if probe else "operator_url_no_probe",
             "remote_confirmation_probe": probe_result,
         }

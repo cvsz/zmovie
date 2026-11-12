@@ -121,10 +121,12 @@ class OAuthManager:
 
         # Fetch user info
         userinfo = await self._fetch_userinfo(client, provider)
+        token_dict: dict[str, Any] = token if isinstance(token, dict) else {"access_token": str(token)}
+        userinfo_dict: dict[str, Any] = userinfo if isinstance(userinfo, dict) else {}
         return {
             "provider": provider_name,
-            "token": token,
-            "userinfo": userinfo,
+            "token": token_dict,
+            "userinfo": userinfo_dict,
         }
 
     def create_authorization_url_for_provider(self, provider_name: str, redirect_uri: str) -> tuple[str, str]:
@@ -144,7 +146,8 @@ class OAuthManager:
     async def _fetch_userinfo(self, client: AsyncOAuth2Client, provider: OAuthProvider) -> dict[str, Any]:
         resp = await client.get(provider.userinfo_endpoint)
         resp.raise_for_status()
-        return resp.json()
+        userinfo = resp.json()
+        return userinfo if isinstance(userinfo, dict) else {}
 
     def cleanup_expired_states(self) -> None:
         now = time.time()

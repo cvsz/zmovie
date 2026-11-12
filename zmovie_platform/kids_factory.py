@@ -15,7 +15,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}$")
 AGE_BANDS = {"toddler", "preschool", "early-school", "2-4", "5-8"}
@@ -68,6 +68,13 @@ SECRET_LIKE = re.compile(
     r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*\S{8,}|"
     r"\b(sk|ghp|gho|zwf)_[A-Za-z0-9_\-]{12,}"
 )
+
+
+class KidsDatabase(Protocol):
+    """Protocol for database operations used by Kids Content Factory."""
+    def kids_get_brand(self, tenant_id: str, brand_id: str) -> dict[str, Any] | None: ...
+    def kids_count_episodes(self, tenant_id: str, brand_id: str) -> int: ...
+    def kids_usage_summary(self, tenant_id: str) -> dict[str, Any]: ...
 
 
 class KidsValidationError(ValueError):
@@ -382,8 +389,8 @@ def estimate_cost(*, num_scenes: int, duration_total: float, provider: str = "mo
     return round(float(num_scenes) * 0.4 + float(duration_total) * 0.05, 4)
 
 
-def storyboard_to_timeline(scenes: list[dict[str, Any]], *, brand_name: str = "") -> dict[str, list]:
-    tracks: dict[str, list] = {name: [] for name in TIMELINE_TRACKS}
+def storyboard_to_timeline(scenes: list[dict[str, Any]], *, brand_name: str = "") -> dict[str, list[Any]]:
+    tracks: dict[str, list[Any]] = {name: [] for name in TIMELINE_TRACKS}
     cursor = 0.0
     for scene in sorted(scenes, key=lambda s: int(s.get("ordering", 0))):
         duration = float(scene.get("duration_seconds", 5))
@@ -577,7 +584,7 @@ def synth_preview_wav(*, text: str, speed: float = 1.0, sample_rate: int = 16000
     return buf.getvalue()
 
 
-def check_brand_quota(db, tenant_id: str, brand_id: str, *, extra_episodes: int = 0, extra_cost: float = 0.0) -> None:
+def check_brand_quota(db: KidsDatabase, tenant_id: str, brand_id: str, *, extra_episodes: int = 0, extra_cost: float = 0.0) -> None:
     """Enforce per-brand quotas declared in brand.publishing (max_episodes, max_cost_credits)."""
     brand = db.kids_get_brand(tenant_id, brand_id)
     if not brand:
@@ -677,7 +684,7 @@ def validate_schedule_slot(*, slot_at: str, timezone_name: str = "UTC") -> dict[
     return {"slot_at": moment.isoformat(), "timezone": tz_name}
 
 
-def validate_provider_route(*, capability: str, providers: list) -> dict[str, Any]:
+def validate_provider_route(*, capability: str, providers: list[Any]) -> dict[str, Any]:
     """Ordered provider route per capability. Unknown or duplicate entries fail closed."""
     if capability not in PROVIDER_CAPABILITIES:
         raise KidsValidationError(f"provider capability must be one of {list(PROVIDER_CAPABILITIES)}")

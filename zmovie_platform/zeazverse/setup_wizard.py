@@ -9,6 +9,7 @@ publication, analytics, or production readiness.
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Any
 
 from zmovie_platform.zeazverse.store import ensure_tables, utcnow
 
@@ -29,7 +30,7 @@ class ChecklistItem:
     label: str
     description: str = ""
     status: ChannelSetupStatus = ChannelSetupStatus.PENDING
-    evidence: dict = field(default_factory=dict)
+    evidence: dict[str, Any] = field(default_factory=dict)
     requires_user_action: bool = False
     verified_at: str | None = None
     completed_at: str | None = None
@@ -201,7 +202,7 @@ class ChannelSetupDashboard:
             )
         return "\n".join(lines)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage/audit."""
         self.compute_stats()
         return {
@@ -238,7 +239,7 @@ def ensure_setup_tables() -> None:
 def update_checklist_status(
     item_id: int,
     status: ChannelSetupStatus,
-    evidence: dict | None = None,
+    evidence: dict[str, Any] | None = None,
     verified_by: str | None = None,
 ) -> bool:
     """Update a single checklist item status.

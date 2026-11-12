@@ -7,6 +7,7 @@ import hmac
 import json
 import os
 import time
+from typing import Any
 
 
 def _secret() -> bytes:
@@ -26,7 +27,7 @@ def issue_qr(*, ticket_id: str, showtime_id: str, seat_no: str, ttl_seconds: int
     return {"qr_payload": body, "qr_signature": sig}
 
 
-def verify_qr(*, qr_payload: str, qr_signature: str) -> dict | None:
+def verify_qr(*, qr_payload: str, qr_signature: str) -> dict[str, Any] | None:
     try:
         expected = hmac.new(_secret(), qr_payload.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, qr_signature or ""):

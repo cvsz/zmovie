@@ -16,6 +16,8 @@ from typing import Any
 from ..models import utcnow
 from ..storage import connect
 
+__all__ = ["utcnow", "ensure_tables", "connect", "TABLE_SQL"]
+
 TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS zeazverse_channels (
   id TEXT PRIMARY KEY,
@@ -338,7 +340,7 @@ def ensure_tables() -> None:
         conn.executescript(TABLE_SQL)
 
 
-def _row(conn: Any, query: str, params: tuple = ()) -> dict[str, Any] | None:
+def _row(conn: Any, query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
     row = conn.execute(query, params).fetchone()
     return dict(row) if row else None
 
