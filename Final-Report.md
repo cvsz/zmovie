@@ -58,7 +58,7 @@
 **Status:** ✅ **PASS** - การเชื่อมต่อระหว่างบริการ โมดูล และตัวแปรสภาพแวดล้อมทุกจุดถูกต้อง  
 - `main.py` รวมเราเตอร์ทั้งหมด (v2, v1, cinema-import, commerce, media-upload, privacy, media-preview, publisher, production, product, zeazverse, kids) ไม่มีชื่อซ้ำหรือเส้นทางขาด
 - `app.py` lifespan เรียก `validate_runtime_settings()`, `migrate()`, `bootstrap_admin_from_env()`, `ensure_oauth_tables()` ถูกต้อง
-- `zmovie_platform/config.py` อ่านค่าฐานข้อมูลและเรดิสจากตัวแปรสภาพแวดล้อมและไฟล์รหัสลับ `/run/secrets/` ได้ถูกต้อง
+- `zmovie_platform/config.py` อ่านค่าฐานข้อมูลและเรดิสจากตัวแปรสภาพแวดล้อมและไฟล์รหัสลับรันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) ได้ถูกต้อง
 
 ---
 
@@ -110,19 +110,19 @@ High: 0
 | `TEST_DATABASE_URL` | `postgresql://zmovie:@zpostgressql:5432/zmovie_db` (รหัสผ่านเติมจากไฟล์ลับขณะรันจริง) | เชื่อมต่อ PostgreSQL สำหรับทดสอบ |
 | `REPONAME_POSTGRES_HOST` | `zpostgressql` | Host ของ PostgreSQL |
 | `REPONAME_POSTGRES_PORT` | `"5432"` | Port ของ PostgreSQL |
-| `REPONAME_POSTGRES_PASSWORD_FILE` | `/run/secrets/zmovie_postgres_password` | ไฟล์รหัสผ่าน PostgreSQL |
+| `REPONAME_POSTGRES_PASSWORD_FILE` | รันไทม์ซีเครตส์ไฟล์ (ระบุโดยตัวแปร `REPONAME_POSTGRES_PASSWORD_FILE`) | ไฟล์รหัสผ่าน PostgreSQL |
 | `REPONAME_REDIS_HOST` | `zredis` | Host ของ Redis |
 | `REPONAME_REDIS_PORT` | `"6379"` | Port ของ Redis |
-| `REPONAME_REDIS_PASSWORD_FILE` | `/run/secrets/zmovie_zredis_password` | ไฟล์รหัสผ่าน Redis |
+| `REPONAME_REDIS_PASSWORD_FILE` | รันไทม์ซีเครตส์ไฟล์ (ระบุโดยตัวแปร `REPONAME_REDIS_PASSWORD_FILE`) | ไฟล์รหัสผ่าน Redis |
 
 ### รหัสลับ (Secrets)
 
 รหัสผ่านต้องถูกสร้างและจัดเก็บไว้ที่ (ไดเรกทอรีรันไทม์ที่จัดการโดยระบบปฏิบัติการ/Docker):
-- `/run/secrets/zmovie_postgres_password` (chmod 600, root-only)
-- `/run/secrets/zmovie_zredis_password` (chmod 600, root-only)
+- ไฟล์รหัสลับรันไทม์สำหรับ PostgreSQL (ระบุโดย `REPONAME_POSTGRES_PASSWORD_FILE`) (chmod 600, root-only)
+- ไฟล์รหัสลับรันไทม์สำหรับ Redis (ระบุโดย `REPONAME_REDIS_PASSWORD_FILE`) (chmod 600, root-only)
 
 ผู้ดูแลระบบต้อง:
-1. สร้างไฟล์รหัสผ่านทั้งสองที่ `/run/secrets/` ก่อน déploy (ไดเรกทอรีนี้จัดการโดยระบบปฏิบัติการ/container runtime; ในสภาพแวดล้อมนี้ไม่มีสิทธิ์เขียนโดยตรง จึงต้องสร้างขณะติดตั้งจริง)
+1. สร้างไฟล์รหัสผ่านทั้งสองที่ไดเรกทอรีรหัสลับรันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) ก่อน déploy
 2. สร้าง user `zmovie` ใน PostgreSQL database `zmovie_db` (รองรับโดย `zmovie_platform/postgres_tenant.py` ซึ่งสร้าง database และ role ซ้ำได้อย่างปลอดภัย)
 3. ยืนยันว่า `.env` (ถูกป้องกันโดย `.gitignore` จึงไม่ถูก commit) มีค่าที่ตรงกัน
 
@@ -147,9 +147,9 @@ High: 0
 ## Key Improvements Made (ในรอบนี้)
 
 ### Database & Secrets (ขั้นตอน 2, ข้อ 4)
-1. **`.env`** - แก้ `DATABASE_URL`/`TEST_DATABASE_URL`: เอารหัสผ่าน hard-coded ออก เปลี่ยนเป็นอ้างอิงรหัสผ่านจาก `/run/secrets/zmovie_postgres_password` ขณะรันจริง ใช้ user `zmovie`, database `zmovie_db`, host `zpostgressql:5432`
+1. **`.env`** - แก้ `DATABASE_URL`/`TEST_DATABASE_URL`: เอารหัสผ่าน hard-coded ออก เปลี่ยนเป็นอ้างอิงรหัสผ่านจากไฟล์ลับรันไทม์ (ระบุโดย `REPONAME_POSTGRES_PASSWORD_FILE`) ขณะรันจริง ใช้ user `zmovie`, database `zmovie_db`, host `zpostgressql:5432`
 2. **`.env.example`** - อัปเดตตัวอย่างให้สอดคล้องกับ `.env` และไม่เปิดเผยรหัสผ่านจริง
-3. **`zmovie_platform/config.py`** - เสริมการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์ `/run/secrets/` สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
+3. **`zmovie_platform/config.py`** - เสริมการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
 
 ### Security Tooling (กำจัดคำเตือนทั้งหมดให้เป็นศูนย์)
 4. **`scripts/check_studio_inline_js.py`** - แก้ `B607: start_process_with_partial_path` เรียก `node` ผ่าน `shutil.which("node")` แทน path ที่ไม่เต็ม
@@ -212,7 +212,7 @@ High: 0
 ไฟล์ที่แก้ไขเพื่อคุณภาพและความสมบูรณ์ระดับองค์กร:
 - `.env` - `DATABASE_URL`/`TEST_DATABASE_url` อ้างอิงรหัสผ่านจากไฟล์ลับ ไม่ hard-coded
 - `.env.example` - ตัวอย่างสอดคล้องกับ `.env` ไม่เปิดเผยรหัสผ่านจริง
-- `zmovie_platform/config.py` - ตั้งค่าฐานข้อมูล/เรดิส อ่านรหัสลับจาก `/run/secrets/` `database_dsn`/`redis_url` `validate_database_settings()`
+- `zmovie_platform/config.py` - ตั้งค่าฐานข้อมูล/เรดิส อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) `database_dsn`/`redis_url` `validate_database_settings()`
 - `scripts/check_studio_inline_js.py` - แก้ bandit `B607` partial path (`node`)
 - `scripts/validate_repo.py` - แก้ bandit `B607` partial path (`git`) ทั้งสองจุด
 - `tests/test_postgres_readiness.py` - เพิ่ม `ConfigDatabaseSettingsTestCase` 8 กรณีทดสอบ
