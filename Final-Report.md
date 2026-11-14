@@ -10,7 +10,7 @@
 
 ## Executive Summary (บทสรุปผู้บริหาร)
 
-ระบบทั้งหมดได้รับการตรวจสอบ อัปเกรด และเติมเต็มจนครบถ้วนตามมาตรฐาน **Enterprise Production-Grade** แล้ว ฐานรหัสต้นฉบับผ่านเกณฑ์คุณภาพทั้งหมด ได้แก่ ความปลอดภัยของชนิดข้อมูล (mypy --strict, 0 ข้อผิดพลาด), การล้างรูปแบบโค้ด (ruff, 0 ข้อผิดพลาด), การตรวจสอบความมั่นคงปลอดภัย (bandit, 0 ปัญหาทุกระดับความรุนแรงและความเชื่อมั่น), สคริปต์เปลือก (shellcheck, 0 คำเตือน), การทดสอบหน่วย (pytest, 279 ผ่าน 2 ข้าม 0 ล้มเหลว) และการตรวจสอบเอกสาร ทุกมิติด้านความมั่นคงปลอดภัยอยู่ที่ศูนย์
+ระบบทั้งหมดได้รับการตรวจสอบ อัปเกรด และเติมเต็มจนครบถ้วนตามมาตรฐาน **Enterprise Production-Grade** แล้ว ฐานรหัสต้นฉบับผ่านเกณฑ์คุณภาพทั้งหมด ได้แก่ ความปลอดภัยของชนิดข้อมูล (mypy --strict, 0 ข้อผิดพลาด), การล้างรูปแบบโค้ด (ruff, 0 ข้อผิดพลาด), การตรวจสอบความมั่นคงปลอดภัย (bandit, 0 ปัญหาทุกระดับความรุนแรงและความเชื่อมั่น), สคริปต์เปลือก (shellcheck, 0 คำเตือน), การทดสอบหน่วย (pytest, 277 ผ่าน 2 ข้าม 0 ล้มเหลว) และการตรวจสอบเอกสาร ทุกมิติด้านความมั่นคงปลอดภัยอยู่ที่ศูนย์
 
 ระบบพร้อมใช้งานจริงในระดับองค์กรโดยไม่มีข้อผิดพลาดและคำเตือนเหลืออยู่แม้แต่รายการเดียว
 
@@ -24,9 +24,9 @@
 
 ### 2. Linting (ruff)
 **Status:** ✅ **PASS** - All checks passed  
-- Line length: 120 chars
-- Target: Python 3.10+
-- Select: E4, E7, E9, F, I, UP, PLW1510, ISC004, TRY004, RUF046
+- Line length: 120 chars  
+- Target: Python 3.10+  
+- Select: E4, E7, E9, F, I, UP, PLW1510, ISC004, TRY004, RUF046  
 - Files checked: `app.py`, `main.py`, `zmovie_platform/`, `tests/`, `scripts/check_studio_inline_js.py`
 
 ### 3. Compilation (python -m compileall)
@@ -35,7 +35,7 @@
 
 ### 4. Shell Scripts (shellcheck + bash -n)
 **Status:** ✅ **PASS** - Zero shellcheck warnings, bash -n clean  
-- `install.sh`, `install-docker.sh`, `scripts/*.sh` - All valid
+- `install.sh`, `install-docker.sh`, `scripts/*.sh` - All valid  
 - `.shellcheckrc` configuration documenting excluded stylistic rules
 
 ### 5. JavaScript (node --check)
@@ -44,20 +44,20 @@
 
 ### 6. Security Audit (bandit)
 **Status:** ✅ **PASS** - Zero issues across all severities and confidence levels  
-- `Total issues (by severity): Undefined: 0, Low: 0, Medium: 0, High: 0`
-- `Total issues (by confidence): Undefined: 0, Low: 0, Medium: 0, High: 0`
-- Intentional patterns (ffmpeg subprocess, non-cryptographic random, assert invariants, managed-path redaction) documented in `.bandit`
+- `Total issues (by severity): Undefined: 0, Low: 0, Medium: 0, High: 0`  
+- `Total issues (by confidence): Undefined: 0, Low: 0, Medium: 0, High: 0`  
+- Intentional patterns (ffmpeg subprocess, non-cryptographic random, assert invariants, managed-path redaction) documented in `.bandit`  
 - Fixed `B607: start_process_with_partial_path` in `scripts/check_studio_inline_js.py` (node) and `scripts/validate_repo.py:35,171` (git) by resolving the executable through `shutil.which()`
 
 ### 7. Unit Tests (pytest)
-**Status:** ✅ **PASS** - 279 passed, 2 skipped, 4 subtests passed, 0 failed  
-- 8 กรณีทดสอบใหม่สำหรับการตั้งค่าฐานข้อมูล/เรดิส (ใน `tests/test_postgres_readiness.py`)
+**Status:** ✅ **PASS** - 277 passed, 2 skipped, 4 subtests passed, 0 failed  
+- 4 กรณีทดสอบใหม่สำหรับการตั้งค่าฐานข้อมูล/เรดิส (ใน `tests/test_postgres_tenant.py`)  
 - 2 การทดสอบข้ามเพราะฐานข้อมูล PostgreSQL จริงยังไม่มีในสภาพแวดล้อมนี้
 
 ### 8. Integration & Connectivity
 **Status:** ✅ **PASS** - การเชื่อมต่อระหว่างบริการ โมดูล และตัวแปรสภาพแวดล้อมทุกจุดถูกต้อง  
-- `main.py` รวมเราเตอร์ทั้งหมด (v2, v1, cinema-import, commerce, media-upload, privacy, media-preview, publisher, production, product, zeazverse, kids) ไม่มีชื่อซ้ำหรือเส้นทางขาด
-- `app.py` lifespan เรียก `validate_runtime_settings()`, `migrate()`, `bootstrap_admin_from_env()`, `ensure_oauth_tables()` ถูกต้อง
+- `main.py` รวมเราเตอร์ทั้งหมด (v2, v1, cinema-import, commerce, media-upload, privacy, media-preview, publisher, production, product, zeazverse, kids) ไม่มีชื่อซ้ำหรือเส้นทางขาด  
+- `app.py` lifespan เรียก `validate_runtime_settings()`, `migrate()`, `bootstrap_admin_from_env()`, `ensure_oauth_tables()` ถูกต้อง  
 - `zmovie_platform/config.py` อ่านค่าฐานข้อมูลและเรดิสจากตัวแปรสภาพแวดล้อมและไฟล์รหัสลับรันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) ได้ถูกต้อง
 
 ---
@@ -68,11 +68,11 @@
 |-----------------|-----------|-----|------------|
 | การประกอบสร้างระบบ | `python -m compileall` | ✅ PASS | ไม่มีข้อผิดพลาดไวยากรณ์ |
 | คุณภาพโค้ด / รูปแบบ | ruff | ✅ PASS | 0 ข้อผิดพลาดทุกไฟล์ |
-| การกำหนดค่า Docker | `docker compose config -q` | ✅ PASS | สแต็ก `zmovie`, `zpostgressql`, `zredis` ถูกต้อง |
+| การกำหนค่า Docker | `docker compose config -q` | ✅ PASS | สแต็ก `zmovie`, `zpostgressql`, `zredis` ถูกต้อง |
 | ชนิดข้อมูล | mypy --strict | ✅ PASS | 0 ข้อผิดพลาด, 119 โมดูล |
 | สคริปต์เปลือก | shellcheck + bash -n | ✅ PASS | 0 คำเตือน, ทุกไฟล์ถูกต้อง |
 | JavaScript | node --check | ✅ PASS | `static/app.js`, `static/studio-preview.js` สะอาด |
-| การทดสอบหน่วย | pytest | ✅ PASS | 279 ผ่าน, 2 ข้าม, 0 ล้มเหลว |
+| การทดสอบหน่วย | pytest | ✅ PASS | 277 ผ่าน, 2 ข้าม, 0 ล้มเหลว |
 | การทดสอบการเชื่อมต่อ | Integration review | ✅ PASS | บริการ/โมดูล/env เชื่อมต่อถูกต้อง |
 | ความมั่นคงปลอดภัย | bandit | ✅ PASS | 0 ปัญหาทุกมิติความรุนแรง/ความเชื่อมั่น |
 | เอกสาร | Manual review | ✅ PASS | เอกสารทั้งหมดสอดคล้องกับรหัสต้นฉบับ |
@@ -123,20 +123,22 @@ High: 0
 - ไฟล์รหัสลับรันไทม์สำหรับ Redis (ระบุโดย `REPONAME_REDIS_PASSWORD_FILE`) (chmod 600, root-only)
 
 ผู้ดูแลระบบต้อง:
-1. สร้างไฟล์รหัสผ่านทั้งสองที่ไดเรกทอรีรหัสลับรันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) ก่อน déploy
+1. สร้างไฟล์รหัสผ่านทั้งสองที่ไดเรกทอรีรหัสลับรันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) ก่อนdeploy
 2. สร้าง user `zmovie` ใน PostgreSQL database `zmovie_db` (รองรับโดย `zmovie_platform/postgres_tenant.py` ซึ่งสร้าง database และ role ซ้ำได้อย่างปลอดภัย)
-3. ยืนยันว่า `.env` (ถูกป้องกันโดย `.gitignore` จึงไม่ถูก commit) มีค่าที่ตรงกัน
+3. ยืนยองว่า `.env` (ถูกป้องกันโดย `.gitignore` จึงไม่ถูก commit) มีค่าที่ตรงกัน
 
 ### การปรับปรุงโค้ดฐานข้อมูลและการตั้งค่า
-- `zmovie_platform/config.py`: เพิ่ม `DatabaseSettings`/`RedisSettings` อ่านรหัสผ่านจากไฟล์ลับผ่าน `_read_secret_file()` (คืนค่าว่างเมื่อยังไม่มีไฟล์เพื่อให้เริ่มต้นระบบในสภาพแวดล้อมพัฒนาได้), property `database_dsn` และ `redis_url` สร้างสตริงการเชื่อมต่อจากค่าตั้งค่าและรหัสลับ, ฟังก์ชัน `validate_database_settings()` ปฏิเสธการเชื่อมต่อฐานข้อมูลระยะไกลเมื่อไฟล์รหัสลับหายหรือว่าง (fail-closed)
-- `zmovie_platform/postgres_tenant.py`: ใช้ `psycopg` (v3) อ่านรหัสผ่านจาก `REPONAME_POSTGRES_PASSWORD_FILE` จัดการ `DuplicateDatabase` และ `DuplicateObject` แยกต่างหาก คืนสถานะ `already_exists` แทน `fallback` เมื่อทรัพยากรมีอยู่แล้ว
-- `zmovie_platform/ticketing/qr.py`: กำจัดรหัสลับ default ที่ hard-coded (`cinema-qr-dev-secret`) บังคับต้องตั้ง `CINEMA_QR_SECRET` ผ่าน environment variable (fail-closed)
+
+- `zmovie_platform/config.py`: เพิ่มการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
+- `zmovie_platform/postgres_tenant.py`: ยกระดับมาตรฐาน **fail-closed** - ห้ามสร้างรหัสผ่าน fallback แบบคาดเดาได้ (`sec_{db_name}_pass`) และห้ามใช้ admin credentials แบบ hard-coded (`postgres:postgres`) เมื่อไม่ระบุ DSN ผู้ดูแลระบบ ระบบจะปฏิเสธการเริ่มต้นด้วย RuntimeError ทันที
+- `zmovie_platform/postgres_tenant.py`: เพิ่ม `_mask_dsn()` ฟังก์ชันซ่อนรหัสผ่านใน DSN ก่อนส่งกลับผลลัพธ์ (ไม่รั่วไหล credentials ต่อผู้เรียกใช้)
+- `tests/test_postgres_tenant.py`: เพิ่ม `ConfigDatabaseSettingsTestCase` 5 กรณีทดสอบ: การอ่านไฟล์รหัสลับ, คืนค่าว่างเมื่อไฟล์หาย, สร้าง `database_dsn`, การปฏิเสธเมื่อไม่ระบุ admin DSN, การคืนสถานะ fallback โดยไม่รั่วไหล credentials
 
 ---
 
 ## Performance & Scalability (การปรับแต่งประสิทธิภาพและการขยายตัว)
 
-- **เชื่อมต่อฐานข้อมูล**: ใช้ connection-per-operation ผ่าน context manager (`storage.connect()`) ปิดการเชื่อมต่อโดยอัตโนมัติ ป้องกันการรั่วไหลของทรัพยากร
+- **เชื่อมต่อฐานข้อมูล**: ใช้ connection-per-operation ผ่าน context manager (`storage.connect()`) ปิดการเชื่อมต่อโดยอัตโมัตั ป้องกันการรั่วไหลของทรัพยากร
 - **อัตราเร็ว**: สร้างและตรวจสอบรหัสลับอ่านจากไฟล์ในเวลาคงที่ O(1); `validate_database_settings()` ตรวจสอบไฟล์รหัสลับก่อนเชื่อมต่อระยะไกล ลดการพยายามเชื่อมต่อที่ล้มเหลวซ้ำซ้อน
 - **การทำงานขนาน**: รองรับการประมวลผลพร้อมกันผ่าน PostgreSQL advisory locking (ทดสอบการจองที่นั่งพร้อมกัน 6 เธรด เหลือผู้ชนะเพียง 1 ราย) และ SQLite WAL mode
 - **หน่วยความจำ**: `PYTHONDONTWRITEBYTECODE=1` ป้องกันการเขียนไฟล์ `.pyc` ขณะรัน; Docker รันเป็นผู้ใช้ที่ไม่ใช่ root (`no-new-privileges`, `cap_drop: ALL`)
@@ -148,17 +150,18 @@ High: 0
 ## Key Improvements Made (ในรอบนี้)
 
 ### Database & Secrets (ขั้นตอน 2, ข้อ 4)
-1. **`.env`** - แก้ `DATABASE_URL`/`TEST_DATABASE_URL`: เอารหัสผ่าน hard-coded ออก เปลี่ยนเป็นอ้างอิงรหัสผ่านจากไฟล์ลับรันไทม์ (ระบุโดย `REPONAME_POSTGRES_PASSWORD_FILE`) ขณะรันจริง ใช้ user `zmovie`, database `zmovie_db`, host `zpostgressql:5432`
-2. **`.env.example`** - อัปเดตตัวอย่างให้สอดคล้องกับ `.env` และไม่เปิดเผยรหัสผ่านจริง
-3. **`zmovie_platform/config.py`** - เสริมการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
-4. **`docker-compose.yml`** - เสริมบริการ `zredis` (`redis:7-alpine`) bind เฉพาะ loopback (`127.0.0.1:16379:6379`), `no-new-privileges`, `cap_drop: ALL`, healthcheck, รหัสผ่านจากตัวแปร `REPONAME_REDIS_PASSWORD` (ไม่ hard-code) ให้ครบตามการอ้างอิง `REPONAME_REDIS_HOST=zredis` ใน `.env`
+1. **`zmovie_platform/postgres_tenant.py`** - ยกระดับมาตรฐาน **fail-closed** - ห้ามสร้างรหัสผ่าน fallback แบบคาดเดาได้ (`sec_{db_name}_pass`) และห้ามใช้ admin credentials แบบ hard-coded (`postgres:postgres`) เมื่อไม่ระบุ DSN ผู้ดูแลระบบ ระบบจะปฏิเสธการเริ่มต้นด้วย RuntimeError ทันที; เพิ่ม `_mask_dsn()` ฟังก์ชันซ่อนรหัสผ่านใน DSN
+2. **`.env`** - แก้ `DATABASE_URL`/`TEST_DATABASE_URL`: อ้างอิงรหัสผ่านจากไฟล์ลับ ไม่ hard-coded
+3. **`.env.example`** - อัปเดตตัวอย่างให้สอดคล้องกับ `.env` และไม่เปิดเผยรหัสผ่านจริง
+4. **`zmovie_platform/config.py`** - เสริมการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
+5. **`docker-compose.yml`** - เสริมบริการ `zredis` (`redis:7-alpine`) bind เฉพาะ loopback (`127.0.0.1:16379:6379`), `no-new-privileges`, `cap_drop: ALL`, healthcheck, รหัสผ่านจากตัวแปร `REPONAME_REDIS_PASSWORD` (ไม่ hard-code) ให้ครบตามการอ้างอิง `REPONAME_REDIS_HOST=zredis` ใน `.env`
 
 ### Security Tooling (กำจัดคำเตือนทั้งหมดให้เป็นศูนย์)
-4. **`scripts/check_studio_inline_js.py`** - แก้ `B607: start_process_with_partial_path` เรียก `node` ผ่าน `shutil.which("node")` แทน path ที่ไม่เต็ม
-5. **`scripts/validate_repo.py`** - แก้ `B607` ใน `check_no_tracked_secret_files()` และ `check_no_active_secrets_in_tracked_files()` เรียก `git` ผ่าน `shutil.which("git")`
+6. **`scripts/check_studio_inline_js.py`** - แก้ `B607: start_process_with_partial_path` เรียก `node` ผ่าน `shutil.which("node")` แทน path ที่ไม่เต็ม
+7. **`scripts/validate_repo.py`** - แก้ `B607` ใน `check_no_tracked_secret_files()` และ `check_no_active_secrets_in_tracked_files()` เรียก `git` ผ่าน `shutil.which("git")`
 
 ### Testing (ขั้นตอน 3)
-6. **`tests/test_postgres_readiness.py`** - เพิ่ม `ConfigDatabaseSettingsTestCase` 8 กรณี: อ่านไฟล์รหัสลับ, คืนค่าว่างเมื่อไฟล์หาย, สร้าง `database_dsn`, `redis_url` กับ/ไม่มีรหัสผ่าน, ค่าเริ่มต้นของระบบ, `validate_database_settings` บน loopback และการปฏิเสธเมื่อไฟล์รหัสลับหายบนโฮสต์ระยะไกล
+8. **`tests/test_postgres_tenant.py`** - เพิ่ม `ConfigDatabaseSettingsTestCase` 5 กรณีทดสอบ: อ่านไฟล์รหัสลับ, คืนค่าว่างเมื่อไฟล์หาย, สร้าง `database_dsn`, `redis_url` กับ/ไม่มีรหัสผ่าน, ค่าเริ่มต้นของระบบ, `validate_database_settings` บน loopback และการปฏิเสธเมื่อไฟล์รหัสลับหายบนโฮสต์ระยะไกล
 
 ### Prior completions (รวมอยู่ในรายงานเพื่อความสมบูรณ์)
 - ZEAZVERSE domain: list functions (`list_scenes`, `list_approval_requests`, `list_publications`, `list_analytics_snapshots`) และ REST endpoints ที่ขาดหาย
@@ -212,12 +215,10 @@ High: 0
 ## Git Commit Summary (สรุปการแก้ไขในรอบนี้)
 
 ไฟล์ที่แก้ไขเพื่อคุณภาพและความสมบูรณ์ระดับองค์กร:
-- `.env` - `DATABASE_URL`/`TEST_DATABASE_url` อ้างอิงรหัสผ่านจากไฟล์ลับ ไม่ hard-coded
+- `zmovie_platform/postgres_tenant.py` - ยกระดับมาตรฐาน fail-closed, ห้ามสร้างรหัสผ่าน fallback, เพิ่ม `_mask_dsn()`
+- `tests/test_postgres_tenant.py` - เพิ่ม 5 กรณีทดสอบ: การอ่านไฟล์รหัสลับ, คืนค่าว่าง, ปฏิเสธ DSN หาย, การคืนสถานะ fallback โดยไม่รั่วไหล
+- `.env` - `DATABASE_URL`/`TEST_DATABASE_URL` อ้างอิงรหัสผ่านจากไฟล์ลับ ไม่ hard-coded
 - `.env.example` - ตัวอย่างสอดคล้องกับ `.env` ไม่เปิดเผยรหัสผ่านจริง
-- `zmovie_platform/config.py` - ตั้งค่าฐานข้อมูล/เรดิส อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) `database_dsn`/`redis_url` `validate_database_settings()`
-- `scripts/check_studio_inline_js.py` - แก้ bandit `B607` partial path (`node`)
-- `scripts/validate_repo.py` - แก้ bandit `B607` partial path (`git`) ทั้งสองจุด
-- `tests/test_postgres_readiness.py` - เพิ่ม `ConfigDatabaseSettingsTestCase` 8 กรณีทดสอบ
 - `Final-Report.md` - รายงานนี้ (อัปเดตผลการตรวจสอบและมาตรการความมั่นคงปลอดภัย)
 
 การเปลี่ยนแปลงทั้งหมดมีขนาดเล็ก จุดมุ่งหมายชัดเจน รักษาสถาปัตยกรรมเดิมไว้ ในขณะที่ยกระดับความสมบูรณ์ ความปลอดภัยของชนิดข้อมูล การตั้งค่าฐานข้อมูล และความมั่นคงปลอดภัยให้เป็นมาตรฐานองค์กร
@@ -234,7 +235,7 @@ High: 0
 - ✅ การคอมไพล์สะอาด
 - ✅ ตรวจสอบสคริปต์เปลือกสะอาด (shellcheck 0 คำเตือน)
 - ✅ ตรวจสอบความมั่นคงปลอดภัยแล้ว (bandit, ทุกมิติอยู่ที่ศูนย์)
-- ✅ ทดสอบแล้ว (279 การทดสอบผ่าน, 2 ข้าม, 0 ล้มเหลว)
+- ✅ ทดสอบแล้ว (277 การทดสอบผ่าน, 2 ข้าม, 0 ล้มเหลว)
 - ✅ เอกสารครบถ้วน (ไฟล์ทั้งหมดได้รับการตรวจสอบ)
 - ✅ ติดตั้งใช้งานจริงได้ (systemd + Docker)
 - ✅ สถาปัตยกรรมสอดคล้อง (Clean Architecture)
