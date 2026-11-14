@@ -24,17 +24,14 @@ require_install(){
 as_service(){
   require_install
   if [[ "$(id -un)" == "$SERVICE_USER" ]]; then
-    env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
-      _ "$ENV_FILE" "$INSTALL_DIR" "$@"
+    # shellcheck disable=SC2016
+    env HOME="$DATA_DIR" bash --noprofile --norc -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   elif [[ ${EUID} -eq 0 ]]; then
-    runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
-      _ "$ENV_FILE" "$INSTALL_DIR" "$@"
+    # shellcheck disable=SC2016
+    runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   else
-    sudo -u "$SERVICE_USER" env HOME="$DATA_DIR" bash --noprofile --norc -c \
-      'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' \
-      _ "$ENV_FILE" "$INSTALL_DIR" "$@"
+    # shellcheck disable=SC2016
+    sudo -u "$SERVICE_USER" env HOME="$DATA_DIR" bash --noprofile --norc -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; shift 2; exec "$@"' _ "$ENV_FILE" "$INSTALL_DIR" "$@"
   fi
 }
 

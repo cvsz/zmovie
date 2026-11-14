@@ -18,17 +18,8 @@ log "listing projects with managed final video assets; no publication state is c
 # Keep the Python program outside the quoted bash -c payload. The previous
 # implementation embedded a heredoc inside a double-quoted shell string,
 # allowing shell quote processing to corrupt Python f-strings before execution.
-runuser -u "$SERVICE_USER" -- \
-  env ZMOVIE_CANDIDATE_INSTALL_DIR="$INSTALL_DIR" ZMOVIE_CANDIDATE_ENV_FILE="$ENV_FILE" \
-  bash -c '
-    set -Eeuo pipefail
-    cd "$ZMOVIE_CANDIDATE_INSTALL_DIR"
-    set -a
-    # shellcheck disable=SC1090
-    source "$ZMOVIE_CANDIDATE_ENV_FILE"
-    set +a
-    exec .venv/bin/python -
-  ' <<'PY'
+# shellcheck disable=SC2016,SC1090
+runuser -u "$SERVICE_USER" -- env ZMOVIE_CANDIDATE_INSTALL_DIR="$INSTALL_DIR" ZMOVIE_CANDIDATE_ENV_FILE="$ENV_FILE" bash -c 'set -Eeuo pipefail; cd "$ZMOVIE_CANDIDATE_INSTALL_DIR"; set -a; source "$ZMOVIE_CANDIDATE_ENV_FILE"; set +a; exec .venv/bin/python -' <<'PY'
 import json
 import shutil
 import subprocess

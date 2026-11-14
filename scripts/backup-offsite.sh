@@ -46,7 +46,9 @@ key_mode="$(stat -c '%a' "$KEY_FILE")"
 latest_dr="$(find "$DR_ROOT" -mindepth 1 -maxdepth 1 -type d | sort | tail -1)"
 [[ -n "$latest_dr" ]] || fail "no DR snapshot directory found under $DR_ROOT"
 
+# shellcheck disable=SC2012
 latest_wp="$(ls -t "$WP_BACKUP_DIR"/zmovie-cinema-*.sql.gz 2>/dev/null | head -1 || true)"
+# shellcheck disable=SC2012
 latest_sqlite="$(ls -t "$SQLITE_BACKUP_DIR"/*.db 2>/dev/null | head -1 || true)"
 
 # 2) Build the encrypted archive ----------------------------------------------
@@ -57,10 +59,13 @@ trap 'rm -rf "$work"' EXIT
 
 mkdir -p "$work/payload"
 cp -a "$latest_dr" "$work/payload/dr-snapshot"
+# shellcheck disable=SC2015
 [[ -n "$latest_wp" ]] && cp -a "$latest_wp" "$work/payload/" || log "WARN: no WordPress backup found"
+# shellcheck disable=SC2015
 [[ -n "$latest_sqlite" ]] && cp -a "$latest_sqlite" "$work/payload/" || log "WARN: no SQLite backup found"
 
 # Exclude the manifest itself: hashing it would be self-referential and racy.
+# shellcheck disable=SC2094
 ( cd "$work/payload" && find . -type f ! -name MANIFEST.sha256 -exec sha256sum {} + | sort -k2 > MANIFEST.sha256 )
 
 archive="$STAGE_DIR/zmovie-dr-$TS.tar.gz"
@@ -82,6 +87,7 @@ rm -rf "$verify_dir"
 log "decrypt + manifest verification OK"
 
 # 4) Retention (local staged copies only) -------------------------------------
+# shellcheck disable=SC2012
 mapfile -t old < <(ls -t "$STAGE_DIR"/zmovie-dr-*.tar.gz 2>/dev/null | tail -n +$((RETENTION + 1)))
 for f in "${old[@]:-}"; do
   [[ -n "$f" ]] || continue

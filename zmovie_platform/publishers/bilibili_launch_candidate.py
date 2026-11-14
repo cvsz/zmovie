@@ -10,8 +10,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import edge_tts
-
 from ..repository import add_asset, save_project
 from ..storyboard import create_storyboard
 
@@ -66,6 +64,7 @@ def _local_tts_engine() -> str:
 
 
 async def _save_edge_tts(output: Path, text: str, voice_id: str) -> None:
+    import edge_tts  # lazy: โมดูลนี้ต้องมีเฉพาะเมื่อใช้เสียงพากย์ edge-tts จริง
     communicate = edge_tts.Communicate(
         text=text,
         voice=voice_id,

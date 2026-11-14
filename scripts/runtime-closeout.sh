@@ -84,6 +84,7 @@ run_capture() {
   printf '%s' "$rc"
 }
 
+# shellcheck disable=SC2329
 json_pretty_or_raw() {
   local input="$1" output="$2"
   if python3 -m json.tool "$input" >"$output" 2>/dev/null; then
@@ -93,6 +94,7 @@ json_pretty_or_raw() {
   return 1
 }
 
+# shellcheck disable=SC2329
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
 # Hardware snapshot: this is evidence, not a gate that pretends GeForce 210 is ML-capable.

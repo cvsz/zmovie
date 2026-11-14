@@ -121,9 +121,8 @@ upgrade_readiness_if_available(){
   [[ "$ACTION" == "upgrade" || "$ACTION" == "--upgrade" ]] || return 0
   [[ -x "$INSTALL_DIR/.venv/bin/python" && -f "$INSTALL_DIR/zmovie_platform/runtime_ops.py" && -f "$ENV_FILE" ]] || return 0
   log "checking durable-worker upgrade readiness"
-  runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c \
-    'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; exec "$3" -m zmovie_platform.runtime_ops upgrade-readiness' \
-    _ "$ENV_FILE" "$INSTALL_DIR" "$INSTALL_DIR/.venv/bin/python"
+  # shellcheck disable=SC2016
+  runuser -u "$SERVICE_USER" -- env HOME="$DATA_DIR" bash --noprofile --norc -c 'set -Eeuo pipefail; set -a; source "$1"; set +a; cd "$2"; exec "$3" -m zmovie_platform.runtime_ops upgrade-readiness' _ "$ENV_FILE" "$INSTALL_DIR" "$INSTALL_DIR/.venv/bin/python"
 }
 
 install_or_upgrade(){

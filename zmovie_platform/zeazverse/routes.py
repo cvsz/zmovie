@@ -18,10 +18,6 @@ from ..api_routes import current_actor, settings
 from ..audit import write as audit
 from ..models import utcnow
 from ..storage import connect
-
-# Helper: store may or may not expose list helpers; resolve lazily at module
-# load so the router imports cleanly regardless of store contents.
-from ..zeazverse import store as _store
 from ..zeazverse.store import (
     APPROVAL_GUARD_STATES,
     EPISODE_STATES,
@@ -42,12 +38,16 @@ from ..zeazverse.store import (
     get_script,
     get_series,
     get_storyboard,
+    list_analytics_snapshots,
+    list_approval_requests,
     list_audit_events,
     list_channels,
     list_character_assets,
     list_character_versions,
     list_characters,
     list_episodes,
+    list_publications,
+    list_scenes,
     list_series,
     list_workflow_runs,
     record_character_version,
@@ -69,10 +69,6 @@ from ..zeazverse.store import (
     upsert_workflow_run,
     valid_transition,
 )
-
-list_analytics_snapshots = getattr(_store, "list_analytics_snapshots", None)
-list_approval_requests = getattr(_store, "list_approval_requests", None)
-list_publications = getattr(_store, "list_publications", None)
 
 router = APIRouter(prefix="/api/v2/zeazverse", tags=["zeazverse"])
 
@@ -674,7 +670,7 @@ def list_storyboard_scenes_endpoint(
     storyboard = get_storyboard(storyboard_id)
     if storyboard is None:
         raise HTTPException(status_code=404, detail="storyboard not found")
-    return {"items": []}  # scenes are queried via /scenes?storyboard_id= in store layer
+    return {"items": list_scenes(storyboard_id=storyboard_id)}
 
 
 @router.post("/scenes")
@@ -795,6 +791,14 @@ def get_approval_request_endpoint(
     return {"approval_request": req}
 
 
+@router.get("/approval-requests")
+def list_approval_requests_endpoint(
+    episode_id: str | None = None,
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    return {"items": list_approval_requests(episode_id=episode_id)}
+
+
 @router.post("/approval-requests/{approval_id}/decide")
 def decide_approval_request(
     approval_id: str,
@@ -863,6 +867,14 @@ def get_publication_endpoint(
     return {"publication": pub}
 
 
+@router.get("/publications")
+def list_publications_endpoint(
+    episode_id: str | None = None,
+    actor: dict[str, str] = Depends(current_actor),
+) -> dict[str, object]:
+    return {"items": list_publications(episode_id=episode_id)}
+
+
 # ---------------------------------------------------------------------------
 # Analytics (Sec. 19)
 # ---------------------------------------------------------------------------
@@ -882,7 +894,7 @@ def list_analytics_endpoint(
     channel_id: str | None = None,
     actor: dict[str, str] = Depends(current_actor),
 ) -> dict[str, object]:
-    return {"items": list_analytics_snapshots(channel_id=channel_id) if list_analytics_snapshots else []}
+    return {"items": list_analytics_snapshots(channel_id=channel_id)}
 
 
 # ---------------------------------------------------------------------------

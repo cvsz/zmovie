@@ -1,6 +1,7 @@
 """Tests for ticketing: atomic seats, holds, idempotency, QR, concurrency."""
 from __future__ import annotations
 
+import os
 import tempfile
 import threading
 import unittest
@@ -17,6 +18,7 @@ class TicketingTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_db = storage.DB_PATH
         storage.DB_PATH = Path(self.tmp.name) / "zmovie.db"
+        os.environ["CINEMA_QR_SECRET"] = "test-qr-secret-do-not-use-in-production"
         migrations.migrate()
         store.ensure_tables()
         seed_synthetic()

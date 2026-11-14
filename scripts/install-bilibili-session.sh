@@ -60,7 +60,7 @@ if [[ -n "$PLAYWRIGHT_DIR" ]]; then
   runtime_cmd+=("PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_DIR")
 fi
 runtime_cmd+=(
-  bash -c 'cd "$1"; shift; exec "$@"'
+  bash -c "cd \"\$1\"; shift; exec \"\$@\""
   bash
   "$INSTALL_DIR"
   "$INSTALL_DIR/.venv/bin/python"
