@@ -102,7 +102,7 @@ class ContinuityQAAgent:
     AGENT_NAME = "Continuity QA"
     DESCRIPTION = "Checks character identity, anatomy, objects, temporal continuity and rendering defects"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
 

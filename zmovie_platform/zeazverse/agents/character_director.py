@@ -86,7 +86,7 @@ class CharacterDirectorAgent:
     AGENT_NAME = "Character Director"
     DESCRIPTION = "Manages Character Bibles, identity references and consistency"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
 

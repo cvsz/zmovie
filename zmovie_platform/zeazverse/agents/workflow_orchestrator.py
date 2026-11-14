@@ -97,8 +97,8 @@ class QueuedJob:
         elif self.retry_policy == RetryPolicy.LINEAR_BACKOFF:
             return self.base_delay_seconds * (self.retry_count + 1)
         elif self.retry_policy == RetryPolicy.EXPONENTIAL_BACKOFF:
-            delay = self.base_delay_seconds * (2 ** self.retry_count)
-            return min(delay, self.max_delay_seconds)
+            delay = int(self.base_delay_seconds * (2 ** self.retry_count))
+            return min(delay, int(self.max_delay_seconds))
         return 0
 
     def can_retry(self) -> bool:
@@ -158,7 +158,7 @@ class WorkflowOrchestrator:
         "publishing",
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
         self._jobs: dict[str, QueuedJob] = {}

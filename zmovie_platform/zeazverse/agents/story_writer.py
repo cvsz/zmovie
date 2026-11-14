@@ -103,7 +103,7 @@ class StoryWriterAgent:
     AGENT_NAME = "Story Writer"
     DESCRIPTION = "Generates original scripts, dialogue and episode outlines"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
 

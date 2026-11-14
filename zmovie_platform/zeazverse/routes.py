@@ -386,7 +386,7 @@ def create_character(
 def get_character_endpoint(
     character_id: str, actor: dict[str, str] = Depends(current_actor)
 ) -> dict[str, object]:
-    character = get_character(character_id)  # type: ignore[attr-defined]
+    character = get_character(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="character not found")
     if settings.auth_enabled and actor.get("role") != "admin" and character["owner"] != actor["username"]:
@@ -400,7 +400,7 @@ def create_character_version(
     payload: CharacterVersionRequest,
     actor: dict[str, str] = Depends(current_actor),
 ) -> dict[str, object]:
-    character = get_character(character_id)  # type: ignore[attr-defined]
+    character = get_character(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="character not found")
     if settings.auth_enabled and actor.get("role") != "admin" and character["owner"] != actor["username"]:
@@ -427,7 +427,7 @@ def create_character_version(
 def list_character_versions_endpoint(
     character_id: str, actor: dict[str, str] = Depends(current_actor)
 ) -> dict[str, object]:
-    character = get_character(character_id)  # type: ignore[attr-defined]
+    character = get_character(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="character not found")
     if settings.auth_enabled and actor.get("role") != "admin" and character["owner"] != actor["username"]:
@@ -441,7 +441,7 @@ def create_character_asset(
     payload: CharacterAssetRequest,
     actor: dict[str, str] = Depends(current_actor),
 ) -> dict[str, object]:
-    character = get_character(character_id)  # type: ignore[attr-defined]
+    character = get_character(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="character not found")
     if settings.auth_enabled and actor.get("role") != "admin" and character["owner"] != actor["username"]:
@@ -457,7 +457,7 @@ def create_character_asset(
 def list_character_assets_endpoint(
     character_id: str, actor: dict[str, str] = Depends(current_actor)
 ) -> dict[str, object]:
-    character = get_character(character_id)  # type: ignore[attr-defined]
+    character = get_character(character_id)
     if character is None:
         raise HTTPException(status_code=404, detail="character not found")
     if settings.auth_enabled and actor.get("role") != "admin" and character["owner"] != actor["username"]:
@@ -498,7 +498,7 @@ def create_series(
 def get_series_endpoint(
     series_id: str, actor: dict[str, str] = Depends(current_actor)
 ) -> dict[str, object]:
-    series = get_series(series_id)  # type: ignore[attr-defined]
+    series = get_series(series_id)
     if series is None:
         raise HTTPException(status_code=404, detail="series not found")
     channel = get_channel(series["channel_id"])
@@ -528,7 +528,7 @@ def create_episode(
 ) -> dict[str, object]:
     if payload.state not in EPISODE_STATES:
         raise HTTPException(status_code=400, detail=f"invalid state: {payload.state}")
-    series = get_series(payload.series_id)  # type: ignore[attr-defined]
+    series = get_series(payload.series_id)
     if series is None:
         raise HTTPException(status_code=404, detail="series not found")
     channel = get_channel(series["channel_id"])
@@ -550,7 +550,7 @@ def get_episode_endpoint(
     episode = get_episode(episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="episode not found")
-    series = get_series(episode["series_id"])  # type: ignore[attr-defined]
+    series = get_series(episode["series_id"])
     channel = get_channel(series["channel_id"]) if series else None
     if settings.auth_enabled and actor.get("role") != "admin" and channel is not None and channel["owner"] != actor["username"]:
         raise HTTPException(status_code=403, detail="episode access denied")
@@ -566,7 +566,7 @@ def transition_episode_endpoint(
     episode = get_episode(episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="episode not found")
-    series = get_series(episode["series_id"])  # type: ignore[attr-defined]
+    series = get_series(episode["series_id"])
     channel = get_channel(series["channel_id"]) if series else None
     if settings.auth_enabled and actor.get("role") != "admin" and channel is not None and channel["owner"] != actor["username"]:
         raise HTTPException(status_code=403, detail="episode access denied")
@@ -692,7 +692,7 @@ def create_scene(
 def get_scene_endpoint(
     scene_id: str, actor: dict[str, str] = Depends(current_actor)
 ) -> dict[str, object]:
-    scene = get_scene(scene_id)  # type: ignore[attr-defined]
+    scene = get_scene(scene_id)
     if scene is None:
         raise HTTPException(status_code=404, detail="scene not found")
     return {"scene": scene}

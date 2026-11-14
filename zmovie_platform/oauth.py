@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.integrations.httpx_client import AsyncOAuth2Client  # type: ignore[import-untyped]
 
 from .storage import connect
 

@@ -144,7 +144,7 @@ class GrowthExperimentAgent:
         },
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
         self._designs: dict[str, ExperimentDesign] = {}

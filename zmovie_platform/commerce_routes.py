@@ -1,14 +1,16 @@
 """Membership/commerce HTTP boundary (sandbox only, no live money)."""
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, ValidationError
 
 from .api_routes import current_actor
 from .audit import write as audit
 from .commerce import checkout
-from .commerce.checkout import _reject_card_data
-from .commerce.store import ledger_for_user, list_plans
+from .commerce.checkout import _reject_card_data, entitlements_for_user
+from .commerce.store import active_subscription_for_user, ledger_for_user, list_plans
 
 router = APIRouter(prefix="/api/v2/commerce")
 
@@ -37,7 +39,7 @@ class WebhookRequest(BaseModel):
     psp_name: str = Field(default="sandbox", max_length=40)
     event_id: str = Field(min_length=1, max_length=200)
     event_type: str = Field(min_length=1, max_length=100)
-    payload: dict = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
     signature: str = Field(min_length=1, max_length=256)
 
 
@@ -54,8 +56,8 @@ def plans() -> dict[str, object]:
 def my_subscription(actor: dict[str, str] = Depends(current_actor)) -> dict[str, object]:
     user_id = _user(actor)
     return {
-        "subscription": checkout.store.active_subscription_for_user(user_id),
-        "entitlements": checkout.entitlements_for_user(user_id),
+        "subscription": active_subscription_for_user(user_id),
+        "entitlements": entitlements_for_user(user_id),
         "sandbox": True,
     }
 
