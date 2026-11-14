@@ -14,8 +14,10 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from zmovie_platform import migrations, storage
+from zmovie_platform.config import Settings, validate_database_settings
 
 PG_DSN = os.getenv("ZMOVIE_PG_DSN", "")
 
@@ -114,6 +116,100 @@ class PostgresReadinessTests(unittest.TestCase):
             with conn.cursor() as cur:
                 cur.execute("DROP TABLE p3_dump_test")
                 conn.commit()
+
+
+class ConfigDatabaseSettingsTestCase(unittest.TestCase):
+    """การตั้งค่าฐานข้อมูลและแคชระดับองค์กร (ขั้นตอน 2.4).
+
+    repo-name = zmovie; user 'zmovie', ฐานข้อมูล zmovie_db, host zpostgressql:5432,
+    เรดิส zredis:6379, รหัสผ่านอ่านจากไฟล์ลับ /run/secrets/...
+    """
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.pg_file = Path(self.tmp.name) / "zmovie_postgres_password"
+        self.redis_file = Path(self.tmp.name) / "zmovie_zredis_password"
+        self._env_patch = mock.patch.dict(
+            os.environ,
+            {
+                "REPONAME_POSTGRES_HOST": "zpostgressql",
+                "REPONAME_POSTGRES_PORT": "5432",
+                "REPONAME_POSTGRES_USER": "zmovie",
+                "REPONAME_POSTGRES_DB": "zmovie_db",
+                "REPONAME_POSTGRES_PASSWORD_FILE": str(self.pg_file),
+                "REPONAME_REDIS_HOST": "zredis",
+                "REPONAME_REDIS_PORT": "6379",
+                "REPONAME_REDIS_PASSWORD_FILE": str(self.redis_file),
+            },
+            clear=False,
+        )
+        self._env_patch.start()
+
+    def tearDown(self) -> None:
+        self._env_patch.stop()
+        self.tmp.cleanup()
+
+    def test_read_secret_file_reads_existing_file(self) -> None:
+        self.pg_file.write_text("  pg-secret-123  \n", encoding="utf-8")
+        settings = Settings()
+        self.assertEqual(settings.db_password, "pg-secret-123")
+
+    def test_read_secret_file_returns_empty_when_missing(self) -> None:
+        settings = Settings()
+        self.assertEqual(settings.db_password, "")
+        self.assertEqual(settings.redis_password, "")
+
+    def test_database_dsn_builds_from_settings(self) -> None:
+        self.pg_file.write_text("pg-secret-123", encoding="utf-8")
+        settings = Settings()
+        self.assertEqual(
+            settings.database_dsn,
+            "postgresql://zmovie:pg-secret-123@zpostgressql:5432/zmovie_db",
+        )
+
+    def test_database_dsn_uses_defaults_when_env_absent(self) -> None:
+        self._env_patch.stop()
+        try:
+            for key in (
+                "REPONAME_POSTGRES_HOST",
+                "REPONAME_POSTGRES_PORT",
+                "REPONAME_POSTGRES_USER",
+                "REPONAME_POSTGRES_DB",
+                "REPONAME_POSTGRES_PASSWORD_FILE",
+                "REPONAME_REDIS_HOST",
+                "REPONAME_REDIS_PORT",
+                "REPONAME_REDIS_PASSWORD_FILE",
+            ):
+                os.environ.pop(key, None)
+            settings = Settings()
+            self.assertEqual(settings.db_host, "zpostgressql")
+            self.assertEqual(settings.db_port, 5432)
+            self.assertEqual(settings.db_user, "zmovie")
+            self.assertEqual(settings.db_name, "zmovie_db")
+            self.assertEqual(settings.redis_host, "zredis")
+            self.assertEqual(settings.redis_port, 6379)
+        finally:
+            self._env_patch.start()
+
+    def test_redis_url_without_password(self) -> None:
+        settings = Settings()
+        self.assertEqual(settings.redis_url, "redis://zredis:6379/0")
+
+    def test_redis_url_with_password(self) -> None:
+        self.redis_file.write_text("redis-secret-456", encoding="utf-8")
+        settings = Settings()
+        self.assertEqual(
+            settings.redis_url, "redis://:redis-secret-456@zredis:6379/0"
+        )
+
+    def test_validate_database_settings_passes_on_loopback(self) -> None:
+        # localhost ไม่ต้องมีไฟล์รหัสลับ (สภาพแวดล้อมพัฒนาใช้ SQLite)
+        validate_database_settings(Settings(db_host="localhost"))
+
+    def test_validate_database_settings_raises_on_missing_remote_password_file(self) -> None:
+        # โฮสต์ระยะไกลแต่ไฟล์รหัสลับไม่มีต้องปฏิเสธการเริ่มระบบ
+        with self.assertRaises(RuntimeError):
+            validate_database_settings(Settings())
 
 
 if __name__ == "__main__":
