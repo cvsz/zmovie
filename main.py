@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,7 +49,7 @@ if settings.cors_origins:
 
 
 @app.middleware("http")
-async def production_security_headers(request: Request, call_next):
+async def production_security_headers(request: Request, call_next: Any) -> Any:
     response = await call_next(request)
     for name, value in SECURITY_HEADERS.items():
         response.headers.setdefault(name, value)

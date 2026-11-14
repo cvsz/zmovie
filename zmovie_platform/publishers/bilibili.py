@@ -299,7 +299,7 @@ def approve_publish_job(job_id: str) -> dict[str, Any]:
 
 def _playwright_import() -> Any:
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright  # type: ignore[import-not-found]
     except ImportError as exc:
         raise RuntimeError("Playwright is not installed. Run: pip install -r requirements.txt && python -m playwright install chromium") from exc
     return sync_playwright
