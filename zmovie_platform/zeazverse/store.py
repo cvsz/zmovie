@@ -16,7 +16,16 @@ from typing import Any
 from ..models import utcnow
 from ..storage import connect
 
-__all__ = ["utcnow", "ensure_tables", "connect", "TABLE_SQL"]
+__all__ = [
+    "utcnow",
+    "ensure_tables",
+    "connect",
+    "TABLE_SQL",
+    "list_scenes",
+    "list_approval_requests",
+    "list_publications",
+    "list_analytics_snapshots",
+]
 
 TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS zeazverse_channels (
@@ -1220,5 +1229,93 @@ def list_audit_events(
             params.append(entity_id)
         query += " ORDER BY ts DESC LIMIT ?"
         params.append(max(1, min(limit, 1000)))
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Scenes listing (Sec. 8 scene prompt contract)
+# ---------------------------------------------------------------------------
+
+def list_scenes(
+    *,
+    storyboard_id: str | None = None,
+    episode_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """ค้นหาฉากทั้งหมด กรองตามสตอรีบอร์ดและ/หรือตอนได้."""
+    ensure_tables()
+    with connect() as conn:
+        query = "SELECT * FROM zeazverse_scenes WHERE 1=1"
+        params: list[Any] = []
+        if storyboard_id:
+            query += " AND storyboard_id=?"
+            params.append(storyboard_id)
+        if episode_id:
+            query += " AND episode_id=?"
+            params.append(episode_id)
+        query += " ORDER BY scene_number ASC"
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Approval requests listing (Sec. 13 human approval)
+# ---------------------------------------------------------------------------
+
+def list_approval_requests(
+    *,
+    episode_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """ค้นหาคำขออนุมัติทั้งหมด กรองตามตอนได้."""
+    ensure_tables()
+    with connect() as conn:
+        query = "SELECT * FROM zeazverse_approval_requests WHERE 1=1"
+        params: list[Any] = []
+        if episode_id:
+            query += " AND episode_id=?"
+            params.append(episode_id)
+        query += " ORDER BY created_at DESC"
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Publications listing (Sec. 12-13; private by default)
+# ---------------------------------------------------------------------------
+
+def list_publications(
+    *,
+    episode_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """ค้นหางานเผยแพร่ทั้งหมด กรองตามตอนได้."""
+    ensure_tables()
+    with connect() as conn:
+        query = "SELECT * FROM zeazverse_publications WHERE 1=1"
+        params: list[Any] = []
+        if episode_id:
+            query += " AND episode_id=?"
+            params.append(episode_id)
+        query += " ORDER BY created_at DESC"
+        rows = conn.execute(query, tuple(params)).fetchall()
+        return [dict(row) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# Analytics snapshots listing (Sec. 19)
+# ---------------------------------------------------------------------------
+
+def list_analytics_snapshots(
+    *,
+    channel_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """ค้นหาภาพรวมสถิติทั้งหมด กรองตามช่องได้."""
+    ensure_tables()
+    with connect() as conn:
+        query = "SELECT * FROM zeazverse_analytics_snapshots WHERE 1=1"
+        params: list[Any] = []
+        if channel_id:
+            query += " AND channel_id=?"
+            params.append(channel_id)
+        query += " ORDER BY metric_date DESC, recorded_at DESC"
         rows = conn.execute(query, tuple(params)).fetchall()
         return [dict(row) for row in rows]

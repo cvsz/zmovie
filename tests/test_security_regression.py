@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +20,7 @@ class SecurityRegressionTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_db = storage.DB_PATH
         storage.DB_PATH = Path(self.tmp.name) / "zmovie.db"
+        os.environ["CINEMA_QR_SECRET"] = "test-qr-secret-do-not-use-in-production"
         migrations.migrate()
         commerce_store.ensure_tables()
         commerce_store.seed_default_plans()

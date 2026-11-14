@@ -26,11 +26,17 @@ def _new_id(prefix: str, *parts: str) -> str:
 
 
 def _immediate() -> Any:
-    """SQLite immediate transaction (writer lock) สำหรับกัน double-sell."""
+    """SQLite immediate transaction (writer lock) สำหรับกัน double-sell.
+
+    เปิดไฟล์ DB เดียวกับ storage layer และตั้งค่า PRAGMA ให้ตรงกัน
+    (WAL, foreign keys, busy timeout, row factory) ป้องกันพฤติกรรมที่ไม่
+    สอดคล้องระหว่างโมดูล ticketing กับส่วนอื่นของระบบ.
+    """
     store.ensure_tables()
     conn = sqlite3.connect(storage.DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("BEGIN IMMEDIATE")
     return conn
 

@@ -11,7 +11,10 @@ from typing import Any
 
 
 def _secret() -> bytes:
-    return os.getenv("CINEMA_QR_SECRET", "cinema-qr-dev-secret").encode("utf-8")
+    value = os.getenv("CINEMA_QR_SECRET", "").strip()
+    if not value:
+        raise RuntimeError("CINEMA_QR_SECRET is required to sign/verify QR tickets")
+    return value.encode("utf-8")
 
 
 def issue_qr(*, ticket_id: str, showtime_id: str, seat_no: str, ttl_seconds: int = 86400) -> dict[str, str]:

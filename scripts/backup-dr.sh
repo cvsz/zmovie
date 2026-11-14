@@ -45,6 +45,7 @@ for f in /etc/zmovie/zmovie.env /etc/zmovie/zmovie-staging.env \
          /etc/php/8.5/fpm/pool.d/zmovie-cinema-env.conf \
          /etc/nginx/sites-available/zmovie-cinema /etc/nginx/sites-available/license-zeaz \
 /etc/systemd/system/zeaz-license.service /etc/systemd/system/zmovie-staging.service; do
+# shellcheck disable=SC2015
   [[ -f "$f" ]] && cp -p "$f" "$OUT/config/" || log "WARN: missing $f"
 done
 chmod 600 "$OUT"/config/*
@@ -55,6 +56,7 @@ tar -czf "$OUT/media/var-lib-zmovie-media.tar.gz" -C /var/lib/zmovie media expor
   || log "WARN: media archive partial"
 
 # 4) Integrity manifest (names + hashes only; excludes itself)
+# shellcheck disable=SC2094
 (cd "$OUT" && find . -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > SHA256SUMS)
 chmod 600 "$OUT/SHA256SUMS"
 log "snapshot complete: $OUT"

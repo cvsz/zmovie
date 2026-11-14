@@ -8,6 +8,7 @@ MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-26}"
 
 fail(){ printf '[check-backup] FAIL: %s\n' "$*" >&2; exit 1; }
 
+# shellcheck disable=SC2012
 latest="$(ls -t "$BACKUP_DIR"/zmovie-cinema-*.sql.gz 2>/dev/null | head -1 || true)"
 [ -n "$latest" ] || fail "no backup file found in $BACKUP_DIR"
 [ -s "$latest" ] || fail "latest backup is empty: $latest"
