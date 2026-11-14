@@ -173,9 +173,9 @@ jobs:
           set -Eeuo pipefail
           docker compose up -d --wait --wait-timeout 300
           docker compose ps
-          curl -fsS --max-time 20 http://127.0.0.1:8080/api/v2/health | head -c 200
+          curl -fsS --max-time 20 http://127.0.0.1:8081/api/v2/health | head -c 200
           echo
-          curl -fsS --max-time 20 http://127.0.0.1:8080/api/v2/readyz | head -c 200
+          curl -fsS --max-time 20 http://127.0.0.1:8081/api/v2/readyz | head -c 200
           echo
 
       - name: Tear down
