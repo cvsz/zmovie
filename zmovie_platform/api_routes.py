@@ -40,6 +40,7 @@ from .storage import connect
 from .storyboard import create_storyboard, production_manifest, regenerate_project_prompts
 
 router = APIRouter(prefix="/api/v2")
+
 EXPORT_ROOT = Path(os.getenv("ZMOVIE_EXPORT_ROOT", "data/exports"))
 
 # OAuth manager (lazy init from env)
@@ -530,6 +531,16 @@ def pipeline(payload: PipelineRequest, actor: dict[str, str] = Depends(current_a
     increment("pipeline.completed" if result["render"]["status"] == "completed" else "pipeline.failed")
     audit("pipeline.run", actor=actor["username"], project_id=result["project"]["id"], provider=payload.provider)
     return result
+
+
+__all__ = [
+    "router",
+    "v1_router",
+    "current_actor",
+    "require_project",
+    "settings",
+    "EXPORT_ROOT",
+]
 
 
 v1_router = APIRouter(prefix="/v1", tags=["openai-v1"])

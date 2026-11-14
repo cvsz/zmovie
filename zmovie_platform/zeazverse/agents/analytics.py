@@ -125,7 +125,7 @@ class AnalyticsAgent:
     YPP_WATCH_TIME_THRESHOLD = 3_000  # 3,000 watch hours in last 90 days
     YPP_SHORT_VIEW_THRESHOLD = 3_000_000  # 3M Shorts views in last 90 days
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
         self._snapshots: dict[str, AnalyticsSnapshot] = {}

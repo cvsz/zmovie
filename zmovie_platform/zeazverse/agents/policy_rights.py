@@ -71,7 +71,7 @@ class PolicyRightsAgent:
     AGENT_NAME = "Policy & Rights Agent"
     DESCRIPTION = "Checks AI disclosure requirements, content rights, metadata accuracy and platform restrictions"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
 

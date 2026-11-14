@@ -223,7 +223,7 @@ class ChannelSetupAgent:
     AGENT_NAME = "Channel Setup Agent"
     DESCRIPTION = "Manages setup guidance, configuration validation and readiness"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.name = self.AGENT_NAME
         self.agent_id = self.AGENT_ID
         self._setups: dict[str, ChannelSetup] = {}
