@@ -85,6 +85,32 @@ services:
       timeout: 5s
       retries: 5
 
+  # แคชระดับองค์กร (ขั้นตอน 2.4: repo-name = zmovie)
+  # รหัสผ่านอ่านจากตัวแปรสภาพแวดล้อม REPONAME_REDIS_PASSWORD (ปกติถูกเติมจาก
+  # ไฟล์ลับรันไทม์ REPONAME_REDIS_PASSWORD_file ขณะ deploy) ไม่มีค่าเริ่มต้น
+  # ที่ hard-code; เมื่อยังไม่ระบุรหัสผ่านจะทำงานโดยไม่ต้องตรวจสิทธิ์ซึ่งตรง
+  # กับค่าเริ่มต้นของ zmovie_platform.config (redis_url แบบไม่มีรหัสผ่าน)
+  zredis:
+    image: redis:7-alpine
+    container_name: zredis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REPONAME_REDIS_PASSWORD:-}", "--save", "", "--appendonly", "no"]
+    environment:
+      REPONAME_REDIS_PASSWORD: "${REPONAME_REDIS_PASSWORD:-}"
+    ports:
+      - "127.0.0.1:16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REPONAME_REDIS_PASSWORD:-}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
 volumes:
   zmovie-data:
   postgres-data:

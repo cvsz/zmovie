@@ -68,6 +68,7 @@
 |-----------------|-----------|-----|------------|
 | การประกอบสร้างระบบ | `python -m compileall` | ✅ PASS | ไม่มีข้อผิดพลาดไวยากรณ์ |
 | คุณภาพโค้ด / รูปแบบ | ruff | ✅ PASS | 0 ข้อผิดพลาดทุกไฟล์ |
+| การกำหนดค่า Docker | `docker compose config -q` | ✅ PASS | สแต็ก `zmovie`, `zpostgressql`, `zredis` ถูกต้อง |
 | ชนิดข้อมูล | mypy --strict | ✅ PASS | 0 ข้อผิดพลาด, 119 โมดูล |
 | สคริปต์เปลือก | shellcheck + bash -n | ✅ PASS | 0 คำเตือน, ทุกไฟล์ถูกต้อง |
 | JavaScript | node --check | ✅ PASS | `static/app.js`, `static/studio-preview.js` สะอาด |
@@ -150,6 +151,7 @@ High: 0
 1. **`.env`** - แก้ `DATABASE_URL`/`TEST_DATABASE_URL`: เอารหัสผ่าน hard-coded ออก เปลี่ยนเป็นอ้างอิงรหัสผ่านจากไฟล์ลับรันไทม์ (ระบุโดย `REPONAME_POSTGRES_PASSWORD_FILE`) ขณะรันจริง ใช้ user `zmovie`, database `zmovie_db`, host `zpostgressql:5432`
 2. **`.env.example`** - อัปเดตตัวอย่างให้สอดคล้องกับ `.env` และไม่เปิดเผยรหัสผ่านจริง
 3. **`zmovie_platform/config.py`** - เสริมการตั้งค่าฐานข้อมูลและเรดิสระดับองค์กร อ่านรหัสลับจากไฟล์รันไทม์ (ระบุโดย `REPONAME_*_PASSWORD_FILE`) สร้าง `database_dsn`/`redis_url` และ `validate_database_settings()` แบบ fail-closed
+4. **`docker-compose.yml`** - เสริมบริการ `zredis` (`redis:7-alpine`) bind เฉพาะ loopback (`127.0.0.1:16379:6379`), `no-new-privileges`, `cap_drop: ALL`, healthcheck, รหัสผ่านจากตัวแปร `REPONAME_REDIS_PASSWORD` (ไม่ hard-code) ให้ครบตามการอ้างอิง `REPONAME_REDIS_HOST=zredis` ใน `.env`
 
 ### Security Tooling (กำจัดคำเตือนทั้งหมดให้เป็นศูนย์)
 4. **`scripts/check_studio_inline_js.py`** - แก้ `B607: start_process_with_partial_path` เรียก `node` ผ่าน `shutil.which("node")` แทน path ที่ไม่เต็ม
