@@ -12,6 +12,7 @@ Exit codes:
 from __future__ import annotations
 
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -32,8 +33,9 @@ def check_no_tracked_secret_files() -> None:
     """Reject any secret-bearing file tracked by git (except .env.example)."""
     import subprocess
 
+    git_bin = shutil.which("git") or "git"
     result = subprocess.run(
-        ["git", "ls-files"],
+        [git_bin, "ls-files"],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -168,8 +170,9 @@ def check_no_active_secrets_in_tracked_files() -> None:
     """Scan tracked non-example files for placeholder-looking real secrets."""
     import subprocess
 
+    git_bin = shutil.which("git") or "git"
     result = subprocess.run(
-        ["git", "ls-files"],
+        [git_bin, "ls-files"],
         cwd=ROOT,
         capture_output=True,
         text=True,

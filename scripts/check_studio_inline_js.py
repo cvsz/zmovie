@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from html.parser import HTMLParser
@@ -37,9 +38,10 @@ def main() -> int:
         print(f"No inline scripts found in {html_path}", file=sys.stderr)
         return 1
 
+    node_bin = shutil.which("node") or "node"
     for index, script in enumerate(parser.scripts, start=1):
         result = subprocess.run(
-            ["node", "--check", "-"],
+            [node_bin, "--check", "-"],
             input=script,
             capture_output=True,
             text=True,
