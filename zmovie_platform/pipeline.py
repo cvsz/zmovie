@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,12 @@ from .providers import get_provider
 from .qc import inspect_project
 from .repository import add_asset, find_shot, get_job, get_project, list_jobs, new_job, save_job
 from .storyboard import create_storyboard, production_manifest
+
+# Serialize per-project render-job creation so concurrent render requests
+# cannot both pass the resumable-job check and create duplicate jobs for the
+# same shot (check-then-act race). SQLite busy_timeout serializes writes but
+# not the logical TOCTOU between _resumable_render_job and new_job.
+_RENDER_LOCK = threading.Lock()
 
 MEDIA_ROOT = Path(os.getenv("ZMOVIE_MEDIA_ROOT", "data/media"))
 
@@ -37,12 +44,13 @@ def render_shot(project_id: str, shot_id: str, provider_id: str = "mock") -> dic
         raise ValueError("shot not found")
     _, shot = match
     provider = get_provider(provider_id)
-    job = _resumable_render_job(project_id, shot_id, provider_id) or new_job(
-        project_id,
-        shot_id,
-        provider_id,
-        {"duration_seconds": shot.duration_seconds},
-    )
+    with _RENDER_LOCK:
+        job = _resumable_render_job(project_id, shot_id, provider_id) or new_job(
+            project_id,
+            shot_id,
+            provider_id,
+            {"duration_seconds": shot.duration_seconds},
+        )
     if job is None:
         raise RuntimeError("failed to create or resume render job")
     job.status = "running"
