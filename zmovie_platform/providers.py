@@ -8,21 +8,14 @@ import subprocess
 import time
 import urllib.parse
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
 import httpx
 
-
-@dataclass(frozen=True)
-class ProviderSpec:
-    id: str
-    name: str
-    modes: tuple[str, ...]
-    durations: tuple[int, ...]
-    aspect_ratios: tuple[str, ...]
-    description: str
+from ._provider_spec import ProviderSpec
+from .cloud_webhook_provider import CloudWebhookProvider
+from .hf_video_provider import HuggingFaceVideoProvider
 
 
 class VideoProvider(Protocol):
@@ -423,11 +416,15 @@ class ComfyUIProvider:
 
 
 COMFYUI = ComfyUIProvider()
+CLOUD_WEBHOOK = CloudWebhookProvider()
+HUGGINGFACE = HuggingFaceVideoProvider()
 
 PROVIDERS: dict[str, VideoProvider] = {
     "mock": MockProvider(),
     "webhook": GenericWebhookProvider(),
     "comfyui": COMFYUI,
+    "cloud-webhook": CLOUD_WEBHOOK,
+    "huggingface": HUGGINGFACE,
 }
 
 
@@ -445,6 +442,10 @@ def _configured(provider_id: str) -> bool:
         return bool(os.getenv("ZMOVIE_PROVIDER_WEBHOOK", "").strip())
     if provider_id == "comfyui":
         return COMFYUI.configured()
+    if provider_id == "cloud-webhook":
+        return CLOUD_WEBHOOK.is_available()
+    if provider_id == "huggingface":
+        return HUGGINGFACE.is_available()
     return False
 
 

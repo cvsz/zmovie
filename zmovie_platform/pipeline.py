@@ -18,6 +18,46 @@ from .storyboard import create_storyboard, production_manifest
 # not the logical TOCTOU between _resumable_render_job and new_job.
 _RENDER_LOCK = threading.Lock()
 
+
+def _fallback_providers() -> list[str]:
+    """Return ordered list of fallback provider IDs from env.
+
+    Format: ZMOVIE_RENDER_FALLBACK_PROVIDERS=cloud-webhook,huggingface,mock
+    """
+    raw = os.getenv("ZMOVIE_RENDER_FALLBACK_PROVIDERS", "").strip()
+    if not raw:
+        return []
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+def render_shot_with_fallback(
+    project_id: str,
+    shot_id: str,
+    provider_id: str = "mock",
+) -> dict[str, Any]:
+    """Render a shot, falling back to other providers on failure.
+
+    Tries the primary provider first, then each fallback provider in order.
+    All providers must be available (configured) to be attempted.
+    """
+    from .providers import get_provider
+
+    providers = [provider_id] + _fallback_providers()
+    last_error: Exception | None = None
+    for pid in providers:
+        try:
+            provider = get_provider(pid)
+            is_available = getattr(provider, "is_available", lambda: True)
+            if not is_available():
+                continue
+            return render_shot(project_id, shot_id, pid)
+        except Exception as exc:  # Try next provider on any failure
+            last_error = exc
+            continue
+    raise RuntimeError(
+        f"All render providers failed for shot {shot_id}: {last_error}"
+    ) from last_error
+
 MEDIA_ROOT = Path(os.getenv("ZMOVIE_MEDIA_ROOT", "data/media"))
 
 
@@ -97,7 +137,10 @@ def render_project(project_id: str, provider_id: str = "mock", max_workers: int 
     workers = max(1, min(int(max_workers), 8))
     jobs: list[dict[str, Any]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(render_shot, project_id, shot_id, provider_id) for shot_id in shot_ids]
+        futures = [
+            pool.submit(render_shot_with_fallback, project_id, shot_id, provider_id)
+            for shot_id in shot_ids
+        ]
         for future in concurrent.futures.as_completed(futures):
             jobs.append(future.result())
     failed = [job for job in jobs if job["status"] == "failed"]
