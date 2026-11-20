@@ -77,6 +77,24 @@ ZMOVIE_BILIBILI_TIMEOUT_MS=120000
 PLAYWRIGHT_BROWSERS_PATH=/var/lib/zmovie/playwright
 ```
 
+Shared Docker database and cache (repo-name = zmovie):
+
+```bash
+DATABASE_URL=postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db
+TEST_DATABASE_URL=postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db
+REPONAME_POSTGRES_HOST=zpostgressql
+REPONAME_POSTGRES_PORT="5432"
+REPONAME_POSTGRES_PASSWORD_FILE=<postgres-password-secret-file>
+REPONAME_REDIS_HOST=zredis
+REPONAME_REDIS_PORT="6379"
+REPONAME_REDIS_PASSWORD_FILE=<redis-password-secret-file>
+```
+
+Runtime secret files for the PostgreSQL and Redis passwords must exist with
+mode `0600` before deploying. The native installer creates them automatically
+when missing and attempts to create PostgreSQL user `zmovie` and database
+`zmovie_db` on `zpostgressql`.
+
 Local model optional variables:
 
 ```bash

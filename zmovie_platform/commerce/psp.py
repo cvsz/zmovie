@@ -5,26 +5,32 @@ import hashlib
 import hmac
 import os
 import time
+from abc import ABC, abstractmethod
 from typing import Any
 
 
-class BasePSP:
+class BasePSP(ABC):
     name = "base"
 
+    @abstractmethod
     def create_session(self, *, amount_thb: int, currency: str, reference: str) -> dict[str, Any]:
-        raise NotImplementedError
+        """สร้างเซสชันชำระเงิน (create payment session)."""
 
+    @abstractmethod
     def confirm_session(self, *, session_id: str) -> dict[str, Any]:
-        raise NotImplementedError
+        """ยืนยันการชำระเงิน (confirm payment session)."""
 
+    @abstractmethod
     def refund(self, *, psp_ref: str, amount_thb: int) -> dict[str, Any]:
-        raise NotImplementedError
+        """คืนเงิน (refund payment)."""
 
+    @abstractmethod
     def sign_webhook(self, payload: bytes) -> str:
-        raise NotImplementedError
+        """เซ็นลายเซ็นเว็บฮุก (sign webhook payload)."""
 
+    @abstractmethod
     def verify_webhook(self, payload: bytes, signature: str) -> bool:
-        raise NotImplementedError
+        """ตรวจสอบลายเซ็นเว็บฮุก (verify webhook signature)."""
 
 
 def _webhook_secret() -> bytes:
