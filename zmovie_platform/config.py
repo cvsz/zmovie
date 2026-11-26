@@ -34,7 +34,7 @@ class Settings:
     # user 'zmovie' ถูกสร้างใน PostgreSQL ก่อน déploy; รหัสผ่านอ่านจาก
     # /run/secrets/zmovie_postgres_password และ /run/secrets/zmovie_zredis_password
     # ------------------------------------------------------------------
-    db_host: str = os.getenv("REPONAME_POSTGRES_HOST", "zpostgressql")
+    db_host: str = os.getenv("REPONAME_POSTGRES_HOST", "zpostgresql")
     db_port: int = int(os.getenv("REPONAME_POSTGRES_PORT", "5432"))
     db_user: str = os.getenv("REPONAME_POSTGRES_USER", "zmovie")
     db_name: str = os.getenv("REPONAME_POSTGRES_DB", "zmovie_db")

@@ -15,6 +15,32 @@ variables and safe defaults; it never contains their values.
 | `ZMOVIE_ENABLE_DOCS` | Explicit API documentation switch. | Leave disabled on public deployments. |
 | `ZMOVIE_HOST` / `ZMOVIE_PORT` | Local bind and HTTP port. | Bind privately or put authenticated TLS ingress in front. |
 
+## Shared Docker database and cache (repo-name = zmovie)
+
+zMovie can use shared Docker services `zpostgresql` (PostgreSQL) and `zredis`
+(Redis) instead of SQLite-only operation. These variables configure that path:
+
+| Setting | Example | Role |
+| --- | --- | --- |
+| `DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db` | Application PostgreSQL connection string |
+| `TEST_DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db` | Test-suite PostgreSQL connection string |
+| `REPONAME_POSTGRES_HOST` | `zpostgresql` | Shared PostgreSQL host |
+| `REPONAME_POSTGRES_PORT` | `5432` | Shared PostgreSQL port |
+| `REPONAME_POSTGRES_PASSWORD_FILE` | PostgreSQL password secret file | PostgreSQL password secret file path |
+| `REPONAME_REDIS_HOST` | `zredis` | Shared Redis host |
+| `REPONAME_REDIS_PORT` | `6379` | Shared Redis port |
+| `REPONAME_REDIS_PASSWORD_FILE` | Redis password secret file | Redis password secret file path |
+
+Before deploying, the operator must create the runtime secret files (mode `0600`)
+for the PostgreSQL and Redis passwords, and create PostgreSQL user `zmovie`
+and database `zmovie_db` owned by `zmovie` on `zpostgresql` (the native
+installer attempts this automatically when `psql` and admin credentials are
+available).
+
+The native installer writes `DATABASE_URL` and `TEST_DATABASE_URL` into
+`/etc/zmovie/zmovie.env` using the secret file contents. Docker Compose passes
+them through from the deployment environment.
+
 The native installer preserves persistent configuration during upgrades. Docker
 uses the Compose environment and persistent `zmovie-data` volume. Consult the
 [native deployment notes](../zmovie_platform/README_DEPLOYMENT.md) and

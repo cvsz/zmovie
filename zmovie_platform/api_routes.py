@@ -99,7 +99,6 @@ def oauth_base_url(request: Request) -> str:
     try:
         parsed = urlsplit(configured)
         hostname = parsed.hostname or ""
-        parsed.port
     except ValueError as exc:
         raise HTTPException(status_code=503, detail="ZMOVIE_BASE_URL is invalid") from exc
     if (
@@ -546,7 +545,7 @@ __all__ = [
 v1_router = APIRouter(prefix="/v1", tags=["openai-v1"])
 
 
-@v1_router.get("/models")
+@v1_router.get("/models", dependencies=[Depends(current_actor)])
 def list_v1_models() -> dict[str, Any]:
     return {
         "object": "list",
@@ -573,7 +572,7 @@ def list_v1_models() -> dict[str, Any]:
     }
 
 
-@v1_router.post("/chat/completions")
+@v1_router.post("/chat/completions", dependencies=[Depends(current_actor)])
 def v1_chat_completions(payload: dict[str, Any]) -> dict[str, Any]:
     messages = payload.get("messages", [])
     prompt = messages[-1].get("content", "") if messages else "Generate cinematic action prompt."

@@ -16,7 +16,7 @@ Production server:
   hostname: dbc
   OS: Ubuntu 26.04
   LAN interface: ens33
-  LAN address: 192.168.3.132/24
+  LAN address: 192.168.1.85/24
 
 Public application:
   https://zmovie.zeaz.dev
@@ -554,7 +554,7 @@ Studio and Product Studio must share:
 Production host:
 
   dbc
-  ens33 = 192.168.3.132/24
+  ens33 = 192.168.1.85/24
 
 Do not use:
 
@@ -1450,7 +1450,7 @@ Verify:
 
 Expected:
 
-  192.168.3.132/24
+  192.168.1.85/24
 
 Then:
 

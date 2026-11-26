@@ -76,6 +76,25 @@ state are separate from source-controlled code. Asset registration resolves
 paths against managed roots and rejects escapes, including symlink escapes.
 Preview URLs are signed, short-lived, and limited to managed MP4 assets.
 
+## Shared Docker database and cache
+
+zMovie supports shared Docker services `zpostgresql` (PostgreSQL:16-alpine)
+and `zredis` (Redis:7-alpine) as an alternative to SQLite-only operation. The
+`DATABASE_URL` and `TEST_DATABASE_URL` variables point at
+`postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db`, with the password read
+from the PostgreSQL password secret file. Redis connection settings use
+`REPONAME_REDIS_HOST=zredis`, `REPONAME_REDIS_PORT=6379`, and
+`REPONAME_REDIS_PASSWORD_FILE` pointing at the Redis password secret file.
+
+Before deploying, the operator must:
+1. Create the runtime secret files with mode `0600`.
+2. Create PostgreSQL user `zmovie` and database `zmovie_db` owned by `zmovie`
+   on `zpostgresql` (the native installer attempts this automatically when
+   `psql` and admin credentials are available).
+
+See [Configuration](CONFIGURATION.md) for the full variable table and
+[Operations](OPERATIONS.md) for lifecycle commands.
+
 ## Provider boundary
 
 The renderer abstraction supports:
