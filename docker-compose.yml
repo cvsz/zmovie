@@ -8,9 +8,9 @@ services:
       ZMOVIE_HOST: "127.0.0.1"
       ZMOVIE_BASE_URL: "${ZMOVIE_BASE_URL:-}"
       ZMOVIE_DB_PATH: /app/data/zmovie.db
-      DATABASE_URL: "${DATABASE_URL:-postgresql://zmovie:${ZMOVIE_POSTGRES_PASSWORD:-}@zpostgressql:5432/zmovie_db}"
-      TEST_DATABASE_URL: "${TEST_DATABASE_URL:-postgresql://zmovie:${ZMOVIE_POSTGRES_PASSWORD:-}@zpostgressql:5432/zmovie_db}"
-      ZMOVIE_PG_DSN: "${ZMOVIE_PG_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-zmovie-secure-password}@zpostgressql:5432/zmovie}"
+      DATABASE_URL: "${DATABASE_URL:-postgresql://zmovie:${ZMOVIE_POSTGRES_PASSWORD:-}@zpostgresql:5432/zmovie_db}"
+      TEST_DATABASE_URL: "${TEST_DATABASE_URL:-postgresql://zmovie:${ZMOVIE_POSTGRES_PASSWORD:-}@zpostgresql:5432/zmovie_db}"
+      ZMOVIE_PG_DSN: "${ZMOVIE_PG_DSN:-postgresql://postgres:${POSTGRES_PASSWORD:-zmovie-secure-password}@zpostgresql:5432/zmovie}"
       ZMOVIE_MEDIA_ROOT: /app/data/media
       ZMOVIE_EXPORT_ROOT: /app/data/exports
       ZMOVIE_PUBLISH_ROOT: /app/data/publish
@@ -48,7 +48,7 @@ services:
       ZMOVIE_BILIBILI_TIMEOUT_MS: "${ZMOVIE_BILIBILI_TIMEOUT_MS:-120000}"
       ZMOVIE_BILIBILI_UPLOAD_URL: "${ZMOVIE_BILIBILI_UPLOAD_URL:-}"
     depends_on:
-      zpostgressql:
+      zpostgresql:
         condition: service_healthy
     volumes:
       - zmovie-data:/app/data
@@ -69,9 +69,9 @@ services:
       retries: 3
       start_period: 15s
 
-  zpostgressql:
+  zpostgresql:
     image: postgres:16-alpine
-    container_name: zpostgressql
+    container_name: zpostgresql
     restart: unless-stopped
     environment:
       POSTGRES_DB: zmovie

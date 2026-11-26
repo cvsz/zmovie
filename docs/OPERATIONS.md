@@ -14,7 +14,7 @@ the operator CLI. The public one-command installer is documented in the
 
 The installer also creates runtime secret files (mode `0600`) for the
 PostgreSQL and Redis passwords when they do not exist, and attempts to create
-PostgreSQL user `zmovie` and database `zmovie_db` on `zpostgressql` when
+PostgreSQL user `zmovie` and database `zmovie_db` on `zpostgresql` when
 `psql` and admin credentials are available. It writes `DATABASE_URL`,
 `TEST_DATABASE_URL`, and the `REPONAME_*` variables into
 `/etc/zmovie/zmovie.env`.

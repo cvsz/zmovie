@@ -17,14 +17,14 @@ variables and safe defaults; it never contains their values.
 
 ## Shared Docker database and cache (repo-name = zmovie)
 
-zMovie can use shared Docker services `zpostgressql` (PostgreSQL) and `zredis`
+zMovie can use shared Docker services `zpostgresql` (PostgreSQL) and `zredis`
 (Redis) instead of SQLite-only operation. These variables configure that path:
 
 | Setting | Example | Role |
 | --- | --- | --- |
-| `DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db` | Application PostgreSQL connection string |
-| `TEST_DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db` | Test-suite PostgreSQL connection string |
-| `REPONAME_POSTGRES_HOST` | `zpostgressql` | Shared PostgreSQL host |
+| `DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db` | Application PostgreSQL connection string |
+| `TEST_DATABASE_URL` | `postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db` | Test-suite PostgreSQL connection string |
+| `REPONAME_POSTGRES_HOST` | `zpostgresql` | Shared PostgreSQL host |
 | `REPONAME_POSTGRES_PORT` | `5432` | Shared PostgreSQL port |
 | `REPONAME_POSTGRES_PASSWORD_FILE` | PostgreSQL password secret file | PostgreSQL password secret file path |
 | `REPONAME_REDIS_HOST` | `zredis` | Shared Redis host |
@@ -33,7 +33,7 @@ zMovie can use shared Docker services `zpostgressql` (PostgreSQL) and `zredis`
 
 Before deploying, the operator must create the runtime secret files (mode `0600`)
 for the PostgreSQL and Redis passwords, and create PostgreSQL user `zmovie`
-and database `zmovie_db` owned by `zmovie` on `zpostgressql` (the native
+and database `zmovie_db` owned by `zmovie` on `zpostgresql` (the native
 installer attempts this automatically when `psql` and admin credentials are
 available).
 

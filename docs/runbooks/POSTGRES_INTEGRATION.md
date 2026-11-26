@@ -4,18 +4,18 @@ Status: VERIFIED (4/4 pass, full suite 269/269 with PG enabled).
 
 ## 1. Why isolated
 
-Production can utilize PostgreSQL via the Docker container service named `zpostgressql` (`postgres:18-alpine`). These tests run against a disposable container with synthetic data only.
+Production can utilize PostgreSQL via the Docker container service named `zpostgresql` (`postgres:18-alpine`). These tests run against a disposable container with synthetic data only.
 
-## 2. Provision (Docker container name: zpostgressql)
+## 2. Provision (Docker container name: zpostgresql)
 
-  docker run -d --name zpostgressql --restart unless-stopped \
+  docker run -d --name zpostgresql --restart unless-stopped \
     -p 5432:5432 \
     -e POSTGRES_PASSWORD=zmovie-secure-password \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_DB=zmovie postgres:18-alpine
 
 Alternatively, use Docker Compose:
-  docker compose up -d zpostgressql
+  docker compose up -d zpostgresql
 
 ## 3. Run Tests
 
@@ -28,4 +28,4 @@ pg_dump/pg_restore roundtrip.
 
 ## 4. Teardown
 
-  docker rm -f zpostgressql
+  docker rm -f zpostgresql

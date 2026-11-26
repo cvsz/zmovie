@@ -80,9 +80,9 @@ PLAYWRIGHT_BROWSERS_PATH=/var/lib/zmovie/playwright
 Shared Docker database and cache (repo-name = zmovie):
 
 ```bash
-DATABASE_URL=postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db
-TEST_DATABASE_URL=postgresql://zmovie:<pw>@zpostgressql:5432/zmovie_db
-REPONAME_POSTGRES_HOST=zpostgressql
+DATABASE_URL=postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db
+TEST_DATABASE_URL=postgresql://zmovie:<pw>@zpostgresql:5432/zmovie_db
+REPONAME_POSTGRES_HOST=zpostgresql
 REPONAME_POSTGRES_PORT="5432"
 REPONAME_POSTGRES_PASSWORD_FILE=<postgres-password-secret-file>
 REPONAME_REDIS_HOST=zredis
@@ -93,7 +93,7 @@ REPONAME_REDIS_PASSWORD_FILE=<redis-password-secret-file>
 Runtime secret files for the PostgreSQL and Redis passwords must exist with
 mode `0600` before deploying. The native installer creates them automatically
 when missing and attempts to create PostgreSQL user `zmovie` and database
-`zmovie_db` on `zpostgressql`.
+`zmovie_db` on `zpostgresql`.
 
 Local model optional variables:
 

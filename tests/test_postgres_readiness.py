@@ -121,7 +121,7 @@ class PostgresReadinessTests(unittest.TestCase):
 class ConfigDatabaseSettingsTestCase(unittest.TestCase):
     """การตั้งค่าฐานข้อมูลและแคชระดับองค์กร (ขั้นตอน 2.4).
 
-    repo-name = zmovie; user 'zmovie', ฐานข้อมูล zmovie_db, host zpostgressql:5432,
+    repo-name = zmovie; user 'zmovie', ฐานข้อมูล zmovie_db, host zpostgresql:5432,
     เรดิส zredis:6379, รหัสผ่านอ่านจากไฟล์ลับ /run/secrets/...
     """
 
@@ -132,7 +132,7 @@ class ConfigDatabaseSettingsTestCase(unittest.TestCase):
         self._env_patch = mock.patch.dict(
             os.environ,
             {
-                "REPONAME_POSTGRES_HOST": "zpostgressql",
+                "REPONAME_POSTGRES_HOST": "zpostgresql",
                 "REPONAME_POSTGRES_PORT": "5432",
                 "REPONAME_POSTGRES_USER": "zmovie",
                 "REPONAME_POSTGRES_DB": "zmovie_db",
@@ -164,7 +164,7 @@ class ConfigDatabaseSettingsTestCase(unittest.TestCase):
         settings = Settings()
         self.assertEqual(
             settings.database_dsn,
-            "postgresql://zmovie:pg-secret-123@zpostgressql:5432/zmovie_db",
+            "postgresql://zmovie:pg-secret-123@zpostgresql:5432/zmovie_db",
         )
 
     def test_database_dsn_uses_defaults_when_env_absent(self) -> None:
@@ -182,7 +182,7 @@ class ConfigDatabaseSettingsTestCase(unittest.TestCase):
             ):
                 os.environ.pop(key, None)
             settings = Settings()
-            self.assertEqual(settings.db_host, "zpostgressql")
+            self.assertEqual(settings.db_host, "zpostgresql")
             self.assertEqual(settings.db_port, 5432)
             self.assertEqual(settings.db_user, "zmovie")
             self.assertEqual(settings.db_name, "zmovie_db")

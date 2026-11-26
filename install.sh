@@ -145,7 +145,7 @@ install_or_upgrade(){
   fi
 
   # --- Shared Docker database + Redis secrets (repo-name = zmovie) ---
-  # สร้างไฟล์รหัสผ่านรันไทม์สำหรับ zpostgressql และ zredis
+  # สร้างไฟล์รหัสผ่านรันไทม์สำหรับ zpostgresql และ zredis
   install -d -o root -g root -m 0755 /run/secrets 2>/dev/null || true
   if [[ ! -f /run/secrets/zmovie_postgres_password ]]; then
     random_hex 24 > /run/secrets/zmovie_postgres_password
@@ -158,31 +158,32 @@ install_or_upgrade(){
     log "created /run/secrets/zmovie_zredis_password"
   fi
 
-  # สร้าง PostgreSQL user 'zmovie' และ database 'zmovie_db' หากยังไม่มี (บน zpostgressql)
+  # สร้าง PostgreSQL user 'zmovie' และ database 'zmovie_db' หากยังไม่มี (บน zpostgresql)
   if command -v psql >/dev/null 2>&1; then
     PG_ADMIN_USER="${ZMOVIE_PG_ADMIN_USER:-postgres}"
     PG_ADMIN_PASSWORD_FILE="${ZMOVIE_PG_ADMIN_PASSWORD_FILE:-/run/secrets/zmovie_postgres_admin_password}"
     if [[ -f "$PG_ADMIN_PASSWORD_FILE" ]]; then
-      export PGPASSWORD="$(cat "$PG_ADMIN_PASSWORD_FILE")"
+      PGPASSWORD="$(cat "$PG_ADMIN_PASSWORD_FILE")"
+      export PGPASSWORD
     fi
-    if psql -h zpostgressql -p 5432 -U "$PG_ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='zmovie'" 2>/dev/null | grep -q 1; then
-      log "PostgreSQL user 'zmovie' already exists on zpostgressql"
+    if psql -h zpostgresql -p 5432 -U "$PG_ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='zmovie'" 2>/dev/null | grep -q 1; then
+      log "PostgreSQL user 'zmovie' already exists on zpostgresql"
     else
-      psql -h zpostgressql -p 5432 -U "$PG_ADMIN_USER" -d postgres -c "CREATE USER zmovie WITH PASSWORD '$(cat /run/secrets/zmovie_postgres_password)';" 2>/dev/null \
-        && log "created PostgreSQL user 'zmovie' on zpostgressql" \
+      psql -h zpostgresql -p 5432 -U "$PG_ADMIN_USER" -d postgres -c "CREATE USER zmovie WITH PASSWORD '$(cat /run/secrets/zmovie_postgres_password)';" 2>/dev/null \
+        && log "created PostgreSQL user 'zmovie' on zpostgresql" \
         || log "warning: could not create PostgreSQL user 'zmovie' (remote host may not be reachable or admin credentials missing)"
     fi
-    if psql -h zpostgressql -p 5432 -U "$PG_ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='zmovie_db'" 2>/dev/null | grep -q 1; then
-      log "PostgreSQL database 'zmovie_db' already exists on zpostgressql"
+    if psql -h zpostgresql -p 5432 -U "$PG_ADMIN_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='zmovie_db'" 2>/dev/null | grep -q 1; then
+      log "PostgreSQL database 'zmovie_db' already exists on zpostgresql"
     else
-      psql -h zpostgressql -p 5432 -U "$PG_ADMIN_USER" -d postgres -c "CREATE DATABASE zmovie_db OWNER zmovie;" 2>/dev/null \
-        && log "created PostgreSQL database 'zmovie_db' on zpostgressql" \
+      psql -h zpostgresql -p 5432 -U "$PG_ADMIN_USER" -d postgres -c "CREATE DATABASE zmovie_db OWNER zmovie;" 2>/dev/null \
+        && log "created PostgreSQL database 'zmovie_db' on zpostgresql" \
         || log "warning: could not create PostgreSQL database 'zmovie_db'"
     fi
-    psql -h zpostgressql -p 5432 -U "$PG_ADMIN_USER" -d zmovie_db -c "GRANT ALL PRIVILEGES ON DATABASE zmovie_db TO zmovie;" 2>/dev/null || true
+    psql -h zpostgresql -p 5432 -U "$PG_ADMIN_USER" -d zmovie_db -c "GRANT ALL PRIVILEGES ON DATABASE zmovie_db TO zmovie;" 2>/dev/null || true
     unset PGPASSWORD
   else
-    log "psql not available; PostgreSQL user/database creation skipped (create manually: user 'zmovie', database 'zmovie_db' on zpostgressql)"
+    log "psql not available; PostgreSQL user/database creation skipped (create manually: user 'zmovie', database 'zmovie_db' on zpostgresql)"
   fi
 
   upgrade_readiness_if_available
@@ -215,9 +216,9 @@ ZMOVIE_HOST=0.0.0.0
 ZMOVIE_PORT=${PORT}
 ZMOVIE_BASE_URL=${PUBLIC_BASE_URL}
 ZMOVIE_DB_PATH=${DATA_DIR}/zmovie.db
-DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgressql:5432/zmovie_db
-TEST_DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgressql:5432/zmovie_db
-REPONAME_POSTGRES_HOST=zpostgressql
+DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgresql:5432/zmovie_db
+TEST_DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgresql:5432/zmovie_db
+REPONAME_POSTGRES_HOST=zpostgresql
 REPONAME_POSTGRES_PORT="5432"
 REPONAME_POSTGRES_PASSWORD_FILE=/run/secrets/zmovie_postgres_password
 REPONAME_REDIS_HOST=zredis
@@ -269,9 +270,9 @@ EOF
       PORT="${existing_port:-$PORT}"
     fi
     grep -q '^ZMOVIE_PUBLISH_ROOT=' "$ENV_FILE" || printf 'ZMOVIE_PUBLISH_ROOT=%s\n' "$DATA_DIR/publish" >>"$ENV_FILE"
-    grep -q '^DATABASE_URL=' "$ENV_FILE" || printf 'DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgressql:5432/zmovie_db\n' >>"$ENV_FILE"
-    grep -q '^TEST_DATABASE_URL=' "$ENV_FILE" || printf 'TEST_DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgressql:5432/zmovie_db\n' >>"$ENV_FILE"
-    grep -q '^REPONAME_POSTGRES_HOST=' "$ENV_FILE" || printf 'REPONAME_POSTGRES_HOST=zpostgressql\n' >>"$ENV_FILE"
+    grep -q '^DATABASE_URL=' "$ENV_FILE" || printf 'DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgresql:5432/zmovie_db\n' >>"$ENV_FILE"
+    grep -q '^TEST_DATABASE_URL=' "$ENV_FILE" || printf 'TEST_DATABASE_URL=postgresql://zmovie:$(cat /run/secrets/zmovie_postgres_password)@zpostgresql:5432/zmovie_db\n' >>"$ENV_FILE"
+    grep -q '^REPONAME_POSTGRES_HOST=' "$ENV_FILE" || printf 'REPONAME_POSTGRES_HOST=zpostgresql\n' >>"$ENV_FILE"
     grep -q '^REPONAME_POSTGRES_PORT=' "$ENV_FILE" || printf 'REPONAME_POSTGRES_PORT="5432"\n' >>"$ENV_FILE"
     grep -q '^REPONAME_POSTGRES_PASSWORD_FILE=' "$ENV_FILE" || printf 'REPONAME_POSTGRES_PASSWORD_FILE=/run/secrets/zmovie_postgres_password\n' >>"$ENV_FILE"
     grep -q '^REPONAME_REDIS_HOST=' "$ENV_FILE" || printf 'REPONAME_REDIS_HOST=zredis\n' >>"$ENV_FILE"
